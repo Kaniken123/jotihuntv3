@@ -1,0 +1,115 @@
+
+> jotihunt-frontend@1.0.0 dev
+> vite
+
+[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
+
+  VITE v5.4.19  ready in 258 ms
+
+  ➜  Local:   http://localhost:3000/
+  ➜  Network: use --host to expose
+(node:69510) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///workspaces/jotihuntv2/frontend/postcss.config.js is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /workspaces/jotihuntv2/frontend/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+6:10:48 PM [vite] hmr update /src/components/Map.tsx, /src/index.css
+6:11:02 PM [vite] hmr update /src/components/Map.tsx, /src/index.css
+7:07:41 PM [vite] hmr update /src/components/Login.tsx, /src/index.css
+7:07:48 PM [vite] hmr update /src/components/Login.tsx, /src/index.css
+7:07:56 PM [vite] hmr update /src/components/Login.tsx, /src/index.css
+7:08:03 PM [vite] hmr update /src/components/Login.tsx, /src/index.css
+7:08:19 PM [vite] hmr update /src/components/Login.tsx, /src/index.css
+7:08:31 PM [vite] hmr update /src/components/Login.tsx, /src/index.css
+7:20:30 PM [vite] hmr update /src/components/AdminDashboard.tsx, /src/index.css
+7:20:38 PM [vite] hmr update /src/components/AdminDashboard.tsx, /src/index.css
+7:20:47 PM [vite] hmr update /src/components/AdminDashboard.tsx, /src/index.css
+7:20:59 PM [vite] hmr update /src/components/AdminDashboard.tsx, /src/index.css
+7:21:51 PM [vite] hmr update /src/components/AdminDashboard.tsx, /src/index.css
+7:22:09 PM [vite] hmr update /src/components/Map.tsx, /src/index.css
+7:50:00 PM [vite] hmr update /src/components/AdminDashboard.tsx, /src/index.css
+7:50:11 PM [vite] hmr update /src/components/AdminDashboard.tsx, /src/index.css
+7:50:17 PM [vite] hmr update /src/components/AdminDashboard.tsx, /src/index.css
+7:50:51 PM [vite] hmr update /src/components/AdminDashboard.tsx, /src/index.css
+7:59:24 PM [vite] hmr update /src/components/AdminDashboard.tsx, /src/index.css
+7:59:30 PM [vite] hmr update /src/components/AdminDashboard.tsx, /src/index.css
+7:59:40 PM [vite] hmr update /src/components/AdminDashboard.tsx, /src/index.css
+7:59:51 PM [vite] hmr update /src/components/AdminDashboard.tsx, /src/index.css
+8:00:42 PM [vite] hmr update /src/components/AdminDashboard.tsx, /src/index.css
+8:22:04 PM [vite] hmr update /src/components/AdminDashboard.tsx, /src/index.css
+8:22:11 PM [vite] hmr update /src/components/AdminDashboard.tsx, /src/index.css
+8:22:17 PM [vite] hmr update /src/components/AdminDashboard.tsx, /src/index.css
+8:22:29 PM [vite] hmr update /src/components/AdminDashboard.tsx, /src/index.css
+8:23:08 PM [vite] hmr update /src/components/AdminDashboard.tsx, /src/index.css
+8:23:15 PM [vite] hmr update /src/components/AdminDashboard.tsx, /src/index.css
+8:27:33 PM [vite] http proxy error: /api/locations/update
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1139:18)
+    at afterConnectMultiple (node:net:1714:7)
+8:27:33 PM [vite] http proxy error: /api/locations/update
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1139:18)
+    at afterConnectMultiple (node:net:1714:7)
+8:27:34 PM [vite] http proxy error: /api/locations/update
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1139:18)
+    at afterConnectMultiple (node:net:1714:7)
+8:27:34 PM [vite] http proxy error: /api/locations/update
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1139:18)
+    at afterConnectMultiple (node:net:1714:7)
+8:27:34 PM [vite] http proxy error: /api/locations/update
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1139:18)
+    at afterConnectMultiple (node:net:1714:7)
+8:27:34 PM [vite] http proxy error: /api/locations/update
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1139:18)
+    at afterConnectMultiple (node:net:1714:7)
+8:27:35 PM [vite] http proxy error: /api/locations/update
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1139:18)
+    at afterConnectMultiple (node:net:1714:7)
+8:27:35 PM [vite] http proxy error: /api/locations/update
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1139:18)
+    at afterConnectMultiple (node:net:1714:7)
+8:27:36 PM [vite] http proxy error: /api/locations/update
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1139:18)
+    at afterConnectMultiple (node:net:1714:7)
+8:27:36 PM [vite] http proxy error: /api/locations/update
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1139:18)
+    at afterConnectMultiple (node:net:1714:7)
+8:27:36 PM [vite] http proxy error: /api/locations/update
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1139:18)
+    at afterConnectMultiple (node:net:1714:7)
+8:27:37 PM [vite] http proxy error: /api/locations/update
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1139:18)
+    at afterConnectMultiple (node:net:1714:7)
+8:27:37 PM [vite] http proxy error: /api/locations/update
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1139:18)
+    at afterConnectMultiple (node:net:1714:7)
+8:27:37 PM [vite] http proxy error: /api/locations/update
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1139:18)
+    at afterConnectMultiple (node:net:1714:7)
+8:27:39 PM [vite] http proxy error: /api/locations/update
+Error: read ECONNRESET
+    at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+8:27:39 PM [vite] http proxy error: /api/locations/update
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1139:18)
+    at afterConnectMultiple (node:net:1714:7)
+8:27:42 PM [vite] http proxy error: /api/locations/update
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1139:18)
+    at afterConnectMultiple (node:net:1714:7)
+8:27:43 PM [vite] http proxy error: /api/locations/update
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1139:18)
+    at afterConnectMultiple (node:net:1714:7)
+8:28:30 PM [vite] hmr update /src/components/AdminDashboard.tsx, /src/index.css

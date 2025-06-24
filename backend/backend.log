@@ -1,0 +1,220 @@
+
+> jotihunt-backend@1.0.0 dev
+> nodemon src/server.ts
+
+[33m[nodemon] 3.1.10[39m
+[33m[nodemon] to restart at any time, enter `rs`[39m
+[33m[nodemon] watching path(s): *.*[39m
+[33m[nodemon] watching extensions: ts,json[39m
+[32m[nodemon] starting `ts-node src/server.ts`[39m
+Database migrations completed
+Server running on port 3001
+Health check: http://localhost:3001/api/health
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `ts-node src/server.ts`[39m
+Database migrations completed
+Server running on port 3001
+Health check: http://localhost:3001/api/health
+Registration error: TypeError: Cannot destructure property 'password_hash' of 'user' as it is undefined.
+    at /workspaces/jotihuntv2/backend/src/routes/auth.ts:69:28
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `ts-node src/server.ts`[39m
+Database migrations completed
+Server running on port 3001
+Health check: http://localhost:3001/api/health
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `ts-node src/server.ts`[39m
+Database migrations completed
+Server running on port 3001
+Health check: http://localhost:3001/api/health
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `ts-node src/server.ts`[39m
+Database migrations completed
+Server running on port 3001
+Health check: http://localhost:3001/api/health
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `ts-node src/server.ts`[39m
+Database migrations completed
+Server running on port 3001
+Health check: http://localhost:3001/api/health
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `ts-node src/server.ts`[39m
+Database migrations completed
+Server running on port 3001
+Health check: http://localhost:3001/api/health
+Decoded token userId: 4
+Found user: admin (admin)
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `ts-node src/server.ts`[39m
+Database migrations completed
+Server running on port 3001
+Health check: http://localhost:3001/api/health
+Decoded token userId: 4
+Found user: admin (admin)
+Decoded token userId: 4
+Found user: admin (admin)
+Decoded token userId: 4
+Found user: admin (admin)
+Decoded token userId: 4
+Decoded token userId: 4
+Found user: admin (admin)
+Found user: admin (admin)
+Decoded token userId: 4
+Found user: admin (admin)
+Decoded token userId: 4
+Found user: admin (admin)
+Decoded token userId: 4
+Found user: admin (admin)
+Decoded token userId: 4
+Found user: admin (admin)
+Decoded token userId: 4
+Found user: admin (admin)
+Decoded token userId: 4
+Found user: admin (admin)
+Decoded token userId: 4
+Found user: admin (admin)
+Decoded token userId: 4
+Found user: admin (admin)
+Decoded token userId: 4
+Found user: admin (admin)
+Decoded token userId: 4
+Found user: admin (admin)
+Decoded token userId: 4
+Found user: admin (admin)
+Decoded token userId: 4
+Found user: admin (admin)
+Decoded token userId: 4
+Found user: admin (admin)
+Decoded token userId: 4
+Found user: admin (admin)
+Decoded token userId: 4
+Found user: admin (admin)
+Decoded token userId: 4
+Found user: admin (admin)
+Decoded token userId: 4
+Found user: admin (admin)
+Decoded token userId: 4
+Found user: admin (admin)
+Decoded token userId: 4
+Found user: admin (admin)
+Decoded token userId: 4
+Found user: admin (admin)
+Decoded token userId: 4
+Found user: admin (admin)
+Decoded token userId: 4
+Found user: admin (admin)
+Decoded token userId: 4
+Found user: admin (admin)
+Decoded token userId: 4
+Found user: admin (admin)
+Decoded token userId: 4
+Found user: admin (admin)
+Decoded token userId: 4
+Found user: admin (admin)
+Decoded token userId: 4
+Found user: admin (admin)
+Decoded token userId: 4
+Found user: admin (admin)
+Decoded token userId: 4
+Found user: admin (admin)
+Decoded token userId: 4
+Found user: admin (admin)
+Decoded token userId: 4
+Found user: admin (admin)
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `ts-node src/server.ts`[39m
+Database migrations completed
+Server running on port 3001
+Health check: http://localhost:3001/api/health
+Decoded token userId: 4
+Found user: admin (admin)
+Users list route hit!
+Getting users, admin user: admin
+Found users: 6 [
+  'admin',
+  'hunter1',
+  'hunter2',
+  'newuser123',
+  'testuser',
+  'testuser2'
+]
+Returning users with teams: 6
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `ts-node src/server.ts`[39m
+Database migrations completed
+Server running on port 3001
+Health check: http://localhost:3001/api/health
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `ts-node src/server.ts`[39m
+Database migrations completed
+Server running on port 3001
+Health check: http://localhost:3001/api/health
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `ts-node src/server.ts`[39m
+Database migrations completed
+Server running on port 3001
+Health check: http://localhost:3001/api/health
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `ts-node src/server.ts`[39m
+Database migrations completed
+Server running on port 3001
+Health check: http://localhost:3001/api/health
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `ts-node src/server.ts`[39m
+Database migrations completed
+Server running on port 3001
+Health check: http://localhost:3001/api/health
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `ts-node src/server.ts`[39m
+Database migrations completed
+Server running on port 3001
+Health check: http://localhost:3001/api/health
+Error syncing article: 1 [Error: insert into `articles` (`area`, `content`, `created_at`, `external_id`, `is_active`, `published_at`, `synced_at`, `title`, `type`, `updated_at`) values (NULL, '<div>Everything is awesome, everything is cool when you’re part of a team. Everything is awesome when we’re living our dream….jongens jongens jongens toch wat was het weer een fantastisch weekend! Ook wij vouwen langzaam onze handen weer uit de legovorm en smeren ze lekker in met wat handcrème om het huidje weer zacht en soepel te maken na duizend keer blokjes in elkaar geprikt te hebben. Iedereen lekker door de wasstraat geweest om de laatste gele restjes achter je oren vandaan te wassen? Zat dit echt allemaal in het afgelopen weekend?</div><ul><li>Je verkijken op de juiste plattegrond van Legoland</li><li>Je handen in een poppetjes-grijphouding vormen in de buurt van een camera</li><li>Al je poppetjes in rijtjes gezet&nbsp;</li><li>Een enorme boshut op je terrein laten verrijzen&nbsp;</li><li>Ouderwets gedanst op de lipdub&nbsp;</li><li>Je Deens opgepoetst</li><li>Diep in je geheugen gegraven voor oude thema’s</li><li>Je trouwjurk van zolder geplukt&nbsp;</li><li>Als echt Legopoppetje verkleed door Gelderland geracet</li><li>Op je steentjes getrapt zijn&nbsp;</li></ul><div>Mogelijk heb je komende week nog last van afkickverschijnselen die heel normaal zijn:</div><ul><li>Niet Legoïstisch zijn en je flauwe grappen delen met anderen</li><li>Bij elk groepje van drie personen met een rugzak je auto langs de kant van de weg zetten en vragen of het vossen zijn</li><li>Stipt om 11.00 en daarna om het hele uur op F5 drukken</li><li>Je Legotimatie bij je houden</li></ul><div>Dit komt ook allemaal weer goed en langzaam ga je weer over tot de orde van de dag. De vos gaat nu weer slapen en….Tot volgend jaar 18-19 oktober!</div><div><br></div>', '2025-06-24 20:17:54.644', 1, true, '2025-02-12 13:45:00.000', '2025-06-24 20:17:54.644', 'Tot volgend jaar', 'news', '2025-06-24 20:17:54.644') on conflict (`external_id`) do update set `title` = 'Tot volgend jaar',`content` = '<div>Everything is awesome, everything is cool when you’re part of a team. Everything is awesome when we’re living our dream….jongens jongens jongens toch wat was het weer een fantastisch weekend! Ook wij vouwen langzaam onze handen weer uit de legovorm en smeren ze lekker in met wat handcrème om het huidje weer zacht en soepel te maken na duizend keer blokjes in elkaar geprikt te hebben. Iedereen lekker door de wasstraat geweest om de laatste gele restjes achter je oren vandaan te wassen? Zat dit echt allemaal in het afgelopen weekend?</div><ul><li>Je verkijken op de juiste plattegrond van Legoland</li><li>Je handen in een poppetjes-grijphouding vormen in de buurt van een camera</li><li>Al je poppetjes in rijtjes gezet&nbsp;</li><li>Een enorme boshut op je terrein laten verrijzen&nbsp;</li><li>Ouderwets gedanst op de lipdub&nbsp;</li><li>Je Deens opgepoetst</li><li>Diep in je geheugen gegraven voor oude thema’s</li><li>Je trouwjurk van zolder geplukt&nbsp;</li><li>Als echt Legopoppetje verkleed door Gelderland geracet</li><li>Op je steentjes getrapt zijn&nbsp;</li></ul><div>Mogelijk heb je komende week nog last van afkickverschijnselen die heel normaal zijn:</div><ul><li>Niet Legoïstisch zijn en je flauwe grappen delen met anderen</li><li>Bij elk groepje van drie personen met een rugzak je auto langs de kant van de weg zetten en vragen of het vossen zijn</li><li>Stipt om 11.00 en daarna om het hele uur op F5 drukken</li><li>Je Legotimatie bij je houden</li></ul><div>Dit komt ook allemaal weer goed en langzaam ga je weer over tot de orde van de dag. De vos gaat nu weer slapen en….Tot volgend jaar 18-19 oktober!</div><div><br></div>',`type` = 'news',`published_at` = '2025-02-12 13:45:00.000',`synced_at` = '2025-06-24 20:17:54.644',`updated_at` = '2025-06-24 20:17:54.644' - SQLITE_ERROR: table articles has no column named external_id] {
+  errno: 1,
+  code: 'SQLITE_ERROR'
+}
+Starting manual sync with Jotihunt APIs...
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `ts-node src/server.ts`[39m
+Database migrations completed
+Server running on port 3001
+Health check: http://localhost:3001/api/health
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `ts-node src/server.ts`[39m
+Database migrations completed
+Server running on port 3001
+Health check: http://localhost:3001/api/health
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `ts-node src/server.ts`[39m
+Database migrations completed
+Setting up automatic API sync every 30 seconds...
+✅ Automatic sync scheduled every 30 seconds
+Server running on port 3001
+Health check: http://localhost:3001/api/health
+🔄 Auto-sync: Every 30 seconds
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `ts-node src/server.ts`[39m
+Database migrations completed
+Setting up automatic API sync every 30 seconds...
+✅ Automatic sync scheduled every 30 seconds
+Server running on port 3001
+Health check: http://localhost:3001/api/health
+🔄 Auto-sync: Every 30 seconds
+[2025-06-24T20:28:30.396Z] Running automatic API sync...
+[2025-06-24T20:28:30.685Z] Auto-sync completed: {
+  subscriptions: '0 synced, 0 errors',
+  areas: '0 synced, 0 errors',
+  articles: '1 synced, 0 errors'
+}
+[2025-06-24T20:29:00.548Z] Running automatic API sync...
+[2025-06-24T20:29:00.639Z] Auto-sync completed: {
+  subscriptions: '0 synced, 0 errors',
+  areas: '0 synced, 0 errors',
+  articles: '1 synced, 0 errors'
+}
+[2025-06-24T20:29:30.562Z] Running automatic API sync...
+[2025-06-24T20:29:30.645Z] Auto-sync completed: {
+  subscriptions: '0 synced, 0 errors',
+  areas: '0 synced, 0 errors',
+  articles: '1 synced, 0 errors'
+}
