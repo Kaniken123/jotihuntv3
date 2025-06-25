@@ -218,3 +218,9 @@ Health check: http://localhost:3001/api/health
   areas: '0 synced, 0 errors',
   articles: '1 synced, 0 errors'
 }
+[2025-06-24T20:30:00.580Z] Running automatic API sync...
+[2025-06-24T20:30:00.658Z] Auto-sync completed: {
+  subscriptions: '0 synced, 0 errors',
+  areas: '0 synced, 0 errors',
+  articles: '1 synced, 0 errors'
+}
