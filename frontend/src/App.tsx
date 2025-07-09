@@ -11,6 +11,7 @@ import Map from './components/Map';
 import TeamChat from './components/TeamChat';
 import HuntRegistration from './components/HuntRegistration';
 import HintsList from './components/HintsList';
+import UpdateDetail from './components/UpdateDetail';
 import Rules from './components/Rules';
 import AdminDashboard from './components/AdminDashboard';
 import LocationSettings from './components/LocationSettings';
@@ -96,6 +97,19 @@ const AppContent: React.FC = () => {
                   <Navbar />
                   <div className="flex-1 overflow-y-auto">
                     <HintsList />
+                  </div>
+                </div>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/updates/:id"
+            element={
+              <ProtectedRoute>
+                <div className="flex flex-col h-screen">
+                  <Navbar />
+                  <div className="flex-1 overflow-y-auto">
+                    <UpdateDetail />
                   </div>
                 </div>
               </ProtectedRoute>

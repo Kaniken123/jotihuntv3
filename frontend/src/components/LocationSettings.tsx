@@ -430,7 +430,7 @@ const LocationSettings: React.FC = () => {
           </p>
         ) : (
           <div className="space-y-2">
-            {locationHistory.map((location, index) => (
+            {locationHistory.map((location) => (
               <div key={location.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
                 <div>
                   <p className="text-sm font-medium text-gray-900 dark:text-gray-100">

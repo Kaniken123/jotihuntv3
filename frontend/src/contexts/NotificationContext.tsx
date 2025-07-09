@@ -184,11 +184,33 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       });
     };
 
+    const handleTeamNotification = (data: any) => {
+      addNotification({
+        type: 'system',
+        title: data.title || 'Team Notification',
+        message: data.message,
+        read: false,
+        data
+      });
+    };
+
+    const handleUserNotification = (data: any) => {
+      addNotification({
+        type: 'system',
+        title: data.title || 'Personal Notification',
+        message: data.message,
+        read: false,
+        data
+      });
+    };
+
     socket.on('new-message', handleNewMessage);
     socket.on('hunt-reviewed', handleHuntReviewed);
     socket.on('new-assignment', handleNewAssignment);
     socket.on('location-alert', handleLocationAlert);
     socket.on('system-notification', handleSystemNotification);
+    socket.on('team-notification', handleTeamNotification);
+    socket.on('user-notification', handleUserNotification);
 
     return () => {
       socket.off('new-message', handleNewMessage);
@@ -196,6 +218,8 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       socket.off('new-assignment', handleNewAssignment);
       socket.off('location-alert', handleLocationAlert);
       socket.off('system-notification', handleSystemNotification);
+      socket.off('team-notification', handleTeamNotification);
+      socket.off('user-notification', handleUserNotification);
     };
   }, [socket, authState.isAuthenticated]);
 

@@ -70,6 +70,10 @@ export interface UserLocation {
   username?: string;
   first_name?: string;
   last_name?: string;
+  role?: 'admin' | 'user';
+  team_name?: string;
+  team_area?: string;
+  team_role?: 'leader' | 'member';
 }
 
 export interface TeamMessage {

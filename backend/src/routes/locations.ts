@@ -131,6 +131,8 @@ router.post('/update', authenticateToken, async (req, res) => {
 
 router.get('/latest', authenticateToken, async (req, res) => {
   try {
+    res.setHeader('Cache-Control', 'private, max-age=10'); // Short cache for location data
+    
     const { team_only } = req.query;
     
     let userIds = [];
@@ -144,19 +146,35 @@ router.get('/latest', authenticateToken, async (req, res) => {
       userIds = teamMembers.map(member => member.user_id);
     }
 
-    let query = db('user_locations')
-      .select('user_locations.*', 'users.username', 'users.first_name', 'users.last_name')
-      .join('users', 'user_locations.user_id', 'users.id')
+    // First, get the latest location ID for each user who has sharing enabled
+    const latestLocationIds = await db('user_locations')
+      .select('user_locations.id')
       .join('location_settings', 'user_locations.user_id', 'location_settings.user_id')
       .where('location_settings.location_sharing_enabled', true)
       .where('location_settings.privacy_mode', false)
-      .whereIn('user_locations.user_id', function() {
-        this.select('ul2.user_id')
+      .whereIn('user_locations.id', function() {
+        this.select(db.raw('MAX(ul2.id)'))
           .from('user_locations as ul2')
-          .whereRaw('ul2.user_id = user_locations.user_id')
-          .orderBy('ul2.recorded_at', 'desc')
-          .limit(1);
+          .join('location_settings as ls2', 'ul2.user_id', 'ls2.user_id')
+          .where('ls2.location_sharing_enabled', true)
+          .where('ls2.privacy_mode', false)
+          .groupBy('ul2.user_id');
       })
+      .limit(100); // Reasonable limit
+
+    const locationIds = latestLocationIds.map(row => row.id);
+
+    if (locationIds.length === 0) {
+      return res.json([]);
+    }
+
+    // Then get the full location data for those IDs
+    let query = db('user_locations')
+      .select('user_locations.*', 'users.username', 'users.first_name', 'users.last_name', 'users.role', 'teams.name as team_name', 'teams.area as team_area', 'team_members.role as team_role')
+      .join('users', 'user_locations.user_id', 'users.id')
+      .leftJoin('team_members', 'users.id', 'team_members.user_id')
+      .leftJoin('teams', 'team_members.team_id', 'teams.id')
+      .whereIn('user_locations.id', locationIds)
       .orderBy('user_locations.recorded_at', 'desc');
 
     if (userIds.length > 0) {

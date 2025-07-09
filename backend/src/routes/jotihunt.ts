@@ -8,25 +8,42 @@ const router = express.Router();
 
 router.get('/areas', authenticateToken, async (req, res) => {
   try {
+    res.setHeader('Cache-Control', 'private, max-age=30');
+    
+    const { include_locations = 'false' } = req.query;
+    
     const areas = await db('areas')
       .select('*')
       .orderBy('name');
 
-    const areasWithLocations = await Promise.all(
-      areas.map(async (area) => {
-        const locations = await db('area_locations')
-          .where('area_id', area.id)
-          .orderBy('recorded_at', 'desc')
-          .limit(10);
+    // Only fetch location history if explicitly requested
+    if (include_locations === 'true') {
+      const areaIds = areas.map(area => area.id);
+      
+      // Get only the 3 most recent locations per area for performance
+      const allLocations = await db('area_locations')
+        .whereIn('area_id', areaIds)
+        .orderBy('recorded_at', 'desc')
+        .limit(areaIds.length * 3);
 
-        return {
-          ...area,
-          locations
-        };
-      })
-    );
+      const locationsByArea = allLocations.reduce((acc, location) => {
+        if (!acc[location.area_id]) acc[location.area_id] = [];
+        if (acc[location.area_id].length < 3) {
+          acc[location.area_id].push(location);
+        }
+        return acc;
+      }, {} as Record<number, any[]>);
 
-    res.json(areasWithLocations);
+      const areasWithLocations = areas.map(area => ({
+        ...area,
+        locations: locationsByArea[area.id] || []
+      }));
+
+      return res.json(areasWithLocations);
+    }
+
+    // Return areas without location history for faster map loading
+    res.json(areas);
   } catch (error) {
     console.error('Get areas error:', error);
     res.status(500).json({ error: 'Failed to get areas' });
@@ -35,6 +52,8 @@ router.get('/areas', authenticateToken, async (req, res) => {
 
 router.get('/articles', authenticateToken, async (req, res) => {
   try {
+    res.setHeader('Cache-Control', 'private, max-age=60');
+    
     const { type, area } = req.query;
     
     let query = db('articles')
@@ -59,25 +78,52 @@ router.get('/articles', authenticateToken, async (req, res) => {
   }
 });
 
+// Get individual article by ID
+router.get('/articles/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const article = await db('articles')
+      .where('id', id)
+      .where('is_active', true)
+      .first();
+
+    if (!article) {
+      return res.status(404).json({ error: 'Article not found' });
+    }
+
+    res.json(article);
+  } catch (error) {
+    console.error('Get article error:', error);
+    res.status(500).json({ error: 'Failed to get article' });
+  }
+});
+
 router.get('/subscriptions', authenticateToken, async (req, res) => {
   try {
+    res.setHeader('Cache-Control', 'private, max-age=30');
+    
     const subscriptions = await db('subscriptions')
       .where('is_participating', true)
       .orderBy('team_name');
 
-    const subscriptionsWithLocations = await Promise.all(
-      subscriptions.map(async (subscription) => {
-        const locations = await db('subscription_locations')
-          .where('subscription_id', subscription.id)
-          .orderBy('recorded_at', 'desc')
-          .limit(5);
+    const subscriptionIds = subscriptions.map(sub => sub.id);
+    const allLocations = await db('subscription_locations')
+      .whereIn('subscription_id', subscriptionIds)
+      .orderBy('recorded_at', 'desc');
 
-        return {
-          ...subscription,
-          locations
-        };
-      })
-    );
+    const locationsBySubscription = allLocations.reduce((acc, location) => {
+      if (!acc[location.subscription_id]) acc[location.subscription_id] = [];
+      if (acc[location.subscription_id].length < 5) {
+        acc[location.subscription_id].push(location);
+      }
+      return acc;
+    }, {} as Record<number, any[]>);
+
+    const subscriptionsWithLocations = subscriptions.map(subscription => ({
+      ...subscription,
+      locations: locationsBySubscription[subscription.id] || []
+    }));
 
     res.json(subscriptionsWithLocations);
   } catch (error) {
@@ -209,7 +255,7 @@ router.get('/sync/status', authenticateToken, async (req, res) => {
       ...status,
       auto_sync: {
         enabled: enableAutoSync,
-        interval: '30 seconds',
+        interval: '2 minutes',
         last_auto_sync: autoSyncCache?.last_sync || null,
         last_auto_sync_data: autoSyncCache ? JSON.parse(autoSyncCache.data || '{}') : null
       }

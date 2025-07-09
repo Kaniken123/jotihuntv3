@@ -1,12 +1,24 @@
 import express from 'express';
 import { db } from '../utils/database';
 import { authenticateToken, requireAdmin } from '../middleware/auth';
+import { getSocketIO } from '../socketManager';
 
 const router = express.Router();
+
+// Simple in-memory cache for admin stats
+let statsCache: { data: any; timestamp: number } | null = null;
+const STATS_CACHE_DURATION = 30000; // 30 seconds
 
 // Get dashboard statistics
 router.get('/stats', authenticateToken, requireAdmin, async (req, res) => {
   try {
+    const now = Date.now();
+    
+    // Check cache
+    if (statsCache && (now - statsCache.timestamp) < STATS_CACHE_DURATION) {
+      return res.json(statsCache.data);
+    }
+
     const [
       totalUsers,
       totalTeams,
@@ -23,14 +35,19 @@ router.get('/stats', authenticateToken, requireAdmin, async (req, res) => {
       db('team_messages').count('* as count').first()
     ]);
 
-    res.json({
+    const data = {
       total_users: totalUsers?.count || 0,
       total_teams: totalTeams?.count || 0,
       pending_hunts: pendingHunts?.count || 0,
       total_hunts: totalHunts?.count || 0,
       active_areas: activeAreas?.count || 0,
       total_messages: totalMessages?.count || 0
-    });
+    };
+
+    // Update cache
+    statsCache = { data, timestamp: now };
+    
+    res.json(data);
   } catch (error) {
     console.error('Get admin stats error:', error);
     res.status(500).json({ error: 'Failed to get statistics' });
@@ -350,6 +367,170 @@ router.get('/export/:type', authenticateToken, requireAdmin, async (req, res) =>
   } catch (error) {
     console.error('Export error:', error);
     res.status(500).json({ error: 'Failed to export data' });
+  }
+});
+
+// Admin notification endpoints
+// Send notification to all users
+router.post('/notifications/broadcast', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { title, message, type = 'system' } = req.body;
+    
+    if (!title || !message) {
+      return res.status(400).json({ error: 'Title and message are required' });
+    }
+
+    const notificationData = {
+      id: `admin-${Date.now()}`,
+      type,
+      title,
+      message,
+      timestamp: new Date().toISOString(),
+      read: false,
+      data: {
+        sender: 'admin',
+        broadcast: true
+      }
+    };
+
+    // Broadcast to all connected users
+    const io = getSocketIO();
+    if (io) {
+      io.emit('system-notification', notificationData);
+    }
+
+    res.json({ 
+      success: true, 
+      message: 'Notification sent to all users',
+      notification: notificationData
+    });
+  } catch (error) {
+    console.error('Broadcast notification error:', error);
+    res.status(500).json({ error: 'Failed to send notification' });
+  }
+});
+
+// Send notification to specific team
+router.post('/notifications/team/:team_id', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { team_id } = req.params;
+    const { title, message, type = 'system' } = req.body;
+    
+    if (!title || !message) {
+      return res.status(400).json({ error: 'Title and message are required' });
+    }
+
+    // Verify team exists
+    const team = await db('teams').where('id', team_id).first();
+    if (!team) {
+      return res.status(404).json({ error: 'Team not found' });
+    }
+
+    const notificationData = {
+      id: `admin-team-${team_id}-${Date.now()}`,
+      type,
+      title,
+      message,
+      timestamp: new Date().toISOString(),
+      read: false,
+      data: {
+        sender: 'admin',
+        team_id: parseInt(team_id),
+        team_name: team.name
+      }
+    };
+
+    // Send to specific team
+    const io = getSocketIO();
+    if (io) {
+      io.to(`team-${team_id}`).emit('team-notification', notificationData);
+    }
+
+    res.json({ 
+      success: true, 
+      message: `Notification sent to team ${team.name}`,
+      notification: notificationData
+    });
+  } catch (error) {
+    console.error('Team notification error:', error);
+    res.status(500).json({ error: 'Failed to send team notification' });
+  }
+});
+
+// Send notification to specific user
+router.post('/notifications/user/:user_id', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { user_id } = req.params;
+    const { title, message, type = 'system' } = req.body;
+    
+    if (!title || !message) {
+      return res.status(400).json({ error: 'Title and message are required' });
+    }
+
+    // Verify user exists
+    const user = await db('users').where('id', user_id).first();
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const notificationData = {
+      id: `admin-user-${user_id}-${Date.now()}`,
+      type,
+      title,
+      message,
+      timestamp: new Date().toISOString(),
+      read: false,
+      data: {
+        sender: 'admin',
+        user_id: parseInt(user_id),
+        username: user.username
+      }
+    };
+
+    // Send to specific user (if they're connected)
+    const io = getSocketIO();
+    if (io) {
+      io.to(`user-${user_id}`).emit('user-notification', notificationData);
+    }
+
+    res.json({ 
+      success: true, 
+      message: `Notification sent to user ${user.username}`,
+      notification: notificationData
+    });
+  } catch (error) {
+    console.error('User notification error:', error);
+    res.status(500).json({ error: 'Failed to send user notification' });
+  }
+});
+
+// Get list of teams for notification targeting
+router.get('/notifications/teams', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const teams = await db('teams')
+      .select('id', 'name', 'area')
+      .where('is_active', true)
+      .orderBy('name');
+
+    res.json(teams);
+  } catch (error) {
+    console.error('Get teams error:', error);
+    res.status(500).json({ error: 'Failed to get teams' });
+  }
+});
+
+// Get list of users for notification targeting
+router.get('/notifications/users', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const users = await db('users')
+      .select('id', 'username', 'first_name', 'last_name')
+      .where('is_active', true)
+      .orderBy('username');
+
+    res.json(users);
+  } catch (error) {
+    console.error('Get users error:', error);
+    res.status(500).json({ error: 'Failed to get users' });
   }
 });
 

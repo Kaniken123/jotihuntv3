@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../services/authService';
 import { Article } from '../types';
 import LoadingSpinner from './LoadingSpinner';
-import { MessageCircle, AlertTriangle, Newspaper, Filter } from 'lucide-react';
+import { MessageCircle, AlertTriangle, Newspaper, Filter, ExternalLink } from 'lucide-react';
 
 const HintsList: React.FC = () => {
   const [articles, setArticles] = useState<Article[]>([]);
@@ -14,6 +15,7 @@ const HintsList: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
 
   const { state } = useAuth();
+  const navigate = useNavigate();
 
   useEffect(() => {
     loadArticles();
@@ -237,12 +239,17 @@ const HintsList: React.FC = () => {
               </div>
 
               <div className="prose dark:prose-invert max-w-none mb-4">
-                <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
-                  {article.content}
-                </p>
+                <div 
+                  className="text-gray-700 dark:text-gray-300"
+                  dangerouslySetInnerHTML={{ 
+                    __html: article.content.length > 200 
+                      ? `${article.content.substring(0, 200)}...` 
+                      : article.content 
+                  }}
+                />
               </div>
 
-              <div className="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
+              <div className="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400 mb-3">
                 <span>Published {formatDate(article.published_at)}</span>
                 
                 {article.type === 'assignment' && (
@@ -251,6 +258,17 @@ const HintsList: React.FC = () => {
                     <span>Action Required</span>
                   </span>
                 )}
+              </div>
+
+              {/* View Details Button */}
+              <div className="flex justify-end">
+                <button
+                  onClick={() => navigate(`/updates/${article.id}`)}
+                  className="flex items-center space-x-1 px-3 py-1.5 text-sm text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-md transition-colors"
+                >
+                  <span>View Details</span>
+                  <ExternalLink className="w-4 h-4" />
+                </button>
               </div>
 
               {/* Highlight user's team area */}

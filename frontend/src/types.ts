@@ -7,6 +7,7 @@ export interface User {
   role: 'admin' | 'user';
   team_id?: number;
   team?: Team;
+  is_active: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -28,14 +29,21 @@ export interface Hunt {
   photo_url: string;
   coordinates_lat: number;
   coordinates_lng: number;
+  hunt_lat: number;
+  hunt_lng: number;
   points_awarded?: number;
   status: 'pending' | 'approved' | 'rejected';
   rejection_reason?: string;
   submitted_at: string;
+  hunt_time: string;
   reviewed_at?: string;
   reviewed_by?: number;
   user?: User;
   team?: Team;
+  username?: string;
+  first_name?: string;
+  last_name?: string;
+  team_name?: string;
 }
 
 export interface ChatMessage {
@@ -86,6 +94,71 @@ export interface Location {
   lng: number;
   accuracy?: number;
   recorded_at: string;
+}
+
+export interface UserLocation {
+  id: number;
+  user_id: number;
+  lat: number;
+  lng: number;
+  accuracy?: number;
+  recorded_at: string;
+  source: string;
+  username?: string;
+  first_name?: string;
+  last_name?: string;
+  role?: 'admin' | 'user';
+  team_name?: string;
+  team_area?: string;
+  team_role?: 'leader' | 'member';
+}
+
+export interface Area {
+  id: number;
+  name: string;
+  fox_team_name?: string;
+  status: 'active' | 'inactive' | 'hunted';
+  lat?: number;
+  lng?: number;
+  points: number;
+  last_seen?: string;
+  locations?: AreaLocation[];
+}
+
+export interface AreaLocation {
+  id: number;
+  area_id: number;
+  lat: number;
+  lng: number;
+  recorded_at: string;
+  source: string;
+}
+
+export interface TeamMessage {
+  id: number;
+  team_id: number;
+  user_id: number;
+  message: string;
+  attachment_url?: string;
+  attachment_type?: string;
+  is_edited: boolean;
+  edited_at?: string;
+  created_at: string;
+  user?: {
+    username: string;
+    first_name?: string;
+    last_name?: string;
+  };
+}
+
+export interface Article {
+  id: number;
+  title: string;
+  content: string;
+  type: 'hint' | 'assignment' | 'news';
+  area?: string;
+  published_at: string;
+  is_active: boolean;
 }
 
 export interface AuthState {

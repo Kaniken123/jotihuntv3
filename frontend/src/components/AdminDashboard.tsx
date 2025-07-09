@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../services/authService';
-import { Hunt, User, TeamMessage, Area } from '../types';
+import { Hunt, User, Area } from '../types';
 import LoadingSpinner from './LoadingSpinner';
 import { 
   Users, 
@@ -16,7 +16,9 @@ import {
   BarChart3,
   MapPin,
   RefreshCw,
-  Database
+  Database,
+  Bell,
+  Send
 } from 'lucide-react';
 
 interface DashboardStats {
@@ -50,6 +52,18 @@ const AdminDashboard: React.FC = () => {
   });
   const [syncStatus, setSyncStatus] = useState<any>(null);
   const [syncing, setSyncing] = useState(false);
+  
+  // Notification state
+  const [notificationData, setNotificationData] = useState({
+    title: '',
+    message: '',
+    type: 'system',
+    target: 'broadcast', // 'broadcast', 'team', 'user'
+    targetId: ''
+  });
+  const [availableTeams, setAvailableTeams] = useState<any[]>([]);
+  const [availableUsers, setAvailableUsers] = useState<any[]>([]);
+  const [sendingNotification, setSendingNotification] = useState(false);
 
   const { state } = useAuth();
 
@@ -62,11 +76,13 @@ const AdminDashboard: React.FC = () => {
   const loadDashboardData = async () => {
     try {
       console.log('Loading dashboard data...');
-      const [statsRes, huntsRes, usersRes, areasRes] = await Promise.all([
+      const [statsRes, huntsRes, usersRes, areasRes, teamsRes, usersForNotificationsRes] = await Promise.all([
         api.get('/admin/stats'),
         api.get('/hunts/pending'),
         api.get('/users'),
-        api.get('/jotihunt/areas')
+        api.get('/jotihunt/areas'),
+        api.get('/admin/notifications/teams'),
+        api.get('/admin/notifications/users')
       ]);
 
       console.log('Dashboard data loaded:', {
@@ -80,6 +96,8 @@ const AdminDashboard: React.FC = () => {
       setPendingHunts(huntsRes.data);
       setUsers(usersRes.data);
       setAreas(areasRes.data);
+      setAvailableTeams(teamsRes.data);
+      setAvailableUsers(usersForNotificationsRes.data);
     } catch (error: any) {
       console.error('Failed to load dashboard data:', error);
       if (error.response) {
@@ -195,6 +213,51 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
+  const handleSendNotification = async () => {
+    if (!notificationData.title || !notificationData.message) {
+      alert('Please fill in both title and message');
+      return;
+    }
+
+    if (notificationData.target !== 'broadcast' && !notificationData.targetId) {
+      alert('Please select a target');
+      return;
+    }
+
+    setSendingNotification(true);
+    try {
+      let endpoint = '/admin/notifications/broadcast';
+      
+      if (notificationData.target === 'team') {
+        endpoint = `/admin/notifications/team/${notificationData.targetId}`;
+      } else if (notificationData.target === 'user') {
+        endpoint = `/admin/notifications/user/${notificationData.targetId}`;
+      }
+
+      const response = await api.post(endpoint, {
+        title: notificationData.title,
+        message: notificationData.message,
+        type: notificationData.type
+      });
+
+      alert(response.data.message || 'Notification sent successfully!');
+      
+      // Reset form
+      setNotificationData({
+        title: '',
+        message: '',
+        type: 'system',
+        target: 'broadcast',
+        targetId: ''
+      });
+    } catch (error: any) {
+      console.error('Failed to send notification:', error);
+      alert(`Failed to send notification: ${error.response?.data?.error || error.message}`);
+    } finally {
+      setSendingNotification(false);
+    }
+  };
+
   useEffect(() => {
     if (state.user?.role === 'admin' && activeTab === 'api') {
       loadSyncStatus();
@@ -230,6 +293,7 @@ const AdminDashboard: React.FC = () => {
     { id: 'hunts', label: 'Hunt Review', icon: Camera },
     { id: 'users', label: 'User Management', icon: Users },
     { id: 'areas', label: 'Game Areas', icon: MapPin },
+    { id: 'notifications', label: 'Notifications', icon: Bell },
     { id: 'api', label: 'API Sync', icon: Database },
     { id: 'settings', label: 'Settings', icon: Settings },
   ];
@@ -1047,12 +1111,178 @@ const AdminDashboard: React.FC = () => {
     </div>
   );
 
+  const renderNotifications = () => (
+    <div className="space-y-6">
+      <div className="card p-6">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
+          Send Notification
+        </h3>
+        
+        <div className="space-y-4">
+          {/* Title */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Title
+            </label>
+            <input
+              type="text"
+              value={notificationData.title}
+              onChange={(e) => setNotificationData({ ...notificationData, title: e.target.value })}
+              className="input"
+              placeholder="Notification title..."
+              required
+            />
+          </div>
+
+          {/* Message */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Message
+            </label>
+            <textarea
+              value={notificationData.message}
+              onChange={(e) => setNotificationData({ ...notificationData, message: e.target.value })}
+              className="input h-24 resize-none"
+              placeholder="Notification message..."
+              required
+            />
+          </div>
+
+          {/* Type and Target Row */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Type */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Type
+              </label>
+              <select
+                value={notificationData.type}
+                onChange={(e) => setNotificationData({ ...notificationData, type: e.target.value })}
+                className="input"
+              >
+                <option value="system">System</option>
+                <option value="assignment">Assignment</option>
+                <option value="location">Location</option>
+                <option value="message">Message</option>
+              </select>
+            </div>
+
+            {/* Target */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Target
+              </label>
+              <select
+                value={notificationData.target}
+                onChange={(e) => setNotificationData({ ...notificationData, target: e.target.value, targetId: '' })}
+                className="input"
+              >
+                <option value="broadcast">All Users</option>
+                <option value="team">Specific Team</option>
+                <option value="user">Specific User</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Target Selection */}
+          {notificationData.target === 'team' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Select Team
+              </label>
+              <select
+                value={notificationData.targetId}
+                onChange={(e) => setNotificationData({ ...notificationData, targetId: e.target.value })}
+                className="input"
+                required
+              >
+                <option value="">Choose a team...</option>
+                {availableTeams.map((team) => (
+                  <option key={team.id} value={team.id}>
+                    {team.name} {team.area && `(${team.area})`}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {notificationData.target === 'user' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Select User
+              </label>
+              <select
+                value={notificationData.targetId}
+                onChange={(e) => setNotificationData({ ...notificationData, targetId: e.target.value })}
+                className="input"
+                required
+              >
+                <option value="">Choose a user...</option>
+                {availableUsers.map((user) => (
+                  <option key={user.id} value={user.id}>
+                    {user.first_name && user.last_name 
+                      ? `${user.first_name} ${user.last_name} (${user.username})`
+                      : user.username}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Send Button */}
+          <div className="pt-4">
+            <button
+              onClick={handleSendNotification}
+              disabled={sendingNotification || !notificationData.title || !notificationData.message}
+              className="btn btn-primary flex items-center space-x-2 w-full md:w-auto"
+            >
+              {sendingNotification ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  <span>Sending...</span>
+                </>
+              ) : (
+                <>
+                  <Send className="w-4 h-4" />
+                  <span>Send Notification</span>
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Information Card */}
+      <div className="card p-6">
+        <h4 className="text-md font-semibold text-gray-900 dark:text-gray-100 mb-3">
+          Notification Types
+        </h4>
+        <div className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
+          <div><strong>System:</strong> General announcements and important updates</div>
+          <div><strong>Assignment:</strong> New tasks or mission updates</div>
+          <div><strong>Location:</strong> Location-based alerts and warnings</div>
+          <div><strong>Message:</strong> Communication updates</div>
+        </div>
+        
+        <h4 className="text-md font-semibold text-gray-900 dark:text-gray-100 mb-3 mt-4">
+          Target Options
+        </h4>
+        <div className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
+          <div><strong>All Users:</strong> Broadcast to everyone currently online</div>
+          <div><strong>Specific Team:</strong> Send to all members of a team</div>
+          <div><strong>Specific User:</strong> Send to one individual user</div>
+        </div>
+      </div>
+    </div>
+  );
+
   const renderContent = () => {
     switch (activeTab) {
       case 'overview': return renderOverview();
       case 'hunts': return renderHuntReview();
       case 'users': return renderUserManagement();
       case 'areas': return renderAreaManagement();
+      case 'notifications': return renderNotifications();
       case 'api': return renderApiSync();
       case 'settings': return <div className="card p-6">Admin settings - Coming soon</div>;
       default: return renderOverview();

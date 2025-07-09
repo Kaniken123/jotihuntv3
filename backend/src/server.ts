@@ -40,7 +40,12 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+// Add cache headers for static content
+app.use('/uploads', (req, res, next) => {
+  res.setHeader('Cache-Control', 'public, max-age=86400'); // 24 hours
+  next();
+}, express.static(path.join(__dirname, '../uploads')));
+
 
 app.use('/api/auth', authRoutes);
 app.use('/api/jotihunt', jotihuntRoutes);
@@ -93,10 +98,10 @@ const startServer = async () => {
     const enableAutoSync = process.env.ENABLE_AUTO_SYNC !== 'false'; // Default to true unless explicitly disabled
     
     if (enableAutoSync) {
-      console.log('Setting up automatic API sync every 30 seconds...');
+      console.log('Setting up automatic API sync every 2 minutes...');
       
-      // Run sync every 30 seconds (*/30 * * * * *)
-      cron.schedule('*/30 * * * * *', async () => {
+      // Run sync every 2 minutes (*/2 * * * *)
+      cron.schedule('*/2 * * * *', async () => {
         try {
           console.log(`[${new Date().toISOString()}] Running automatic API sync...`);
           const results = await JotihuntApiService.syncAll();
@@ -123,7 +128,7 @@ const startServer = async () => {
         }
       });
       
-      console.log('✅ Automatic sync scheduled every 30 seconds');
+      console.log('✅ Automatic sync scheduled every 2 minutes');
     } else {
       console.log('⚠️  Automatic sync disabled (set ENABLE_AUTO_SYNC=true to enable)');
     }
@@ -132,7 +137,7 @@ const startServer = async () => {
       console.log(`Server running on port ${PORT}`);
       console.log(`Health check: http://localhost:${PORT}/api/health`);
       if (enableAutoSync) {
-        console.log(`🔄 Auto-sync: Every 30 seconds`);
+        console.log(`🔄 Auto-sync: Every 2 minutes`);
       }
     });
   } catch (error) {
