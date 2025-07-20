@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
-import { User, Team } from '../types';
+import { User, Team } from '../types/index';
 import { authService } from '../services/authService';
 
 interface AuthState {

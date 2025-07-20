@@ -182,7 +182,22 @@ router.get('/latest', authenticateToken, async (req, res) => {
     }
 
     const locations = await query;
-    res.json(locations);
+
+    // Add session status based on last activity (2 minutes threshold)
+    const now = new Date();
+    const locationsWithStatus = locations.map(location => {
+      const lastActivity = new Date(location.recorded_at);
+      const minutesSinceLastActivity = (now.getTime() - lastActivity.getTime()) / (1000 * 60);
+      const isActiveSession = minutesSinceLastActivity <= 2;
+      
+      return {
+        ...location,
+        session_status: isActiveSession ? 'active' : 'inactive',
+        minutes_since_last_activity: Math.round(minutesSinceLastActivity)
+      };
+    });
+
+    res.json(locationsWithStatus);
   } catch (error) {
     console.error('Get latest locations error:', error);
     res.status(500).json({ error: 'Failed to get latest locations' });

@@ -55,23 +55,47 @@ router.get('/articles', authenticateToken, async (req, res) => {
     res.setHeader('Cache-Control', 'private, max-age=60');
     
     const { type, area } = req.query;
+    const userId = req.user!.id;
     
     let query = db('articles')
-      .where('is_active', true)
-      .orderBy('published_at', 'desc');
+      .select(
+        'articles.*',
+        'user_article_reads.read_at',
+        'user_assignment_completions.is_completed',
+        'user_assignment_completions.completed_at',
+        'user_assignment_completions.completion_notes'
+      )
+      .leftJoin('user_article_reads', function() {
+        this.on('articles.id', 'user_article_reads.article_id')
+            .andOn('user_article_reads.user_id', '=', db.raw('?', [userId]));
+      })
+      .leftJoin('user_assignment_completions', function() {
+        this.on('articles.id', 'user_assignment_completions.article_id')
+            .andOn('user_assignment_completions.user_id', '=', db.raw('?', [userId]));
+      })
+      .where('articles.is_active', true)
+      .orderBy('articles.published_at', 'desc');
 
     if (type) {
-      query = query.where('type', type as string);
+      query = query.where('articles.type', type as string);
     }
 
     if (area) {
       query = query.where(function() {
-        this.where('area', area as string).orWhereNull('area');
+        this.where('articles.area', area as string).orWhereNull('articles.area');
       });
     }
 
     const articles = await query;
-    res.json(articles);
+    
+    // Transform results to include read and completion status
+    const articlesWithStatus = articles.map(article => ({
+      ...article,
+      is_read: !!article.read_at,
+      is_completed: article.type === 'assignment' ? !!article.is_completed : undefined
+    }));
+
+    res.json(articlesWithStatus);
   } catch (error) {
     console.error('Get articles error:', error);
     res.status(500).json({ error: 'Failed to get articles' });
@@ -82,7 +106,53 @@ router.get('/articles', authenticateToken, async (req, res) => {
 router.get('/articles/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
+    const userId = req.user!.id;
     
+    const article = await db('articles')
+      .select(
+        'articles.*',
+        'user_article_reads.read_at',
+        'user_assignment_completions.is_completed',
+        'user_assignment_completions.completed_at',
+        'user_assignment_completions.completion_notes'
+      )
+      .leftJoin('user_article_reads', function() {
+        this.on('articles.id', 'user_article_reads.article_id')
+            .andOn('user_article_reads.user_id', '=', db.raw('?', [userId]));
+      })
+      .leftJoin('user_assignment_completions', function() {
+        this.on('articles.id', 'user_assignment_completions.article_id')
+            .andOn('user_assignment_completions.user_id', '=', db.raw('?', [userId]));
+      })
+      .where('articles.id', id)
+      .where('articles.is_active', true)
+      .first();
+
+    if (!article) {
+      return res.status(404).json({ error: 'Article not found' });
+    }
+
+    // Transform result to include read and completion status
+    const articleWithStatus = {
+      ...article,
+      is_read: !!article.read_at,
+      is_completed: article.type === 'assignment' ? !!article.is_completed : undefined
+    };
+
+    res.json(articleWithStatus);
+  } catch (error) {
+    console.error('Get article error:', error);
+    res.status(500).json({ error: 'Failed to get article' });
+  }
+});
+
+// Mark article as read
+router.post('/articles/:id/read', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user!.id;
+
+    // Check if article exists
     const article = await db('articles')
       .where('id', id)
       .where('is_active', true)
@@ -92,10 +162,68 @@ router.get('/articles/:id', authenticateToken, async (req, res) => {
       return res.status(404).json({ error: 'Article not found' });
     }
 
-    res.json(article);
+    // Insert or update read status
+    await db('user_article_reads')
+      .insert({
+        user_id: userId,
+        article_id: parseInt(id),
+        read_at: new Date()
+      })
+      .onConflict(['user_id', 'article_id'])
+      .merge({
+        read_at: new Date()
+      });
+
+    res.json({ message: 'Article marked as read' });
   } catch (error) {
-    console.error('Get article error:', error);
-    res.status(500).json({ error: 'Failed to get article' });
+    console.error('Mark article as read error:', error);
+    res.status(500).json({ error: 'Failed to mark article as read' });
+  }
+});
+
+// Toggle assignment completion
+router.post('/articles/:id/complete', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { is_completed, completion_notes } = req.body;
+    const userId = req.user!.id;
+
+    // Check if article exists and is an assignment
+    const article = await db('articles')
+      .where('id', id)
+      .where('type', 'assignment')
+      .where('is_active', true)
+      .first();
+
+    if (!article) {
+      return res.status(404).json({ error: 'Assignment not found' });
+    }
+
+    // Insert or update completion status
+    await db('user_assignment_completions')
+      .insert({
+        user_id: userId,
+        article_id: parseInt(id),
+        is_completed: !!is_completed,
+        completion_notes: completion_notes || null,
+        completed_at: is_completed ? new Date() : null,
+        updated_at: new Date()
+      })
+      .onConflict(['user_id', 'article_id'])
+      .merge({
+        is_completed: !!is_completed,
+        completion_notes: completion_notes || null,
+        completed_at: is_completed ? new Date() : null,
+        updated_at: new Date()
+      });
+
+    res.json({ 
+      message: is_completed ? 'Assignment marked as completed' : 'Assignment marked as incomplete',
+      is_completed: !!is_completed
+    });
+  } catch (error) {
+    console.error('Update assignment completion error:', error);
+    res.status(500).json({ error: 'Failed to update assignment completion' });
   }
 });
 
@@ -255,7 +383,7 @@ router.get('/sync/status', authenticateToken, async (req, res) => {
       ...status,
       auto_sync: {
         enabled: enableAutoSync,
-        interval: '2 minutes',
+        interval: '3 minutes',
         last_auto_sync: autoSyncCache?.last_sync || null,
         last_auto_sync_data: autoSyncCache ? JSON.parse(autoSyncCache.data || '{}') : null
       }

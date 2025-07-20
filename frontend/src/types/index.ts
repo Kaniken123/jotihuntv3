@@ -57,6 +57,11 @@ export interface Article {
   area?: string;
   published_at: string;
   is_active: boolean;
+  is_read?: boolean;
+  read_at?: string;
+  is_completed?: boolean;
+  completed_at?: string;
+  completion_notes?: string;
 }
 
 export interface UserLocation {
@@ -74,6 +79,8 @@ export interface UserLocation {
   team_name?: string;
   team_area?: string;
   team_role?: 'leader' | 'member';
+  session_status?: 'active' | 'inactive';
+  minutes_since_last_activity?: number;
 }
 
 export interface TeamMessage {

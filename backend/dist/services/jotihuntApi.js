@@ -10,8 +10,10 @@ const JOTIHUNT_API_BASE = 'https://jotihunt.nl/api/2.0';
 class JotihuntApiService {
     static async fetchFromApi(endpoint) {
         try {
+            // Add delay between API calls to respect rate limits
+            await new Promise(resolve => setTimeout(resolve, 1000)); // 1 second between calls
             const response = await axios_1.default.get(`${JOTIHUNT_API_BASE}${endpoint}`, {
-                timeout: 10000,
+                timeout: 15000, // Increased timeout
                 headers: {
                     'Accept': 'application/json',
                     'User-Agent': 'JotihuntV2-App/1.0'
@@ -20,6 +22,11 @@ class JotihuntApiService {
             return response.data;
         }
         catch (error) {
+            // Handle rate limiting specifically
+            if (error.response?.status === 429) {
+                console.error(`⚠️  Rate limit exceeded for ${endpoint}. Waiting before retry...`);
+                throw new Error(`Rate limit exceeded for ${endpoint}. Please reduce API frequency.`);
+            }
             console.error(`Jotihunt API error for ${endpoint}:`, error.message);
             throw new Error(`Failed to fetch ${endpoint}: ${error.message}`);
         }

@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Jotihunt frontend React application",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",

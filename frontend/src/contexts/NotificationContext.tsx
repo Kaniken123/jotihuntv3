@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useReducer, useEffect } from 'react';
+import React, { createContext, useContext, useReducer, useEffect, useRef } from 'react';
 import { useAuth } from './AuthContext';
 import { useWebSocket } from './WebSocketContext';
 import { NotificationData } from '../types';
@@ -101,6 +101,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const [state, dispatch] = useReducer(notificationReducer, initialState);
   const { state: authState } = useAuth();
   const { socket } = useWebSocket();
+  const timeoutsRef = useRef<NodeJS.Timeout[]>([]);
 
   // Load notifications from localStorage on mount
   useEffect(() => {
@@ -226,7 +227,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const addNotification = (notification: Omit<NotificationData, 'id' | 'timestamp'>) => {
     const newNotification: NotificationData = {
       ...notification,
-      id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+      id: Date.now().toString() + Math.random().toString(36).substring(2, 11),
       timestamp: new Date().toISOString(),
     };
 
@@ -244,9 +245,10 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
         // Auto-close after 5 seconds for most notifications
         if (newNotification.type !== 'assignment') {
-          setTimeout(() => {
+          const timeoutId = setTimeout(() => {
             browserNotification.close();
           }, 5000);
+          timeoutsRef.current.push(timeoutId);
         }
 
         browserNotification.onclick = () => {
@@ -279,6 +281,14 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const toggleVisibility = () => {
     dispatch({ type: 'TOGGLE_VISIBILITY' });
   };
+
+  // Cleanup all timeouts when component unmounts
+  useEffect(() => {
+    return () => {
+      timeoutsRef.current.forEach(clearTimeout);
+      timeoutsRef.current = [];
+    };
+  }, []);
 
   return (
     <NotificationContext.Provider value={{

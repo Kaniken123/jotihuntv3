@@ -65,4 +65,37 @@ export const gameService = {
     const response = await api.get('/hunts');
     return response.data;
   },
+
+  async updateFoxLocation(areaId: number, lat: number, lng: number, source: string = 'manual') {
+    const response = await api.post(`/jotihunt/areas/${areaId}/location`, { lat, lng, source });
+    return response.data;
+  },
+
+  async getFoxLocationHistory(areaId: number, limit: number = 50) {
+    const response = await api.get(`/jotihunt/areas/${areaId}/locations?limit=${limit}`);
+    return response.data;
+  },
+
+  async getArticle(id: number): Promise<Article> {
+    const response = await api.get(`/jotihunt/articles/${id}`);
+    return response.data;
+  },
+
+  async markArticleAsRead(id: number) {
+    const response = await api.post(`/jotihunt/articles/${id}/read`);
+    return response.data;
+  },
+
+  async toggleAssignmentCompletion(id: number, isCompleted: boolean, completionNotes?: string) {
+    const response = await api.post(`/jotihunt/articles/${id}/complete`, {
+      is_completed: isCompleted,
+      completion_notes: completionNotes
+    });
+    return response.data;
+  },
+
+  async deleteUser(userId: number) {
+    const response = await api.delete(`/users/${userId}`);
+    return response.data;
+  },
 };

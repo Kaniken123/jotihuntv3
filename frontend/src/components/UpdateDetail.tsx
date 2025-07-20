@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { api } from '../services/authService';
+import { gameService } from '../services/gameService';
 import { Article } from '../types';
 import LoadingSpinner from './LoadingSpinner';
-import { ArrowLeft, MessageCircle, AlertTriangle, Newspaper, Calendar, Tag } from 'lucide-react';
+import { ArrowLeft, MessageCircle, AlertTriangle, Newspaper, Calendar, Tag, Check, CheckCircle } from 'lucide-react';
 
 const UpdateDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -25,13 +25,35 @@ const UpdateDetail: React.FC = () => {
     try {
       setIsLoading(true);
       setError(null);
-      const response = await api.get(`/jotihunt/articles/${articleId}`);
-      setArticle(response.data);
+      const data = await gameService.getArticle(articleId);
+      setArticle(data);
+      
+      // Automatically mark as read when viewing detail
+      if (!data.is_read) {
+        await gameService.markArticleAsRead(articleId);
+        setArticle(prev => prev ? { ...prev, is_read: true, read_at: new Date().toISOString() } : null);
+      }
     } catch (error: any) {
       console.error('Failed to load article:', error);
       setError(error.response?.data?.message || 'Failed to load article');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleToggleAssignmentCompletion = async (isCompleted: boolean, notes?: string) => {
+    if (!article) return;
+    
+    try {
+      const newStatus = !isCompleted;
+      await gameService.toggleAssignmentCompletion(article.id, newStatus, notes);
+      setArticle(prev => prev ? { 
+        ...prev, 
+        is_completed: newStatus,
+        completed_at: newStatus ? new Date().toISOString() : undefined
+      } : null);
+    } catch (error) {
+      console.error('Failed to toggle assignment completion:', error);
     }
   };
 
@@ -146,13 +168,20 @@ const UpdateDetail: React.FC = () => {
       </div>
 
       {/* Article Header */}
-      <div className="card p-6 mb-6">
+      <div className={`card p-6 mb-6 ${article.is_read ? 'bg-gray-50 dark:bg-gray-800/50' : ''}`}>
         <div className="flex items-start justify-between mb-4">
           <div className="flex items-center space-x-3">
             {getTypeIcon(article.type)}
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+            <h1 className={`text-3xl font-bold ${
+              article.is_read 
+                ? 'text-gray-600 dark:text-gray-400' 
+                : 'text-gray-900 dark:text-gray-100'
+            }`}>
               {article.title}
             </h1>
+            {article.is_read && (
+              <CheckCircle className="w-6 h-6 text-green-500" />
+            )}
           </div>
         </div>
 
@@ -179,15 +208,49 @@ const UpdateDetail: React.FC = () => {
           </div>
           <span className="text-gray-400">•</span>
           <span>{dateInfo.full}</span>
+          {article.is_read && article.read_at && (
+            <>
+              <span className="text-gray-400">•</span>
+              <span className="text-green-600 dark:text-green-400">
+                Read {getRelativeTime(new Date(article.read_at))}
+              </span>
+            </>
+          )}
         </div>
 
-        {/* Assignment Alert */}
+        {/* Assignment Alert and Completion */}
         {article.type === 'assignment' && (
-          <div className="mt-4 p-3 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg">
-            <div className="flex items-center space-x-2 text-orange-700 dark:text-orange-300">
-              <AlertTriangle className="w-5 h-5" />
-              <span className="font-medium">Action Required</span>
+          <div className="mt-4 p-4 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2 text-orange-700 dark:text-orange-300">
+                <AlertTriangle className="w-5 h-5" />
+                <span className="font-medium">Assignment Status</span>
+              </div>
+              <button
+                onClick={() => handleToggleAssignmentCompletion(!!article.is_completed)}
+                className={`flex items-center space-x-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                  article.is_completed
+                    ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 hover:bg-green-200 dark:hover:bg-green-800'
+                    : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                }`}
+              >
+                {article.is_completed ? (
+                  <>
+                    <Check className="w-4 h-4" />
+                    <span>Completed</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Mark as Done</span>
+                  </>
+                )}
+              </button>
             </div>
+            {article.is_completed && article.completed_at && (
+              <p className="text-sm text-orange-600 dark:text-orange-400 mt-2">
+                Completed {getRelativeTime(new Date(article.completed_at))}
+              </p>
+            )}
           </div>
         )}
 

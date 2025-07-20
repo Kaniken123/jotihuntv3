@@ -25,16 +25,22 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       newSocket.on('connect', () => {
         setIsConnected(true);
         console.log('Connected to WebSocket');
-        
-        // Join user's team room if they have a team
-        if (state.team) {
-          newSocket.emit('join-team', state.team.id);
-        }
       });
 
       newSocket.on('disconnect', () => {
         setIsConnected(false);
         console.log('Disconnected from WebSocket');
+      });
+
+      newSocket.on('connect_error', (error) => {
+        console.error('WebSocket connection error:', error);
+        setIsConnected(false);
+        // Don't crash the app on WebSocket errors
+      });
+
+      newSocket.on('error', (error) => {
+        console.error('WebSocket error:', error);
+        // Don't crash the app on WebSocket errors
       });
 
       setSocket(newSocket);
@@ -45,7 +51,19 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         setIsConnected(false);
       };
     }
-  }, [state.isAuthenticated, state.token, state.team]);
+  }, [state.isAuthenticated, state.token]);
+
+  // Separate effect for team joining to avoid reconnection loops
+  useEffect(() => {
+    if (socket && isConnected && state.team) {
+      try {
+        socket.emit('join-team', state.team.id);
+      } catch (error) {
+        console.error('Error joining team:', error);
+        // Don't crash the app if team join fails
+      }
+    }
+  }, [socket, isConnected, state.team?.id]);
 
   return (
     <WebSocketContext.Provider value={{ socket, isConnected }}>

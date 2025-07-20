@@ -117,9 +117,10 @@ const startServer = async () => {
         const isProduction = process.env.NODE_ENV === 'production';
         const enableAutoSync = process.env.ENABLE_AUTO_SYNC !== 'false'; // Default to true unless explicitly disabled
         if (enableAutoSync) {
-            console.log('Setting up automatic API sync every 2 minutes...');
-            // Run sync every 2 minutes (*/2 * * * *)
-            cron.schedule('*/2 * * * *', async () => {
+            console.log('Setting up automatic API sync every 3 minutes...');
+            // Run sync every 3 minutes (*/3 * * * *) to stay under 3 calls/minute safe limit
+            // This gives us 3 calls every 3 minutes = 1 call/minute (well within safe limit)
+            const cronJob = cron.schedule('*/3 * * * *', async () => {
                 try {
                     console.log(`[${new Date().toISOString()}] Running automatic API sync...`);
                     const results = await jotihuntApi_1.JotihuntApiService.syncAll();
@@ -143,7 +144,18 @@ const startServer = async () => {
                     console.error(`[${new Date().toISOString()}] Auto-sync failed:`, error);
                 }
             });
-            console.log('✅ Automatic sync scheduled every 2 minutes');
+            console.log('✅ Automatic sync scheduled every 3 minutes (1 call/minute - safe limit)');
+            // Graceful shutdown handling
+            const shutdown = () => {
+                console.log('Shutting down gracefully...');
+                cronJob.stop();
+                server.close(() => {
+                    console.log('Server closed');
+                    process.exit(0);
+                });
+            };
+            process.on('SIGINT', shutdown);
+            process.on('SIGTERM', shutdown);
         }
         else {
             console.log('⚠️  Automatic sync disabled (set ENABLE_AUTO_SYNC=true to enable)');
@@ -152,7 +164,7 @@ const startServer = async () => {
             console.log(`Server running on port ${PORT}`);
             console.log(`Health check: http://localhost:${PORT}/api/health`);
             if (enableAutoSync) {
-                console.log(`🔄 Auto-sync: Every 2 minutes`);
+                console.log(`🔄 Auto-sync: Every 3 minutes (1 call/minute safe)`);
             }
         });
     }

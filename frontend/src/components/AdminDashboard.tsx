@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../services/authService';
+import { gameService } from '../services/gameService';
 import { Hunt, User, Area } from '../types';
 import LoadingSpinner from './LoadingSpinner';
 import { 
@@ -48,7 +49,8 @@ const AdminDashboard: React.FC = () => {
     password: '',
     first_name: '',
     last_name: '',
-    role: 'user'
+    role: 'user',
+    team_id: ''
   });
   const [syncStatus, setSyncStatus] = useState<any>(null);
   const [syncing, setSyncing] = useState(false);
@@ -64,6 +66,19 @@ const AdminDashboard: React.FC = () => {
   const [availableTeams, setAvailableTeams] = useState<any[]>([]);
   const [availableUsers, setAvailableUsers] = useState<any[]>([]);
   const [sendingNotification, setSendingNotification] = useState(false);
+  
+  // User editing state
+  const [showEditUserModal, setShowEditUserModal] = useState(false);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [editUserData, setEditUserData] = useState({
+    username: '',
+    email: '',
+    first_name: '',
+    last_name: '',
+    role: 'user',
+    team_id: '',
+    is_active: true
+  });
 
   const { state } = useAuth();
 
@@ -162,7 +177,12 @@ const AdminDashboard: React.FC = () => {
 
   const handleCreateUser = async () => {
     try {
-      const createResponse = await api.post('/users', newUserData);
+      const userData = {
+        ...newUserData,
+        team_id: newUserData.team_id ? parseInt(newUserData.team_id) : undefined
+      };
+      
+      const createResponse = await api.post('/users', userData);
       console.log('User created:', createResponse.data);
       
       // Reload users
@@ -177,7 +197,8 @@ const AdminDashboard: React.FC = () => {
         password: '',
         first_name: '',
         last_name: '',
-        role: 'user'
+        role: 'user',
+        team_id: ''
       });
     } catch (error: any) {
       console.error('Failed to create user:', error);
@@ -255,6 +276,122 @@ const AdminDashboard: React.FC = () => {
       alert(`Failed to send notification: ${error.response?.data?.error || error.message}`);
     } finally {
       setSendingNotification(false);
+    }
+  };
+
+  const handleEditUser = (user: User) => {
+    setEditingUser(user);
+    setEditUserData({
+      username: user.username,
+      email: user.email,
+      first_name: user.first_name || '',
+      last_name: user.last_name || '',
+      role: user.role,
+      team_id: user.team ? availableTeams.find(t => t.name === user.team?.name)?.id?.toString() || '' : '',
+      is_active: user.is_active
+    });
+    setShowEditUserModal(true);
+  };
+
+  const handleUpdateUser = async () => {
+    if (!editingUser) return;
+
+    try {
+      const updateData = {
+        username: editUserData.username,
+        email: editUserData.email,
+        first_name: editUserData.first_name,
+        last_name: editUserData.last_name,
+        role: editUserData.role,
+        team_id: editUserData.team_id ? parseInt(editUserData.team_id) : null,
+        is_active: editUserData.is_active
+      };
+
+      const response = await api.put(`/users/${editingUser.id}`, updateData);
+      console.log('User updated:', response.data);
+      
+      // Reload users
+      const usersResponse = await api.get('/users');
+      setUsers(usersResponse.data);
+      
+      setShowEditUserModal(false);
+      setEditingUser(null);
+      setEditUserData({
+        username: '',
+        email: '',
+        first_name: '',
+        last_name: '',
+        role: 'user',
+        team_id: '',
+        is_active: true
+      });
+      
+      alert('User updated successfully!');
+    } catch (error: any) {
+      console.error('Failed to update user:', error);
+      alert(`Failed to update user: ${error.response?.data?.error || error.message}`);
+    }
+  };
+
+  const handleDeleteUser = async (user: User) => {
+    // Safety checks before allowing deletion
+    if (user.is_active) {
+      alert('Cannot delete active user. Please deactivate the user first.');
+      return;
+    }
+
+    if (user.role === 'admin') {
+      alert('Cannot delete admin users for security reasons.');
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Are you sure you want to PERMANENTLY DELETE user "${user.username}"?\n\n` +
+      `This action cannot be undone and will remove:\n` +
+      `- User account and profile\n` +
+      `- All location history\n` +
+      `- All article read status\n` +
+      `- All assignment completions\n` +
+      `- Team memberships\n\n` +
+      `Type "DELETE" to confirm this action.`
+    );
+
+    if (!confirmed) return;
+
+    const confirmText = prompt('Type "DELETE" to confirm permanent deletion:');
+    if (confirmText !== 'DELETE') {
+      alert('Deletion cancelled. Confirmation text did not match.');
+      return;
+    }
+
+    try {
+      await gameService.deleteUser(user.id);
+      
+      // Reload users list
+      const usersResponse = await api.get('/users');
+      setUsers(usersResponse.data);
+      
+      alert('User permanently deleted successfully.');
+    } catch (error: any) {
+      console.error('Error deleting user:', error);
+      const errorMessage = error.response?.data?.error || 'Failed to delete user';
+      alert(`Error: ${errorMessage}`);
+    }
+  };
+
+  const handleToggleUserStatus = async (userId: number, currentStatus: boolean) => {
+    try {
+      const response = await api.put(`/users/${userId}`, { is_active: !currentStatus });
+      console.log('User status updated:', response.data);
+      
+      // Reload users
+      const usersResponse = await api.get('/users');
+      setUsers(usersResponse.data);
+      
+      alert(`User ${!currentStatus ? 'activated' : 'deactivated'} successfully!`);
+    } catch (error: any) {
+      console.error('Failed to update user status:', error);
+      alert(`Failed to update user status: ${error.response?.data?.error || error.message}`);
     }
   };
 
@@ -640,12 +777,27 @@ const AdminDashboard: React.FC = () => {
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <button className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300 mr-3">
+                    <button 
+                      onClick={() => handleEditUser(user)}
+                      className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300 mr-3"
+                    >
                       Edit
                     </button>
-                    <button className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300">
+                    <button 
+                      onClick={() => handleToggleUserStatus(user.id, user.is_active)}
+                      className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 mr-3"
+                    >
                       {user.is_active ? 'Deactivate' : 'Activate'}
                     </button>
+                    {!user.is_active && user.role !== 'admin' && (
+                      <button 
+                        onClick={() => handleDeleteUser(user)}
+                        className="text-red-800 hover:text-red-900 dark:text-red-600 dark:hover:text-red-400 bg-red-100 dark:bg-red-900/20 px-2 py-1 rounded text-xs font-medium"
+                        title="Permanently delete inactive user"
+                      >
+                        Delete
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -751,6 +903,27 @@ const AdminDashboard: React.FC = () => {
                   <option value="admin">Administrator</option>
                 </select>
               </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Team/Area Assignment
+                </label>
+                <select
+                  value={newUserData.team_id}
+                  onChange={(e) => setNewUserData({ ...newUserData, team_id: e.target.value })}
+                  className="input"
+                >
+                  <option value="">No Team</option>
+                  {availableTeams.map((team) => (
+                    <option key={team.id} value={team.id}>
+                      {team.name} {team.area && `(${team.area})`}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Select the team/area this user belongs to
+                </p>
+              </div>
             </div>
 
             <div className="flex space-x-3 mt-6">
@@ -771,7 +944,156 @@ const AdminDashboard: React.FC = () => {
                     password: '',
                     first_name: '',
                     last_name: '',
-                    role: 'user'
+                    role: 'user',
+                    team_id: ''
+                  });
+                }}
+                className="btn btn-secondary flex-1"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* User Edit Modal */}
+      {showEditUserModal && editingUser && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
+              Edit User: {editingUser.username}
+            </h3>
+            
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    First Name
+                  </label>
+                  <input
+                    type="text"
+                    value={editUserData.first_name}
+                    onChange={(e) => setEditUserData({ ...editUserData, first_name: e.target.value })}
+                    className="input"
+                    placeholder="John"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Last Name
+                  </label>
+                  <input
+                    type="text"
+                    value={editUserData.last_name}
+                    onChange={(e) => setEditUserData({ ...editUserData, last_name: e.target.value })}
+                    className="input"
+                    placeholder="Doe"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Username
+                </label>
+                <input
+                  type="text"
+                  value={editUserData.username}
+                  onChange={(e) => setEditUserData({ ...editUserData, username: e.target.value })}
+                  className="input"
+                  placeholder="johndoe"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  value={editUserData.email}
+                  onChange={(e) => setEditUserData({ ...editUserData, email: e.target.value })}
+                  className="input"
+                  placeholder="john@example.com"
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Role
+                  </label>
+                  <select
+                    value={editUserData.role}
+                    onChange={(e) => setEditUserData({ ...editUserData, role: e.target.value })}
+                    className="input"
+                  >
+                    <option value="user">Hunter</option>
+                    <option value="admin">Administrator</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Status
+                  </label>
+                  <select
+                    value={editUserData.is_active.toString()}
+                    onChange={(e) => setEditUserData({ ...editUserData, is_active: e.target.value === 'true' })}
+                    className="input"
+                  >
+                    <option value="true">Active</option>
+                    <option value="false">Inactive</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Team/Area Assignment
+                </label>
+                <select
+                  value={editUserData.team_id}
+                  onChange={(e) => setEditUserData({ ...editUserData, team_id: e.target.value })}
+                  className="input"
+                >
+                  <option value="">No Team</option>
+                  {availableTeams.map((team) => (
+                    <option key={team.id} value={team.id}>
+                      {team.name} {team.area && `(${team.area})`}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Select the team/area this user belongs to
+                </p>
+              </div>
+            </div>
+
+            <div className="flex space-x-3 mt-6">
+              <button
+                onClick={handleUpdateUser}
+                disabled={!editUserData.username || !editUserData.email}
+                className="btn btn-primary flex-1"
+              >
+                Update User
+              </button>
+              
+              <button
+                onClick={() => {
+                  setShowEditUserModal(false);
+                  setEditingUser(null);
+                  setEditUserData({
+                    username: '',
+                    email: '',
+                    first_name: '',
+                    last_name: '',
+                    role: 'user',
+                    team_id: '',
+                    is_active: true
                   });
                 }}
                 className="btn btn-secondary flex-1"

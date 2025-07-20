@@ -20,7 +20,8 @@ api.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       localStorage.removeItem('token');
-      window.location.href = '/login';
+      // Use replace instead of href assignment to prevent potential navigation issues
+      window.location.replace('/login');
     }
     return Promise.reject(error);
   }

@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { api } from '../services/authService';
+import { gameService } from '../services/gameService';
 import { Article } from '../types';
 import LoadingSpinner from './LoadingSpinner';
-import { MessageCircle, AlertTriangle, Newspaper, Filter, ExternalLink } from 'lucide-react';
+import { MessageCircle, AlertTriangle, Newspaper, Filter, ExternalLink, Check, CheckCircle } from 'lucide-react';
 
 const HintsList: React.FC = () => {
   const [articles, setArticles] = useState<Article[]>([]);
@@ -27,12 +27,47 @@ const HintsList: React.FC = () => {
 
   const loadArticles = async () => {
     try {
-      const response = await api.get('/jotihunt/articles');
-      setArticles(response.data);
+      const data = await gameService.getArticles();
+      setArticles(data);
     } catch (error) {
       console.error('Failed to load articles:', error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleMarkAsRead = async (articleId: number) => {
+    try {
+      await gameService.markArticleAsRead(articleId);
+      setArticles(prevArticles =>
+        prevArticles.map(article =>
+          article.id === articleId
+            ? { ...article, is_read: true, read_at: new Date().toISOString() }
+            : article
+        )
+      );
+    } catch (error) {
+      console.error('Failed to mark article as read:', error);
+    }
+  };
+
+  const handleToggleAssignmentCompletion = async (articleId: number, currentStatus: boolean, notes?: string) => {
+    try {
+      const newStatus = !currentStatus;
+      await gameService.toggleAssignmentCompletion(articleId, newStatus, notes);
+      setArticles(prevArticles =>
+        prevArticles.map(article =>
+          article.id === articleId
+            ? { 
+                ...article, 
+                is_completed: newStatus,
+                completed_at: newStatus ? new Date().toISOString() : undefined
+              }
+            : article
+        )
+      );
+    } catch (error) {
+      console.error('Failed to toggle assignment completion:', error);
     }
   };
 
@@ -60,6 +95,13 @@ const HintsList: React.FC = () => {
         article.content.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
+
+    // Sort by date (newest first)
+    filtered = filtered.sort((a, b) => {
+      const dateA = new Date(a.published_at);
+      const dateB = new Date(b.published_at);
+      return dateB.getTime() - dateA.getTime();
+    });
 
     setFilteredArticles(filtered);
   };
@@ -216,13 +258,25 @@ const HintsList: React.FC = () => {
           </div>
         ) : (
           filteredArticles.map((article) => (
-            <div key={article.id} className="card p-6 hover:shadow-md transition-shadow">
+            <div 
+              key={article.id} 
+              className={`card p-6 hover:shadow-md transition-all ${
+                article.is_read ? 'opacity-60 bg-gray-50 dark:bg-gray-800/50' : ''
+              }`}
+            >
               <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center space-x-3">
                   {getTypeIcon(article.type)}
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                  <h3 className={`text-lg font-semibold ${
+                    article.is_read 
+                      ? 'text-gray-500 dark:text-gray-400' 
+                      : 'text-gray-900 dark:text-gray-100'
+                  }`}>
                     {article.title}
                   </h3>
+                  {article.is_read && (
+                    <CheckCircle className="w-4 h-4 text-green-500" />
+                  )}
                 </div>
                 
                 <div className="flex items-center space-x-2">
@@ -240,7 +294,10 @@ const HintsList: React.FC = () => {
 
               <div className="prose dark:prose-invert max-w-none mb-4">
                 <div 
-                  className="text-gray-700 dark:text-gray-300"
+                  className={article.is_read 
+                    ? 'text-gray-500 dark:text-gray-400' 
+                    : 'text-gray-700 dark:text-gray-300'
+                  }
                   dangerouslySetInnerHTML={{ 
                     __html: article.content.length > 200 
                       ? `${article.content.substring(0, 200)}...` 
@@ -249,19 +306,69 @@ const HintsList: React.FC = () => {
                 />
               </div>
 
+              {/* Assignment completion section */}
+              {article.type === 'assignment' && (
+                <div className="mb-4 p-3 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <AlertTriangle className="w-4 h-4 text-orange-600 dark:text-orange-400" />
+                      <span className="text-sm font-medium text-orange-800 dark:text-orange-200">
+                        Assignment Status
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => handleToggleAssignmentCompletion(article.id, !!article.is_completed)}
+                      className={`flex items-center space-x-2 px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                        article.is_completed
+                          ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 hover:bg-green-200 dark:hover:bg-green-800'
+                          : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                      }`}
+                    >
+                      {article.is_completed ? (
+                        <>
+                          <Check className="w-4 h-4" />
+                          <span>Completed</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>Mark as Done</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                  {article.is_completed && article.completed_at && (
+                    <p className="text-xs text-orange-600 dark:text-orange-400 mt-2">
+                      Completed {formatDate(article.completed_at)}
+                    </p>
+                  )}
+                </div>
+              )}
+
               <div className="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400 mb-3">
-                <span>Published {formatDate(article.published_at)}</span>
-                
-                {article.type === 'assignment' && (
-                  <span className="flex items-center space-x-1 text-orange-600 dark:text-orange-400">
-                    <AlertTriangle className="w-4 h-4" />
-                    <span>Action Required</span>
-                  </span>
-                )}
+                <div className="flex items-center space-x-4">
+                  <span>Published {formatDate(article.published_at)}</span>
+                  {article.is_read && article.read_at && (
+                    <span className="text-green-600 dark:text-green-400">
+                      Read {formatDate(article.read_at)}
+                    </span>
+                  )}
+                </div>
               </div>
 
-              {/* View Details Button */}
-              <div className="flex justify-end">
+              {/* Action buttons */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  {!article.is_read && (
+                    <button
+                      onClick={() => handleMarkAsRead(article.id)}
+                      className="flex items-center space-x-1 px-3 py-1.5 text-sm text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-md transition-colors"
+                    >
+                      <Check className="w-4 h-4" />
+                      <span>Mark as Read</span>
+                    </button>
+                  )}
+                </div>
+                
                 <button
                   onClick={() => navigate(`/updates/${article.id}`)}
                   className="flex items-center space-x-1 px-3 py-1.5 text-sm text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-md transition-colors"

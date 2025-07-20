@@ -1,53 +1,55 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Area } from '../types';
-import { Clock, Eye, EyeOff, Target } from 'lucide-react';
+import { Clock, Eye, EyeOff, Target, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface FoxStatusOverlayProps {
   areas: Area[];
 }
 
 const FoxStatusOverlay: React.FC<FoxStatusOverlayProps> = ({ areas }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'active':
-        return 'bg-green-500 text-white';
+        return 'bg-green-500';
       case 'hunted':
-        return 'bg-red-500 text-white';
+        return 'bg-red-500';
       case 'inactive':
-        return 'bg-gray-500 text-white';
+        return 'bg-gray-500';
       default:
-        return 'bg-gray-400 text-white';
+        return 'bg-gray-400';
     }
   };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'active':
-        return <Eye className="w-4 h-4" />;
+        return <Eye className="w-3 h-3" />;
       case 'hunted':
-        return <Target className="w-4 h-4" />;
+        return <Target className="w-3 h-3" />;
       case 'inactive':
-        return <EyeOff className="w-4 h-4" />;
+        return <EyeOff className="w-3 h-3" />;
       default:
-        return <EyeOff className="w-4 h-4" />;
+        return <EyeOff className="w-3 h-3" />;
     }
   };
 
   const getStatusText = (status: string) => {
     switch (status) {
       case 'active':
-        return 'Actief';
+        return 'Active';
       case 'hunted':
-        return 'Gejaagd';
+        return 'Hunted';
       case 'inactive':
-        return 'Inactief';
+        return 'Inactive';
       default:
-        return 'Onbekend';
+        return 'Unknown';
     }
   };
 
   const formatTimeSince = (dateString?: string) => {
-    if (!dateString) return 'Onbekend';
+    if (!dateString) return 'Unknown';
     
     const date = new Date(dateString);
     const now = new Date();
@@ -57,13 +59,13 @@ const FoxStatusOverlay: React.FC<FoxStatusOverlayProps> = ({ areas }) => {
     const diffDays = Math.floor(diffHours / 24);
 
     if (diffMinutes < 1) {
-      return 'Nu';
+      return 'Now';
     } else if (diffMinutes < 60) {
-      return `${diffMinutes}m geleden`;
+      return `${diffMinutes}m ago`;
     } else if (diffHours < 24) {
-      return `${diffHours}u geleden`;
+      return `${diffHours}h ago`;
     } else {
-      return `${diffDays}d geleden`;
+      return `${diffDays}d ago`;
     }
   };
 
@@ -71,79 +73,86 @@ const FoxStatusOverlay: React.FC<FoxStatusOverlayProps> = ({ areas }) => {
   const sortedAreas = [...areas].sort((a, b) => a.name.localeCompare(b.name));
 
   return (
-    <div className="absolute top-4 right-4 z-10 max-w-sm">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
-        <div className="p-3 border-b border-gray-200 dark:border-gray-700">
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center space-x-2">
-            <Target className="w-4 h-4 text-orange-600" />
-            <span>Vossen Status</span>
-          </h3>
-        </div>
-        
-        <div className="max-h-80 overflow-y-auto">
-          {sortedAreas.length === 0 ? (
-            <div className="p-4 text-center text-gray-500 dark:text-gray-400 text-sm">
-              Geen vossen beschikbaar
+    <div className="absolute top-4 left-4 z-10">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 min-w-[280px]">
+        {/* Header with summary and toggle */}
+        <div 
+          className="p-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+          onClick={() => setIsExpanded(!isExpanded)}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <span className="text-xs font-semibold text-gray-900 dark:text-gray-100">Fox Status</span>
+              <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-1">
+                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                  <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                    {sortedAreas.filter(a => a.status === 'active').length}
+                  </span>
+                </div>
+                <div className="flex items-center space-x-1">
+                  <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                  <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                    {sortedAreas.filter(a => a.status === 'hunted').length}
+                  </span>
+                </div>
+                <div className="flex items-center space-x-1">
+                  <div className="w-2 h-2 bg-gray-500 rounded-full"></div>
+                  <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                    {sortedAreas.filter(a => a.status === 'inactive').length}
+                  </span>
+                </div>
+              </div>
             </div>
-          ) : (
-            <div className="space-y-1 p-2">
+            {isExpanded ? (
+              <ChevronUp className="w-4 h-4 text-gray-500" />
+            ) : (
+              <ChevronDown className="w-4 h-4 text-gray-500" />
+            )}
+          </div>
+        </div>
+
+        {/* Expanded details */}
+        {isExpanded && (
+          <div className="border-t border-gray-200 dark:border-gray-600">
+            <div className="max-h-64 overflow-y-auto">
               {sortedAreas.map((area) => (
-                <div
-                  key={area.id}
-                  className="flex items-center justify-between p-2 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
-                >
-                  <div className="flex items-center space-x-2 flex-1 min-w-0">
-                    <div className={`p-1 rounded-full ${getStatusColor(area.status)}`}>
-                      {getStatusIcon(area.status)}
-                    </div>
-                    
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
-                        {area.fox_team_name || area.name}
-                      </div>
-                      <div className="text-xs text-gray-500 dark:text-gray-400">
+                <div key={area.id} className="p-2 border-b border-gray-100 dark:border-gray-700 last:border-b-0">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <div className={`w-3 h-3 rounded-full ${getStatusColor(area.status)}`}></div>
+                      <span className="text-xs font-medium text-gray-900 dark:text-gray-100">
+                        {area.name}
+                      </span>
+                      <span className={`px-1.5 py-0.5 text-xs rounded-full text-white ${getStatusColor(area.status)}`}>
                         {getStatusText(area.status)}
-                      </div>
+                      </span>
+                    </div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">
+                      {area.points}pts
                     </div>
                   </div>
                   
-                  <div className="flex flex-col items-end text-xs text-gray-500 dark:text-gray-400">
+                  <div className="mt-1 flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
                     <div className="flex items-center space-x-1">
                       <Clock className="w-3 h-3" />
-                      <span>{formatTimeSince(area.last_seen)}</span>
+                      <span>Status: {formatTimeSince(area.updated_at)}</span>
                     </div>
-                    <div className="text-xs font-medium text-gray-700 dark:text-gray-300">
-                      {area.points} pts
-                    </div>
+                    {area.last_seen && (
+                      <div className="flex items-center space-x-1">
+                        <Eye className="w-3 h-3" />
+                        <span>Seen: {formatTimeSince(area.last_seen)}</span>
+                      </div>
+                    )}
                   </div>
+                  
+                  {area.lat && area.lng && (
+                    <div className="mt-1 text-xs text-gray-400 dark:text-gray-500">
+                      Location: {area.lat.toFixed(4)}, {area.lng.toFixed(4)}
+                    </div>
+                  )}
                 </div>
               ))}
-            </div>
-          )}
-        </div>
-        
-        {/* Summary */}
-        {sortedAreas.length > 0 && (
-          <div className="p-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50">
-            <div className="grid grid-cols-3 gap-2 text-xs">
-              <div className="text-center">
-                <div className="font-semibold text-green-600 dark:text-green-400">
-                  {sortedAreas.filter(a => a.status === 'active').length}
-                </div>
-                <div className="text-gray-600 dark:text-gray-400">Actief</div>
-              </div>
-              <div className="text-center">
-                <div className="font-semibold text-red-600 dark:text-red-400">
-                  {sortedAreas.filter(a => a.status === 'hunted').length}
-                </div>
-                <div className="text-gray-600 dark:text-gray-400">Gejaagd</div>
-              </div>
-              <div className="text-center">
-                <div className="font-semibold text-gray-600 dark:text-gray-400">
-                  {sortedAreas.filter(a => a.status === 'inactive').length}
-                </div>
-                <div className="text-gray-600 dark:text-gray-400">Inactief</div>
-              </div>
             </div>
           </div>
         )}

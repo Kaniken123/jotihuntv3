@@ -121,7 +121,7 @@ router.post('/users', authenticateToken, requireAdmin, async (req, res) => {
 router.put('/users/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    const { username, email, first_name, last_name, role } = req.body;
+    const { username, email, first_name, last_name, role, team_id, is_active } = req.body;
 
     if (req.user!.id !== parseInt(id) && req.user!.role !== 'admin') {
       return res.status(403).json({ error: 'Access denied' });
@@ -133,8 +133,24 @@ router.put('/users/:id', authenticateToken, async (req, res) => {
     if (first_name) updateData.first_name = first_name;
     if (last_name) updateData.last_name = last_name;
     if (role && req.user!.role === 'admin') updateData.role = role;
+    if (typeof is_active === 'boolean' && req.user!.role === 'admin') updateData.is_active = is_active;
 
     await db('users').where('id', id).update(updateData);
+
+    // Handle team assignment if admin is making the request
+    if (req.user!.role === 'admin' && team_id !== undefined) {
+      // Remove existing team membership
+      await db('team_members').where('user_id', id).del();
+      
+      // Add new team membership if team_id is provided
+      if (team_id) {
+        await db('team_members').insert({
+          user_id: parseInt(id),
+          team_id: parseInt(team_id),
+          role: 'member'
+        });
+      }
+    }
 
     const user = await db('users')
       .select('id', 'username', 'email', 'first_name', 'last_name', 'role', 'is_active', 'created_at')
@@ -152,8 +168,51 @@ router.delete('/users/:id', authenticateToken, requireAdmin, async (req, res) =>
   try {
     const { id } = req.params;
 
-    await db('users').where('id', id).update({ is_active: false });
-    res.json({ message: 'User deactivated successfully' });
+    // Safety check: Only allow deletion of inactive users
+    const user = await db('users').where('id', id).first();
+    
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    if (user.is_active) {
+      return res.status(400).json({ 
+        error: 'Cannot delete active user. Please deactivate the user first.' 
+      });
+    }
+
+    // Prevent deletion of admin users for safety
+    if (user.role === 'admin') {
+      return res.status(400).json({ 
+        error: 'Cannot delete admin users for security reasons.' 
+      });
+    }
+
+    // Delete user and related data in transaction
+    await db.transaction(async (trx) => {
+      // Remove team memberships
+      await trx('team_members').where('user_id', id).del();
+      
+      // Remove auth tokens
+      await trx('auth_tokens').where('user_id', id).del();
+      
+      // Remove location data
+      await trx('user_locations').where('user_id', id).del();
+      
+      // Remove location settings
+      await trx('location_settings').where('user_id', id).del();
+      
+      // Remove article reads
+      await trx('user_article_reads').where('user_id', id).del();
+      
+      // Remove assignment completions
+      await trx('user_assignment_completions').where('user_id', id).del();
+      
+      // Finally delete the user
+      await trx('users').where('id', id).del();
+    });
+
+    res.json({ message: 'User permanently deleted successfully' });
   } catch (error) {
     console.error('Delete user error:', error);
     res.status(500).json({ error: 'Failed to delete user' });
