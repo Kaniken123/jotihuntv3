@@ -207,4 +207,265 @@ router.delete('/messages/:message_id', authenticateToken, async (req, res) => {
   }
 });
 
+// Get available channels for user
+router.get('/channels', authenticateToken, async (req, res) => {
+  try {
+    const channels = await db('chat_channels')
+      .select('*')
+      .where(function() {
+        this.where('type', 'general')
+          .orWhere(function() {
+            this.where('type', 'team')
+              .whereIn('team_id', function() {
+                this.select('team_id')
+                  .from('team_members')
+                  .where('user_id', req.user!.id);
+              });
+          });
+      })
+      .where('is_active', true)
+      .orderBy('type', 'desc') // general first, then team
+      .orderBy('name');
+
+    res.json(channels);
+  } catch (error) {
+    console.error('Get channels error:', error);
+    res.status(500).json({ error: 'Failed to get channels' });
+  }
+});
+
+// Get channel messages
+router.get('/channels/:channel_id/messages', authenticateToken, async (req, res) => {
+  try {
+    const { channel_id } = req.params;
+    const { limit = 50, offset = 0 } = req.query;
+
+    // Check channel access
+    const channel = await db('chat_channels').where('id', channel_id).first();
+    if (!channel) {
+      return res.status(404).json({ error: 'Channel not found' });
+    }
+
+    // Check access permissions
+    if (channel.type === 'team') {
+      const membership = await db('team_members')
+        .where({ user_id: req.user!.id, team_id: channel.team_id })
+        .first();
+      
+      if (!membership && req.user!.role !== 'admin') {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+    }
+
+    const messages = await db('team_messages')
+      .select(
+        'team_messages.*',
+        'users.username',
+        'users.first_name',
+        'users.last_name'
+      )
+      .join('users', 'team_messages.user_id', 'users.id')
+      .where('team_messages.channel_id', channel_id)
+      .orderBy('team_messages.created_at', 'desc')
+      .limit(parseInt(limit as string))
+      .offset(parseInt(offset as string));
+
+    // Get reactions for these messages
+    const messageIds = messages.map(m => m.id);
+    const reactions = await db('message_reactions')
+      .select('message_id', 'emoji', 'user_id')
+      .whereIn('message_id', messageIds);
+
+    // Group reactions by message
+    const messageReactions: { [key: number]: any[] } = {};
+    reactions.forEach(r => {
+      if (!messageReactions[r.message_id]) {
+        messageReactions[r.message_id] = [];
+      }
+      messageReactions[r.message_id].push(r);
+    });
+
+    // Add reactions to messages
+    const messagesWithReactions = messages.map(msg => ({
+      ...msg,
+      reactions: messageReactions[msg.id] || []
+    }));
+
+    res.json(messagesWithReactions.reverse()); // Return in chronological order
+  } catch (error) {
+    console.error('Get channel messages error:', error);
+    res.status(500).json({ error: 'Failed to get channel messages' });
+  }
+});
+
+// Send message to channel
+router.post('/channels/:channel_id/messages', authenticateToken, upload.single('attachment'), async (req, res) => {
+  try {
+    const { channel_id } = req.params;
+    const { message } = req.body;
+
+    if (!message && !req.file) {
+      return res.status(400).json({ error: 'Message or attachment required' });
+    }
+
+    // Check channel access
+    const channel = await db('chat_channels').where('id', channel_id).first();
+    if (!channel) {
+      return res.status(404).json({ error: 'Channel not found' });
+    }
+
+    // Check permissions
+    if (channel.type === 'team') {
+      const membership = await db('team_members')
+        .where({ user_id: req.user!.id, team_id: channel.team_id })
+        .first();
+
+      if (!membership) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+    }
+
+    const messageData: any = {
+      team_id: channel.team_id, // null for general channels
+      channel_id: parseInt(channel_id),
+      user_id: req.user!.id,
+      message: message || '',
+      status: 'sent'
+    };
+
+    if (req.file) {
+      messageData.attachment_url = `/uploads/chat/${req.file.filename}`;
+      messageData.attachment_type = req.file.mimetype.split('/')[0];
+    }
+
+    const [messageId] = await db('team_messages')
+      .insert(messageData)
+      .returning('id');
+
+    // Get the full message with user info
+    const fullMessage = await db('team_messages')
+      .select(
+        'team_messages.*',
+        'users.username',
+        'users.first_name',
+        'users.last_name'
+      )
+      .join('users', 'team_messages.user_id', 'users.id')
+      .where('team_messages.id', messageId)
+      .first();
+
+    // Emit to appropriate room
+    const io = getSocketIO();
+    const roomName = channel.type === 'general' ? 'general-chat' : `team-${channel.team_id}`;
+    io.to(roomName).emit('new-message', fullMessage);
+
+    res.status(201).json(fullMessage);
+  } catch (error) {
+    console.error('Send channel message error:', error);
+    res.status(500).json({ error: 'Failed to send message' });
+  }
+});
+
+// Add reaction to message
+router.post('/messages/:message_id/reactions', authenticateToken, async (req, res) => {
+  try {
+    const { message_id } = req.params;
+    const { emoji } = req.body;
+
+    if (!emoji) {
+      return res.status(400).json({ error: 'Emoji required' });
+    }
+
+    // Check if message exists and user has access
+    const message = await db('team_messages')
+      .select('team_messages.*', 'chat_channels.type', 'chat_channels.team_id')
+      .leftJoin('chat_channels', 'team_messages.channel_id', 'chat_channels.id')
+      .where('team_messages.id', message_id)
+      .first();
+
+    if (!message) {
+      return res.status(404).json({ error: 'Message not found' });
+    }
+
+    // Check access for team channels
+    if (message.type === 'team') {
+      const membership = await db('team_members')
+        .where({ user_id: req.user!.id, team_id: message.team_id })
+        .first();
+      
+      if (!membership && req.user!.role !== 'admin') {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+    }
+
+    // Insert or update reaction (upsert)
+    await db('message_reactions')
+      .insert({
+        message_id: parseInt(message_id),
+        user_id: req.user!.id,
+        emoji
+      })
+      .onConflict(['message_id', 'user_id', 'emoji'])
+      .ignore();
+
+    // Get all reactions for this message
+    const reactions = await db('message_reactions')
+      .select('emoji', 'user_id')
+      .where('message_id', message_id);
+
+    // Emit reaction update
+    const io = getSocketIO();
+    const roomName = message.type === 'general' ? 'general-chat' : `team-${message.team_id}`;
+    io.to(roomName).emit('message-reaction-added', {
+      message_id: parseInt(message_id),
+      reactions
+    });
+
+    res.json({ message: 'Reaction added', reactions });
+  } catch (error) {
+    console.error('Add reaction error:', error);
+    res.status(500).json({ error: 'Failed to add reaction' });
+  }
+});
+
+// Remove reaction from message
+router.delete('/messages/:message_id/reactions/:emoji', authenticateToken, async (req, res) => {
+  try {
+    const { message_id, emoji } = req.params;
+
+    await db('message_reactions')
+      .where({
+        message_id: parseInt(message_id),
+        user_id: req.user!.id,
+        emoji: decodeURIComponent(emoji)
+      })
+      .del();
+
+    // Get updated reactions
+    const reactions = await db('message_reactions')
+      .select('emoji', 'user_id')
+      .where('message_id', message_id);
+
+    // Get message info for room detection
+    const message = await db('team_messages')
+      .select('team_messages.*', 'chat_channels.type', 'chat_channels.team_id')
+      .leftJoin('chat_channels', 'team_messages.channel_id', 'chat_channels.id')
+      .where('team_messages.id', message_id)
+      .first();
+
+    // Emit reaction update
+    const io = getSocketIO();
+    const roomName = message.type === 'general' ? 'general-chat' : `team-${message.team_id}`;
+    io.to(roomName).emit('message-reaction-removed', {
+      message_id: parseInt(message_id),
+      reactions
+    });
+
+    res.json({ message: 'Reaction removed', reactions });
+  } catch (error) {
+    console.error('Remove reaction error:', error);
+    res.status(500).json({ error: 'Failed to remove reaction' });
+  }
+});
+
 export default router;

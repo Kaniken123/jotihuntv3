@@ -1,85 +1,292 @@
 
-> jotihunt-backend@1.0.0 start
-> node dist/server.js
+> jotihunt-backend@1.0.0 dev
+> nodemon src/server.ts
 
+[33m[nodemon] 3.1.10[39m
+[33m[nodemon] to restart at any time, enter `rs`[39m
+[33m[nodemon] watching path(s): *.*[39m
+[33m[nodemon] watching extensions: ts,json[39m
+[32m[nodemon] starting `ts-node src/server.ts`[39m
 Database migrations completed
-Setting up automatic API sync every 2 minutes...
-✅ Automatic sync scheduled every 2 minutes
+Setting up automatic API sync every 3 minutes...
+✅ Automatic sync scheduled every 3 minutes (1 call/minute - safe limit)
 Server running on port 3001
 Health check: http://localhost:3001/api/health
-🔄 Auto-sync: Every 2 minutes
-[2025-07-18T19:46:00.071Z] Running automatic API sync...
-[2025-07-18T19:46:00.233Z] Auto-sync completed: {
+🔄 Auto-sync: Every 3 minutes (1 call/minute safe)
+User connected: qBtOHhwHCjtyfQa4AAAB
+[2025-07-22T08:57:00.311Z] Running automatic API sync...
+[2025-07-22T08:57:01.480Z] Auto-sync completed: {
   subscriptions: '0 synced, 0 errors',
   areas: '0 synced, 0 errors',
   articles: '2 synced, 0 errors'
 }
-[2025-07-18T19:48:00.138Z] Running automatic API sync...
-[2025-07-18T19:48:00.222Z] Auto-sync completed: {
+[2025-07-22T09:00:00.462Z] Running automatic API sync...
+[2025-07-22T09:00:01.599Z] Auto-sync completed: {
   subscriptions: '0 synced, 0 errors',
   areas: '0 synced, 0 errors',
   articles: '2 synced, 0 errors'
 }
-Starting manual sync with Jotihunt APIs...
-[2025-07-18T19:50:00.239Z] Running automatic API sync...
-[2025-07-18T19:50:00.332Z] Auto-sync completed: {
+User connected: 1XeQsFxKKwsRMUqeAAAD
+User 1XeQsFxKKwsRMUqeAAAD joined team 3
+User disconnected: 1XeQsFxKKwsRMUqeAAAD
+User connected: XsLwj0a7LHU8Sn-5AAAF
+User disconnected: XsLwj0a7LHU8Sn-5AAAF
+User connected: v3yqXP_ejRAWQcoYAAAH
+User v3yqXP_ejRAWQcoYAAAH joined team 3
+User disconnected: qBtOHhwHCjtyfQa4AAAB
+User connected: 1davXWOL2ejx4MXJAAAJ
+User 1davXWOL2ejx4MXJAAAJ joined team 3
+User disconnected: 1davXWOL2ejx4MXJAAAJ
+User disconnected: v3yqXP_ejRAWQcoYAAAH
+User connected: YKpWq_jHZege2H84AAAL
+User YKpWq_jHZege2H84AAAL joined team 3
+[2025-07-22T09:03:00.578Z] Running automatic API sync...
+[2025-07-22T09:03:01.715Z] Auto-sync completed: {
   subscriptions: '0 synced, 0 errors',
   areas: '0 synced, 0 errors',
   articles: '2 synced, 0 errors'
 }
-[2025-07-18T19:52:00.359Z] Running automatic API sync...
-[2025-07-18T19:52:00.440Z] Auto-sync completed: {
+User disconnected: YKpWq_jHZege2H84AAAL
+User connected: TwJ-tHe6M-qMDWj9AAAN
+User connected: 0vSBmbBGp96a6uEeAAAP
+User 0vSBmbBGp96a6uEeAAAP joined team 3
+User disconnected: 0vSBmbBGp96a6uEeAAAP
+User disconnected: TwJ-tHe6M-qMDWj9AAAN
+User connected: pG2NzgjUWSWHLz5SAAAR
+User pG2NzgjUWSWHLz5SAAAR joined team 3
+User connected: GdMgJzmvhdivva8lAAAT
+User disconnected: pG2NzgjUWSWHLz5SAAAR
+User connected: oRrXTlnmxdSqoG8UAAAV
+User oRrXTlnmxdSqoG8UAAAV joined team 3
+User disconnected: oRrXTlnmxdSqoG8UAAAV
+User connected: RJyaf1_gS7arK1yGAAAX
+User RJyaf1_gS7arK1yGAAAX joined team 3
+User disconnected: GdMgJzmvhdivva8lAAAT
+User connected: nhBqU_1TwEAY2XFRAAAZ
+User nhBqU_1TwEAY2XFRAAAZ joined team 3
+User disconnected: nhBqU_1TwEAY2XFRAAAZ
+User connected: Bk0RxUzlxDpKjv_6AAAb
+User Bk0RxUzlxDpKjv_6AAAb joined team 3
+User disconnected: RJyaf1_gS7arK1yGAAAX
+User connected: hD14vMoHHgi8_8blAAAd
+User hD14vMoHHgi8_8blAAAd joined team 3
+[2025-07-22T09:06:00.711Z] Running automatic API sync...
+[2025-07-22T09:06:01.860Z] Auto-sync completed: {
   subscriptions: '0 synced, 0 errors',
   areas: '0 synced, 0 errors',
   articles: '2 synced, 0 errors'
 }
-[2025-07-18T19:54:00.472Z] Running automatic API sync...
-[2025-07-18T19:54:00.569Z] Auto-sync completed: {
+User disconnected: Bk0RxUzlxDpKjv_6AAAb
+[2025-07-22T09:09:00.845Z] Running automatic API sync...
+[2025-07-22T09:09:01.982Z] Auto-sync completed: {
   subscriptions: '0 synced, 0 errors',
   areas: '0 synced, 0 errors',
   articles: '2 synced, 0 errors'
 }
-[2025-07-18T19:56:00.583Z] Running automatic API sync...
-[2025-07-18T19:56:00.670Z] Auto-sync completed: {
+User connected: fufoGHmgNdLDVhNXAAAf
+User fufoGHmgNdLDVhNXAAAf joined team 3
+User disconnected: fufoGHmgNdLDVhNXAAAf
+User connected: F1WbqHjtgN3gYF1HAAAh
+User F1WbqHjtgN3gYF1HAAAh joined team 3
+User disconnected: hD14vMoHHgi8_8blAAAd
+User connected: AQUcXNJxZ0WY1JCZAAAj
+User AQUcXNJxZ0WY1JCZAAAj joined team 3
+User disconnected: F1WbqHjtgN3gYF1HAAAh
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `ts-node src/server.ts`[39m
+Database migrations completed
+Setting up automatic API sync every 3 minutes...
+✅ Automatic sync scheduled every 3 minutes (1 call/minute - safe limit)
+Server running on port 3001
+Health check: http://localhost:3001/api/health
+🔄 Auto-sync: Every 3 minutes (1 call/minute safe)
+User connected: qRkJI6MV-PBCW59OAAAB
+User qRkJI6MV-PBCW59OAAAB joined team 3
+User connected: 0tgImRZpCBZlxy9WAAAD
+User connected: xVQH1goKsPdNct0UAAAF
+User xVQH1goKsPdNct0UAAAF joined team 3
+User disconnected: xVQH1goKsPdNct0UAAAF
+[2025-07-22T09:12:00.139Z] Running automatic API sync...
+[2025-07-22T09:12:01.291Z] Auto-sync completed: {
   subscriptions: '0 synced, 0 errors',
   areas: '0 synced, 0 errors',
   articles: '2 synced, 0 errors'
 }
-[2025-07-18T19:58:00.723Z] Running automatic API sync...
-[2025-07-18T19:58:00.805Z] Auto-sync completed: {
+User disconnected: 0tgImRZpCBZlxy9WAAAD
+User disconnected: qRkJI6MV-PBCW59OAAAB
+User connected: bfDUNT3Fqz0RuEvKAAAH
+User bfDUNT3Fqz0RuEvKAAAH joined team 3
+User disconnected: bfDUNT3Fqz0RuEvKAAAH
+User connected: ebIr4eo5EE71L86VAAAJ
+User ebIr4eo5EE71L86VAAAJ joined team 3
+User connected: PhDXtg1On5PwGs9dAAAM
+User PhDXtg1On5PwGs9dAAAM joined team 3
+User disconnected: PhDXtg1On5PwGs9dAAAM
+User connected: 55sm8031ZpOLQ034AAAO
+User 55sm8031ZpOLQ034AAAO joined team 3
+[2025-07-22T09:15:00.318Z] Running automatic API sync...
+[2025-07-22T09:15:01.446Z] Auto-sync completed: {
   subscriptions: '0 synced, 0 errors',
   areas: '0 synced, 0 errors',
   articles: '2 synced, 0 errors'
 }
-[2025-07-18T20:00:00.848Z] Running automatic API sync...
-[2025-07-18T20:00:00.926Z] Auto-sync completed: {
+User disconnected: 55sm8031ZpOLQ034AAAO
+User disconnected: ebIr4eo5EE71L86VAAAJ
+User connected: RTfXLa5OIXRN7deVAAAQ
+User RTfXLa5OIXRN7deVAAAQ joined team 3
+User disconnected: RTfXLa5OIXRN7deVAAAQ
+User connected: AlmmrW03e3Ey49fbAAAS
+User AlmmrW03e3Ey49fbAAAS joined team 3
+User disconnected: AlmmrW03e3Ey49fbAAAS
+User connected: lKsjMwM7_QjIeEjmAAAU
+User lKsjMwM7_QjIeEjmAAAU joined team 3
+Get user route error: [Error: select `id`, `username`, `first_name`, `last_name`, `role`, `teams`.`name` as `team_name`, `teams`.`area` as `team_area`, `team_members`.`role` as `team_role` from `users` left join `team_members` on `users`.`id` = `team_members`.`user_id` left join `teams` on `team_members`.`team_id` = `teams`.`id` where `users`.`id` = '4' limit 1 - SQLITE_ERROR: ambiguous column name: id] {
+  errno: 1,
+  code: 'SQLITE_ERROR'
+}
+Get user route error: [Error: select `id`, `username`, `first_name`, `last_name`, `role`, `teams`.`name` as `team_name`, `teams`.`area` as `team_area`, `team_members`.`role` as `team_role` from `users` left join `team_members` on `users`.`id` = `team_members`.`user_id` left join `teams` on `team_members`.`team_id` = `teams`.`id` where `users`.`id` = '14' limit 1 - SQLITE_ERROR: ambiguous column name: id] {
+  errno: 1,
+  code: 'SQLITE_ERROR'
+}
+Get user route error: [Error: select `id`, `username`, `first_name`, `last_name`, `role`, `teams`.`name` as `team_name`, `teams`.`area` as `team_area`, `team_members`.`role` as `team_role` from `users` left join `team_members` on `users`.`id` = `team_members`.`user_id` left join `teams` on `team_members`.`team_id` = `teams`.`id` where `users`.`id` = '4' limit 1 - SQLITE_ERROR: ambiguous column name: id] {
+  errno: 1,
+  code: 'SQLITE_ERROR'
+}
+Get user route error: [Error: select `id`, `username`, `first_name`, `last_name`, `role`, `teams`.`name` as `team_name`, `teams`.`area` as `team_area`, `team_members`.`role` as `team_role` from `users` left join `team_members` on `users`.`id` = `team_members`.`user_id` left join `teams` on `team_members`.`team_id` = `teams`.`id` where `users`.`id` = '14' limit 1 - SQLITE_ERROR: ambiguous column name: id] {
+  errno: 1,
+  code: 'SQLITE_ERROR'
+}
+Get user route error: [Error: select `id`, `username`, `first_name`, `last_name`, `role`, `teams`.`name` as `team_name`, `teams`.`area` as `team_area`, `team_members`.`role` as `team_role` from `users` left join `team_members` on `users`.`id` = `team_members`.`user_id` left join `teams` on `team_members`.`team_id` = `teams`.`id` where `users`.`id` = '4' limit 1 - SQLITE_ERROR: ambiguous column name: id] {
+  errno: 1,
+  code: 'SQLITE_ERROR'
+}
+Get user route error: [Error: select `id`, `username`, `first_name`, `last_name`, `role`, `teams`.`name` as `team_name`, `teams`.`area` as `team_area`, `team_members`.`role` as `team_role` from `users` left join `team_members` on `users`.`id` = `team_members`.`user_id` left join `teams` on `team_members`.`team_id` = `teams`.`id` where `users`.`id` = '4' limit 1 - SQLITE_ERROR: ambiguous column name: id] {
+  errno: 1,
+  code: 'SQLITE_ERROR'
+}
+Get user route error: [Error: select `id`, `username`, `first_name`, `last_name`, `role`, `teams`.`name` as `team_name`, `teams`.`area` as `team_area`, `team_members`.`role` as `team_role` from `users` left join `team_members` on `users`.`id` = `team_members`.`user_id` left join `teams` on `team_members`.`team_id` = `teams`.`id` where `users`.`id` = '4' limit 1 - SQLITE_ERROR: ambiguous column name: id] {
+  errno: 1,
+  code: 'SQLITE_ERROR'
+}
+User disconnected: lKsjMwM7_QjIeEjmAAAU
+User connected: R6VW6W54FWD_IL83AAAW
+User R6VW6W54FWD_IL83AAAW joined team 3
+Get user route error: [Error: select `id`, `username`, `first_name`, `last_name`, `role`, `teams`.`name` as `team_name`, `teams`.`area` as `team_area`, `team_members`.`role` as `team_role` from `users` left join `team_members` on `users`.`id` = `team_members`.`user_id` left join `teams` on `team_members`.`team_id` = `teams`.`id` where `users`.`id` = '4' limit 1 - SQLITE_ERROR: ambiguous column name: id] {
+  errno: 1,
+  code: 'SQLITE_ERROR'
+}
+Get user route error: [Error: select `id`, `username`, `first_name`, `last_name`, `role`, `teams`.`name` as `team_name`, `teams`.`area` as `team_area`, `team_members`.`role` as `team_role` from `users` left join `team_members` on `users`.`id` = `team_members`.`user_id` left join `teams` on `team_members`.`team_id` = `teams`.`id` where `users`.`id` = '4' limit 1 - SQLITE_ERROR: ambiguous column name: id] {
+  errno: 1,
+  code: 'SQLITE_ERROR'
+}
+Get user route error: [Error: select `id`, `username`, `first_name`, `last_name`, `role`, `teams`.`name` as `team_name`, `teams`.`area` as `team_area`, `team_members`.`role` as `team_role` from `users` left join `team_members` on `users`.`id` = `team_members`.`user_id` left join `teams` on `team_members`.`team_id` = `teams`.`id` where `users`.`id` = '4' limit 1 - SQLITE_ERROR: ambiguous column name: id] {
+  errno: 1,
+  code: 'SQLITE_ERROR'
+}
+Get user route error: [Error: select `id`, `username`, `first_name`, `last_name`, `role`, `teams`.`name` as `team_name`, `teams`.`area` as `team_area`, `team_members`.`role` as `team_role` from `users` left join `team_members` on `users`.`id` = `team_members`.`user_id` left join `teams` on `team_members`.`team_id` = `teams`.`id` where `users`.`id` = '4' limit 1 - SQLITE_ERROR: ambiguous column name: id] {
+  errno: 1,
+  code: 'SQLITE_ERROR'
+}
+Get user route error: [Error: select `id`, `username`, `first_name`, `last_name`, `role`, `teams`.`name` as `team_name`, `teams`.`area` as `team_area`, `team_members`.`role` as `team_role` from `users` left join `team_members` on `users`.`id` = `team_members`.`user_id` left join `teams` on `team_members`.`team_id` = `teams`.`id` where `users`.`id` = '14' limit 1 - SQLITE_ERROR: ambiguous column name: id] {
+  errno: 1,
+  code: 'SQLITE_ERROR'
+}
+Get user route error: [Error: select `id`, `username`, `first_name`, `last_name`, `role`, `teams`.`name` as `team_name`, `teams`.`area` as `team_area`, `team_members`.`role` as `team_role` from `users` left join `team_members` on `users`.`id` = `team_members`.`user_id` left join `teams` on `team_members`.`team_id` = `teams`.`id` where `users`.`id` = '4' limit 1 - SQLITE_ERROR: ambiguous column name: id] {
+  errno: 1,
+  code: 'SQLITE_ERROR'
+}
+Get user route error: [Error: select `id`, `username`, `first_name`, `last_name`, `role`, `teams`.`name` as `team_name`, `teams`.`area` as `team_area`, `team_members`.`role` as `team_role` from `users` left join `team_members` on `users`.`id` = `team_members`.`user_id` left join `teams` on `team_members`.`team_id` = `teams`.`id` where `users`.`id` = '4' limit 1 - SQLITE_ERROR: ambiguous column name: id] {
+  errno: 1,
+  code: 'SQLITE_ERROR'
+}
+Get user route error: [Error: select `id`, `username`, `first_name`, `last_name`, `role`, `teams`.`name` as `team_name`, `teams`.`area` as `team_area`, `team_members`.`role` as `team_role` from `users` left join `team_members` on `users`.`id` = `team_members`.`user_id` left join `teams` on `team_members`.`team_id` = `teams`.`id` where `users`.`id` = '4' limit 1 - SQLITE_ERROR: ambiguous column name: id] {
+  errno: 1,
+  code: 'SQLITE_ERROR'
+}
+Get user route error: [Error: select `id`, `username`, `first_name`, `last_name`, `role`, `teams`.`name` as `team_name`, `teams`.`area` as `team_area`, `team_members`.`role` as `team_role` from `users` left join `team_members` on `users`.`id` = `team_members`.`user_id` left join `teams` on `team_members`.`team_id` = `teams`.`id` where `users`.`id` = '4' limit 1 - SQLITE_ERROR: ambiguous column name: id] {
+  errno: 1,
+  code: 'SQLITE_ERROR'
+}
+Get user route error: [Error: select `id`, `username`, `first_name`, `last_name`, `role`, `teams`.`name` as `team_name`, `teams`.`area` as `team_area`, `team_members`.`role` as `team_role` from `users` left join `team_members` on `users`.`id` = `team_members`.`user_id` left join `teams` on `team_members`.`team_id` = `teams`.`id` where `users`.`id` = '4' limit 1 - SQLITE_ERROR: ambiguous column name: id] {
+  errno: 1,
+  code: 'SQLITE_ERROR'
+}
+Get user route error: [Error: select `id`, `username`, `first_name`, `last_name`, `role`, `teams`.`name` as `team_name`, `teams`.`area` as `team_area`, `team_members`.`role` as `team_role` from `users` left join `team_members` on `users`.`id` = `team_members`.`user_id` left join `teams` on `team_members`.`team_id` = `teams`.`id` where `users`.`id` = '14' limit 1 - SQLITE_ERROR: ambiguous column name: id] {
+  errno: 1,
+  code: 'SQLITE_ERROR'
+}
+Get user route error: [Error: select `id`, `username`, `first_name`, `last_name`, `role`, `teams`.`name` as `team_name`, `teams`.`area` as `team_area`, `team_members`.`role` as `team_role` from `users` left join `team_members` on `users`.`id` = `team_members`.`user_id` left join `teams` on `team_members`.`team_id` = `teams`.`id` where `users`.`id` = '14' limit 1 - SQLITE_ERROR: ambiguous column name: id] {
+  errno: 1,
+  code: 'SQLITE_ERROR'
+}
+[2025-07-22T09:18:00.474Z] Running automatic API sync...
+[2025-07-22T09:18:02.593Z] Auto-sync completed: {
   subscriptions: '0 synced, 0 errors',
   areas: '0 synced, 0 errors',
   articles: '2 synced, 0 errors'
 }
-[2025-07-18T20:02:00.968Z] Running automatic API sync...
-[2025-07-18T20:02:01.040Z] Auto-sync completed: {
+Get user route error: [Error: select `id`, `username`, `first_name`, `last_name`, `role`, `teams`.`name` as `team_name`, `teams`.`area` as `team_area`, `team_members`.`role` as `team_role` from `users` left join `team_members` on `users`.`id` = `team_members`.`user_id` left join `teams` on `team_members`.`team_id` = `teams`.`id` where `users`.`id` = '4' limit 1 - SQLITE_ERROR: ambiguous column name: id] {
+  errno: 1,
+  code: 'SQLITE_ERROR'
+}
+Get user route error: [Error: select `id`, `username`, `first_name`, `last_name`, `role`, `teams`.`name` as `team_name`, `teams`.`area` as `team_area`, `team_members`.`role` as `team_role` from `users` left join `team_members` on `users`.`id` = `team_members`.`user_id` left join `teams` on `team_members`.`team_id` = `teams`.`id` where `users`.`id` = '4' limit 1 - SQLITE_ERROR: ambiguous column name: id] {
+  errno: 1,
+  code: 'SQLITE_ERROR'
+}
+Get user route error: [Error: select `id`, `username`, `first_name`, `last_name`, `role`, `teams`.`name` as `team_name`, `teams`.`area` as `team_area`, `team_members`.`role` as `team_role` from `users` left join `team_members` on `users`.`id` = `team_members`.`user_id` left join `teams` on `team_members`.`team_id` = `teams`.`id` where `users`.`id` = '14' limit 1 - SQLITE_ERROR: ambiguous column name: id] {
+  errno: 1,
+  code: 'SQLITE_ERROR'
+}
+[2025-07-22T09:21:00.701Z] Running automatic API sync...
+[2025-07-22T09:21:01.841Z] Auto-sync completed: {
   subscriptions: '0 synced, 0 errors',
   areas: '0 synced, 0 errors',
   articles: '2 synced, 0 errors'
 }
-[2025-07-18T20:04:00.087Z] Running automatic API sync...
-[2025-07-18T20:04:00.190Z] Auto-sync completed: {
+[2025-07-22T09:24:00.878Z] Running automatic API sync...
+[2025-07-22T09:24:02.001Z] Auto-sync completed: {
   subscriptions: '0 synced, 0 errors',
   areas: '0 synced, 0 errors',
   articles: '2 synced, 0 errors'
 }
-[2025-07-18T20:06:00.196Z] Running automatic API sync...
-[2025-07-18T20:06:00.274Z] Auto-sync completed: {
-  subscriptions: '0 synced, 0 errors',
-  areas: '0 synced, 0 errors',
-  articles: '2 synced, 0 errors'
+Get user route error: [Error: select `id`, `username`, `first_name`, `last_name`, `role`, `teams`.`name` as `team_name`, `teams`.`area` as `team_area`, `team_members`.`role` as `team_role` from `users` left join `team_members` on `users`.`id` = `team_members`.`user_id` left join `teams` on `team_members`.`team_id` = `teams`.`id` where `users`.`id` = '4' limit 1 - SQLITE_ERROR: ambiguous column name: id] {
+  errno: 1,
+  code: 'SQLITE_ERROR'
 }
-[2025-07-18T20:08:00.311Z] Running automatic API sync...
-[2025-07-18T20:08:00.384Z] Auto-sync completed: {
-  subscriptions: '0 synced, 0 errors',
-  areas: '0 synced, 0 errors',
-  articles: '2 synced, 0 errors'
+Get user route error: [Error: select `id`, `username`, `first_name`, `last_name`, `role`, `teams`.`name` as `team_name`, `teams`.`area` as `team_area`, `team_members`.`role` as `team_role` from `users` left join `team_members` on `users`.`id` = `team_members`.`user_id` left join `teams` on `team_members`.`team_id` = `teams`.`id` where `users`.`id` = '14' limit 1 - SQLITE_ERROR: ambiguous column name: id] {
+  errno: 1,
+  code: 'SQLITE_ERROR'
+}
+Get user route error: [Error: select `id`, `username`, `first_name`, `last_name`, `role`, `teams`.`name` as `team_name`, `teams`.`area` as `team_area`, `team_members`.`role` as `team_role` from `users` left join `team_members` on `users`.`id` = `team_members`.`user_id` left join `teams` on `team_members`.`team_id` = `teams`.`id` where `users`.`id` = '14' limit 1 - SQLITE_ERROR: ambiguous column name: id] {
+  errno: 1,
+  code: 'SQLITE_ERROR'
+}
+Get user route error: [Error: select `id`, `username`, `first_name`, `last_name`, `role`, `teams`.`name` as `team_name`, `teams`.`area` as `team_area`, `team_members`.`role` as `team_role` from `users` left join `team_members` on `users`.`id` = `team_members`.`user_id` left join `teams` on `team_members`.`team_id` = `teams`.`id` where `users`.`id` = '4' limit 1 - SQLITE_ERROR: ambiguous column name: id] {
+  errno: 1,
+  code: 'SQLITE_ERROR'
+}
+User disconnected: R6VW6W54FWD_IL83AAAW
+User connected: cgoqivjmVLjB9DCSAAAY
+User cgoqivjmVLjB9DCSAAAY joined team 3
+Get user route error: [Error: select `id`, `username`, `first_name`, `last_name`, `role`, `teams`.`name` as `team_name`, `teams`.`area` as `team_area`, `team_members`.`role` as `team_role` from `users` left join `team_members` on `users`.`id` = `team_members`.`user_id` left join `teams` on `team_members`.`team_id` = `teams`.`id` where `users`.`id` = '4' limit 1 - SQLITE_ERROR: ambiguous column name: id] {
+  errno: 1,
+  code: 'SQLITE_ERROR'
+}
+Get user route error: [Error: select `id`, `username`, `first_name`, `last_name`, `role`, `teams`.`name` as `team_name`, `teams`.`area` as `team_area`, `team_members`.`role` as `team_role` from `users` left join `team_members` on `users`.`id` = `team_members`.`user_id` left join `teams` on `team_members`.`team_id` = `teams`.`id` where `users`.`id` = '14' limit 1 - SQLITE_ERROR: ambiguous column name: id] {
+  errno: 1,
+  code: 'SQLITE_ERROR'
+}
+Get user route error: [Error: select `id`, `username`, `first_name`, `last_name`, `role`, `teams`.`name` as `team_name`, `teams`.`area` as `team_area`, `team_members`.`role` as `team_role` from `users` left join `team_members` on `users`.`id` = `team_members`.`user_id` left join `teams` on `team_members`.`team_id` = `teams`.`id` where `users`.`id` = '4' limit 1 - SQLITE_ERROR: ambiguous column name: id] {
+  errno: 1,
+  code: 'SQLITE_ERROR'
+}
+User disconnected: cgoqivjmVLjB9DCSAAAY
+User connected: 30gQRwwJM05UCra6AAAa
+User 30gQRwwJM05UCra6AAAa joined team 3
+Get user route error: [Error: select `id`, `username`, `first_name`, `last_name`, `role`, `teams`.`name` as `team_name`, `teams`.`area` as `team_area`, `team_members`.`role` as `team_role` from `users` left join `team_members` on `users`.`id` = `team_members`.`user_id` left join `teams` on `team_members`.`team_id` = `teams`.`id` where `users`.`id` = '4' limit 1 - SQLITE_ERROR: ambiguous column name: id] {
+  errno: 1,
+  code: 'SQLITE_ERROR'
 }
 Shutting down gracefully...
+User disconnected: 30gQRwwJM05UCra6AAAa
 Server closed

@@ -18,15 +18,21 @@ import chatRoutes from './routes/chat';
 import huntRoutes from './routes/hunts';
 import rulesRoutes from './routes/rules';
 import adminRoutes from './routes/admin';
+import hintsRoutes from './routes/hints';
 
 dotenv.config();
 
 const app = express();
 const server = createServer(app);
 const io = new Server(server, {
+  path: '/api/socket.io/',
   cors: {
-    origin: process.env.FRONTEND_URL || "http://localhost:3000",
-    methods: ["GET", "POST"]
+    origin: [
+      process.env.FRONTEND_URL || "http://localhost:3000",
+      "https://dfef01c8947a.ngrok-free.app"
+    ],
+    methods: ["GET", "POST"],
+    credentials: true
   }
 });
 
@@ -55,6 +61,7 @@ app.use('/api/chat', chatRoutes);
 app.use('/api/hunts', huntRoutes);
 app.use('/api/rules', rulesRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/hints', hintsRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
@@ -63,6 +70,13 @@ app.get('/api/health', (req, res) => {
 io.on('connection', (socket) => {
   console.log('User connected:', socket.id);
 
+  // Join general rooms
+  socket.on('join-room', (roomName) => {
+    socket.join(roomName);
+    console.log(`User ${socket.id} joined room ${roomName}`);
+  });
+
+  // Join team rooms  
   socket.on('join-team', (teamId) => {
     socket.join(`team-${teamId}`);
     console.log(`User ${socket.id} joined team ${teamId}`);

@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { gameService } from '../services/gameService';
 import { Article } from '../types';
 import LoadingSpinner from './LoadingSpinner';
-import { ArrowLeft, MessageCircle, AlertTriangle, Newspaper, Calendar, Tag, Check, CheckCircle } from 'lucide-react';
+import { ArrowLeft, MessageCircle, AlertTriangle, Newspaper, Calendar, Tag, Check, CheckCircle, MapPin, Send } from 'lucide-react';
 
 const UpdateDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -12,6 +12,21 @@ const UpdateDetail: React.FC = () => {
   const [article, setArticle] = useState<Article | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Hint solution modal state
+  const [showSolutionModal, setShowSolutionModal] = useState(false);
+  const [solutionForm, setSolutionForm] = useState({
+    solution: '',
+    foxCoordinates: {
+      alpha: { rd_x: '', rd_y: '' },
+      bravo: { rd_x: '', rd_y: '' },
+      charlie: { rd_x: '', rd_y: '' },
+      delta: { rd_x: '', rd_y: '' },
+      echo: { rd_x: '', rd_y: '' },
+      foxtrot: { rd_x: '', rd_y: '' }
+    }
+  });
+  const [isSubmittingSolution, setIsSubmittingSolution] = useState(false);
 
   const { state } = useAuth();
 
@@ -55,6 +70,52 @@ const UpdateDetail: React.FC = () => {
     } catch (error) {
       console.error('Failed to toggle assignment completion:', error);
     }
+  };
+
+  const handleSubmitSolution = async () => {
+    if (!article || !solutionForm.solution.trim()) return;
+    
+    setIsSubmittingSolution(true);
+    try {
+      // Filter out empty coordinates
+      const filteredCoordinates: any = {};
+      Object.entries(solutionForm.foxCoordinates).forEach(([area, coords]) => {
+        if (coords.rd_x.trim() && coords.rd_y.trim()) {
+          filteredCoordinates[area] = {
+            rd_x: coords.rd_x.trim(),
+            rd_y: coords.rd_y.trim()
+          };
+        }
+      });
+
+      await gameService.submitHintSolution(
+        article.id,
+        solutionForm.solution,
+        Object.keys(filteredCoordinates).length > 0 ? filteredCoordinates : undefined
+      );
+      
+      // Reset form
+      setSolutionForm({
+        solution: '',
+        foxCoordinates: {
+          alpha: { rd_x: '', rd_y: '' },
+          bravo: { rd_x: '', rd_y: '' },
+          charlie: { rd_x: '', rd_y: '' },
+          delta: { rd_x: '', rd_y: '' },
+          echo: { rd_x: '', rd_y: '' },
+          foxtrot: { rd_x: '', rd_y: '' }
+        }
+      });
+      setShowSolutionModal(false);
+    } catch (error) {
+      console.error('Failed to submit solution:', error);
+    } finally {
+      setIsSubmittingSolution(false);
+    }
+  };
+
+  const openSolutionModal = () => {
+    setShowSolutionModal(true);
   };
 
   const getTypeIcon = (type: string) => {
@@ -254,6 +315,28 @@ const UpdateDetail: React.FC = () => {
           </div>
         )}
 
+        {/* Hint Solution */}
+        {article.type === 'hint' && (
+          <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2 text-blue-700 dark:text-blue-300">
+                <MessageCircle className="w-5 h-5" />
+                <span className="font-medium">Hint Solution</span>
+              </div>
+              <button
+                onClick={openSolutionModal}
+                className="flex items-center space-x-2 px-4 py-2 rounded-md text-sm font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors"
+              >
+                <MapPin className="w-4 h-4" />
+                <span>Submit Solution</span>
+              </button>
+            </div>
+            <p className="text-sm text-blue-600 dark:text-blue-400 mt-2">
+              Submit your answer along with any fox location coordinates this hint might reveal
+            </p>
+          </div>
+        )}
+
         {/* Team Area Highlight */}
         {state.team?.area && article.area === state.team.area && (
           <div className="mt-4 p-3 bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800 rounded-lg">
@@ -295,6 +378,146 @@ const UpdateDetail: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Hint Solution Modal */}
+      {showSolutionModal && article && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
+                Submit Solution
+              </h2>
+              <button
+                onClick={() => setShowSolutionModal(false)}
+                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              >
+                ✕
+              </button>
+            </div>
+            
+            <div className="mb-4">
+              <h3 className="font-medium text-gray-900 dark:text-gray-100 mb-2">
+                {article.title}
+              </h3>
+              <div className="text-sm text-gray-600 dark:text-gray-400 max-h-32 overflow-y-auto">
+                <div dangerouslySetInnerHTML={{ __html: article.content.length > 200 ? article.content.substring(0, 200) + '...' : article.content }} />
+              </div>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Solution *
+                </label>
+                <textarea
+                  value={solutionForm.solution}
+                  onChange={(e) => setSolutionForm(prev => ({ ...prev, solution: e.target.value }))}
+                  placeholder="Enter your solution to the hint..."
+                  className="input min-h-[80px]"
+                  rows={3}
+                  required
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Fox Locations (Rijksdriehoek Coordinates)
+                </label>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                  Optional: Enter coordinates for any fox areas this hint reveals
+                </p>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {(['Alpha', 'Bravo', 'Charlie', 'Delta', 'Echo', 'Foxtrot'] as const).map((area) => {
+                    const areaKey = area.toLowerCase() as keyof typeof solutionForm.foxCoordinates;
+                    return (
+                      <div key={area} className="border border-gray-200 dark:border-gray-600 rounded-lg p-3">
+                        <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          {area} Team
+                        </h4>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
+                              X Coordinate
+                            </label>
+                            <input
+                              type="number"
+                              value={solutionForm.foxCoordinates[areaKey].rd_x}
+                              onChange={(e) => setSolutionForm(prev => ({
+                                ...prev,
+                                foxCoordinates: {
+                                  ...prev.foxCoordinates,
+                                  [areaKey]: {
+                                    ...prev.foxCoordinates[areaKey],
+                                    rd_x: e.target.value
+                                  }
+                                }
+                              }))}
+                              placeholder="e.g. 123456"
+                              className="input text-sm"
+                              min="10000"
+                              max="280000"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
+                              Y Coordinate
+                            </label>
+                            <input
+                              type="number"
+                              value={solutionForm.foxCoordinates[areaKey].rd_y}
+                              onChange={(e) => setSolutionForm(prev => ({
+                                ...prev,
+                                foxCoordinates: {
+                                  ...prev.foxCoordinates,
+                                  [areaKey]: {
+                                    ...prev.foxCoordinates[areaKey],
+                                    rd_y: e.target.value
+                                  }
+                                }
+                              }))}
+                              placeholder="e.g. 456789"
+                              className="input text-sm"
+                              min="300000"
+                              max="620000"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex items-center justify-end space-x-3 mt-6">
+              <button
+                onClick={() => setShowSolutionModal(false)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-md transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSubmitSolution}
+                disabled={!solutionForm.solution.trim() || isSubmittingSolution}
+                className="flex items-center space-x-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed rounded-md transition-colors"
+              >
+                {isSubmittingSolution ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+                    <span>Submitting...</span>
+                  </>
+                ) : (
+                  <>
+                    <Send className="w-4 h-4" />
+                    <span>Submit Solution</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

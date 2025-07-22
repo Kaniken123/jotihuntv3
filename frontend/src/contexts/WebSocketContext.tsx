@@ -16,7 +16,9 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   useEffect(() => {
     if (state.isAuthenticated && state.token) {
-      const newSocket = io('http://localhost:3001', {
+      // Use the same origin for WebSocket to work with ngrok and proxy
+      const newSocket = io({
+        path: '/api/socket.io/',
         auth: {
           token: state.token
         }
@@ -53,14 +55,20 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }
   }, [state.isAuthenticated, state.token]);
 
-  // Separate effect for team joining to avoid reconnection loops
+  // Separate effect for joining rooms to avoid reconnection loops
   useEffect(() => {
-    if (socket && isConnected && state.team) {
+    if (socket && isConnected) {
       try {
-        socket.emit('join-team', state.team.id);
+        // Join general chat for all authenticated users
+        socket.emit('join-room', 'general-chat');
+        
+        // Join team room if user is part of a team
+        if (state.team) {
+          socket.emit('join-team', state.team.id);
+        }
       } catch (error) {
-        console.error('Error joining team:', error);
-        // Don't crash the app if team join fails
+        console.error('Error joining rooms:', error);
+        // Don't crash the app if room join fails
       }
     }
   }, [socket, isConnected, state.team?.id]);

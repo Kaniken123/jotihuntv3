@@ -1,18 +1,24 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { Map, MessageSquare, Camera, FileText, Book, Shield } from 'lucide-react';
+import { Map, MessageSquare, Camera, FileText, Book, Shield, Route, Menu, X } from 'lucide-react';
 import NotificationCenter from './NotificationCenter';
 
 const Navbar: React.FC = () => {
-  const [isOpen, setIsOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { state, logout } = useAuth();
   const { user, team } = state;
   const location = useLocation();
 
   const handleLogout = () => {
     logout();
-    setIsOpen(false);
+    setIsProfileOpen(false);
+    setIsMobileMenuOpen(false);
+  };
+
+  const closeMobileMenu = () => {
+    setIsMobileMenuOpen(false);
   };
 
   const navigation = [
@@ -73,12 +79,30 @@ const Navbar: React.FC = () => {
           </div>
           
           <div className="flex items-center space-x-4">
+            {/* Mobile menu button */}
+            <div className="md:hidden">
+              <button
+                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                className="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary-500"
+                aria-expanded="false"
+              >
+                <span className="sr-only">Open main menu</span>
+                {isMobileMenuOpen ? (
+                  <X className="block h-6 w-6" aria-hidden="true" />
+                ) : (
+                  <Menu className="block h-6 w-6" aria-hidden="true" />
+                )}
+              </button>
+            </div>
+
             {/* Notification Center */}
-            <NotificationCenter />
+            <div className="hidden sm:block">
+              <NotificationCenter />
+            </div>
             
             <div className="relative">
               <button
-                onClick={() => setIsOpen(!isOpen)}
+                onClick={() => setIsProfileOpen(!isProfileOpen)}
                 className="flex items-center text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
               >
                 <div className="flex items-center space-x-3">
@@ -101,7 +125,7 @@ const Navbar: React.FC = () => {
                   </div>
                   <svg
                     className={`ml-2 h-4 w-4 text-gray-400 transition-transform duration-200 ${
-                      isOpen ? 'rotate-180' : ''
+                      isProfileOpen ? 'rotate-180' : ''
                     }`}
                     fill="none"
                     viewBox="0 0 24 24"
@@ -112,7 +136,7 @@ const Navbar: React.FC = () => {
                 </div>
               </button>
               
-              {isOpen && (
+              {isProfileOpen && (
                 <div className="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 z-50">
                   <div className="py-1">
                     <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700">
@@ -126,20 +150,30 @@ const Navbar: React.FC = () => {
                     
                     <Link
                       to="/settings"
-                      onClick={() => setIsOpen(false)}
+                      onClick={() => setIsProfileOpen(false)}
                       className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                     >
                       Location Settings
                     </Link>
                     
                     {user?.role === 'admin' && (
-                      <Link
-                        to="/admin"
-                        onClick={() => setIsOpen(false)}
-                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                      >
-                        Admin Panel
-                      </Link>
+                      <>
+                        <Link
+                          to="/admin"
+                          onClick={() => setIsProfileOpen(false)}
+                          className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                        >
+                          Admin Panel
+                        </Link>
+                        <Link
+                          to="/admin/routes"
+                          onClick={() => setIsProfileOpen(false)}
+                          className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center space-x-2"
+                        >
+                          <Route className="w-4 h-4" />
+                          <span>Route Tracking</span>
+                        </Link>
+                      </>
                     )}
                     
                     <button
@@ -154,6 +188,102 @@ const Navbar: React.FC = () => {
             </div>
           </div>
         </div>
+
+        {/* Mobile menu, show/hide based on menu state */}
+        {isMobileMenuOpen && (
+          <div className="md:hidden">
+            <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
+              {navigation.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <Link
+                    key={item.name}
+                    to={item.href}
+                    onClick={closeMobileMenu}
+                    className={`flex items-center space-x-3 px-3 py-2 rounded-md text-base font-medium transition-colors duration-200 ${
+                      item.current
+                        ? 'text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/20'
+                        : 'text-gray-900 dark:text-gray-100 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-gray-50 dark:hover:bg-gray-700'
+                    }`}
+                  >
+                    <Icon size={20} />
+                    <span>{item.name}</span>
+                  </Link>
+                );
+              })}
+
+              {/* User info and actions in mobile */}
+              <div className="px-3 py-2 border-t border-gray-200 dark:border-gray-700 mt-3 pt-3">
+                <div className="flex items-center space-x-3 mb-3">
+                  <div className="flex-shrink-0">
+                    <div className="h-8 w-8 rounded-full bg-primary-600 flex items-center justify-center">
+                      <span className="text-sm font-medium text-white">
+                        {user?.username?.charAt(0).toUpperCase() || 'U'}
+                      </span>
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                      {user?.first_name && user?.last_name
+                        ? `${user.first_name} ${user.last_name}`
+                        : user?.username}
+                    </p>
+                    <p className="text-xs text-gray-600 dark:text-gray-400">
+                      {user?.role === 'admin' ? 'Administrator' : 'Hunter'}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Mobile notification center */}
+                <div className="mb-3 sm:hidden">
+                  <div className="flex items-center space-x-3 px-3 py-2">
+                    <NotificationCenter />
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Notifications</span>
+                  </div>
+                </div>
+
+                {/* Mobile action buttons */}
+                <div className="space-y-1">
+                  <Link
+                    to="/settings"
+                    onClick={closeMobileMenu}
+                    className="flex items-center space-x-3 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md"
+                  >
+                    <span>Location Settings</span>
+                  </Link>
+                  
+                  {user?.role === 'admin' && (
+                    <>
+                      <Link
+                        to="/admin"
+                        onClick={closeMobileMenu}
+                        className="flex items-center space-x-3 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md"
+                      >
+                        <Shield className="w-4 h-4" />
+                        <span>Admin Panel</span>
+                      </Link>
+                      <Link
+                        to="/admin/routes"
+                        onClick={closeMobileMenu}
+                        className="flex items-center space-x-3 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md"
+                      >
+                        <Route className="w-4 h-4" />
+                        <span>Route Tracking</span>
+                      </Link>
+                    </>
+                  )}
+                  
+                  <button
+                    onClick={handleLogout}
+                    className="flex items-center space-x-3 w-full px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md text-left"
+                  >
+                    <span>Sign out</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </nav>
   );

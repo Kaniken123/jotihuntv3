@@ -243,4 +243,159 @@ router.delete('/history/:user_id', authenticateToken, async (req, res) => {
   }
 });
 
+// Admin route tracking - get user route for a specific time period
+router.get('/route/:user_id', authenticateToken, async (req, res) => {
+  try {
+    // Only admins can view user routes
+    if (req.user!.role !== 'admin') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+
+    const { user_id } = req.params;
+    const { hours = 24, limit = 500 } = req.query;
+
+    // Check if user has location sharing enabled and privacy mode disabled
+    const settings = await db('location_settings')
+      .where('user_id', user_id)
+      .first();
+
+    if (!settings?.location_sharing_enabled || settings?.privacy_mode) {
+      return res.json({ 
+        route: [], 
+        message: 'User has location sharing disabled or privacy mode enabled' 
+      });
+    }
+
+    // Get user info
+    const user = await db('users')
+      .select('users.id', 'users.username', 'users.first_name', 'users.last_name', 'users.role')
+      .leftJoin('team_members', 'users.id', 'team_members.user_id')
+      .leftJoin('teams', 'team_members.team_id', 'teams.id')
+      .select('teams.name as team_name', 'teams.area as team_area', 'team_members.role as team_role')
+      .where('users.id', user_id)
+      .first();
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Get location history for specified time period
+    const hoursAgo = new Date(Date.now() - parseInt(hours as string) * 60 * 60 * 1000);
+    
+    const locations = await db('user_locations')
+      .where('user_id', user_id)
+      .where('recorded_at', '>=', hoursAgo)
+      .orderBy('recorded_at', 'asc')
+      .limit(parseInt(limit as string));
+
+    // Add movement statistics
+    let totalDistance = 0;
+    let maxSpeed = 0;
+    
+    for (let i = 1; i < locations.length; i++) {
+      const prev = locations[i - 1];
+      const curr = locations[i];
+      
+      // Calculate distance using Haversine formula
+      const distance = calculateDistance(prev.lat, prev.lng, curr.lat, curr.lng);
+      totalDistance += distance;
+      
+      // Calculate speed (km/h)
+      const timeDiff = (new Date(curr.recorded_at).getTime() - new Date(prev.recorded_at).getTime()) / 1000 / 3600;
+      if (timeDiff > 0) {
+        const speed = distance / timeDiff;
+        maxSpeed = Math.max(maxSpeed, speed);
+      }
+    }
+
+    const route = {
+      user: {
+        id: user.id,
+        username: user.username,
+        first_name: user.first_name,
+        last_name: user.last_name,
+        team_name: user.team_name,
+        team_area: user.team_area,
+        team_role: user.team_role
+      },
+      locations,
+      statistics: {
+        total_points: locations.length,
+        total_distance_km: Math.round(totalDistance * 100) / 100,
+        max_speed_kmh: Math.round(maxSpeed * 100) / 100,
+        time_period_hours: parseInt(hours as string),
+        first_location: locations.length > 0 ? locations[0].recorded_at : null,
+        last_location: locations.length > 0 ? locations[locations.length - 1].recorded_at : null
+      }
+    };
+
+    res.json(route);
+  } catch (error) {
+    console.error('Get user route error:', error);
+    res.status(500).json({ error: 'Failed to get user route' });
+  }
+});
+
+// Helper function to calculate distance between two points in kilometers
+function calculateDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371; // Earth's radius in kilometers
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * 
+    Math.sin(dLng / 2) * Math.sin(dLng / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+function toRad(degrees: number): number {
+  return degrees * (Math.PI / 180);
+}
+
+// Get list of users for admin route selection
+router.get('/users', authenticateToken, async (req, res) => {
+  try {
+    // Only admins can view user list
+    if (req.user!.role !== 'admin') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+
+    const users = await db('users')
+      .select('users.id', 'users.username', 'users.first_name', 'users.last_name', 'users.role')
+      .leftJoin('team_members', 'users.id', 'team_members.user_id')
+      .leftJoin('teams', 'team_members.team_id', 'teams.id')
+      .leftJoin('location_settings', 'users.id', 'location_settings.user_id')
+      .select(
+        'teams.name as team_name', 
+        'teams.area as team_area', 
+        'team_members.role as team_role',
+        'location_settings.location_sharing_enabled',
+        'location_settings.privacy_mode'
+      )
+      .orderBy('users.username');
+
+    // Get latest location for each user
+    const usersWithLocations = await Promise.all(
+      users.map(async (user) => {
+        const latestLocation = await db('user_locations')
+          .where('user_id', user.id)
+          .orderBy('recorded_at', 'desc')
+          .first();
+
+        return {
+          ...user,
+          has_locations: !!latestLocation,
+          last_seen: latestLocation?.recorded_at || null,
+          can_view_route: user.location_sharing_enabled && !user.privacy_mode
+        };
+      })
+    );
+
+    res.json(usersWithLocations);
+  } catch (error) {
+    console.error('Get users for route tracking error:', error);
+    res.status(500).json({ error: 'Failed to get users' });
+  }
+});
+
 export default router;

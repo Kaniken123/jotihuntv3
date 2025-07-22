@@ -98,4 +98,40 @@ export const gameService = {
     const response = await api.delete(`/users/${userId}`);
     return response.data;
   },
+
+  // Admin route tracking functions
+  async getUsersForRouteTracking() {
+    const response = await api.get('/locations/users');
+    return response.data;
+  },
+
+  async getUserRoute(userId: number, hours: number = 24, limit: number = 500) {
+    const response = await api.get(`/locations/route/${userId}?hours=${hours}&limit=${limit}`);
+    return response.data;
+  },
+
+  // Hint solution functions
+  async submitHintSolution(articleId: number, solution: string, foxCoordinates?: any) {
+    const response = await api.post('/hints/solutions', {
+      article_id: articleId,
+      solution,
+      fox_coordinates: foxCoordinates
+    });
+    return response.data;
+  },
+
+  async getHintSolutions() {
+    const response = await api.get('/hints/solutions');
+    return response.data;
+  },
+
+  async getAllHintSolutions() {
+    const response = await api.get('/hints/solutions/all');
+    return response.data;
+  },
+
+  async updateHintSolution(solutionId: number, data: { is_correct: boolean, fox_team?: string, reveals_fox_location?: boolean }) {
+    const response = await api.patch(`/hints/solutions/${solutionId}`, data);
+    return response.data;
+  },
 };

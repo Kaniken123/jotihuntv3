@@ -8,12 +8,13 @@ import LoadingSpinner from './components/LoadingSpinner';
 import Login from './components/Login';
 import Navbar from './components/Navbar';
 import Map from './components/Map';
-import TeamChat from './components/TeamChat';
+import ModernChat from './components/ModernChat';
 import HuntRegistration from './components/HuntRegistration';
 import HintsList from './components/HintsList';
 import UpdateDetail from './components/UpdateDetail';
 import Rules from './components/Rules';
 import AdminDashboard from './components/AdminDashboard';
+import AdminRouteTracking from './components/AdminRouteTracking';
 import LocationSettings from './components/LocationSettings';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -70,7 +71,7 @@ const AppContent: React.FC = () => {
                 <div className="flex flex-col h-screen">
                   <Navbar />
                   <div className="flex-1 overflow-hidden">
-                    <TeamChat />
+                    <ModernChat />
                   </div>
                 </div>
               </ProtectedRoute>
@@ -136,6 +137,19 @@ const AppContent: React.FC = () => {
                   <Navbar />
                   <div className="flex-1 overflow-y-auto">
                     <AdminDashboard />
+                  </div>
+                </div>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/routes"
+            element={
+              <ProtectedRoute>
+                <div className="flex flex-col h-screen">
+                  <Navbar />
+                  <div className="flex-1 overflow-y-auto">
+                    <AdminRouteTracking />
                   </div>
                 </div>
               </ProtectedRoute>
