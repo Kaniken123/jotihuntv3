@@ -57,21 +57,21 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   // Separate effect for joining rooms to avoid reconnection loops
   useEffect(() => {
-    if (socket && isConnected) {
+    if (socket && isConnected && state.currentTenant) {
       try {
-        // Join general chat for all authenticated users
-        socket.emit('join-room', 'general-chat');
+        // Join tenant-specific general chat
+        socket.emit('join-tenant-general', state.currentTenant.id);
         
-        // Join team room if user is part of a team
+        // Join tenant-specific team room if user is part of a team
         if (state.team) {
-          socket.emit('join-team', state.team.id);
+          socket.emit('join-team', state.team.id, state.currentTenant.id);
         }
       } catch (error) {
         console.error('Error joining rooms:', error);
         // Don't crash the app if room join fails
       }
     }
-  }, [socket, isConnected, state.team?.id]);
+  }, [socket, isConnected, state.team?.id, state.currentTenant?.id]);
 
   return (
     <WebSocketContext.Provider value={{ socket, isConnected }}>

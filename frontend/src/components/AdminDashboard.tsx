@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { api } from '../services/authService';
+import { api, authService } from '../services/authService';
 import { gameService } from '../services/gameService';
 import { Hunt, User, Area } from '../types';
 import LoadingSpinner from './LoadingSpinner';
+import TenantSwitcher from './TenantSwitcher';
+import SubscriptionManager from './SubscriptionManager';
+import { isAdmin, isSuperAdmin } from '../utils/roleUtils';
 import { 
   Users, 
   Camera, 
@@ -19,7 +22,8 @@ import {
   RefreshCw,
   Database,
   Bell,
-  Send
+  Send,
+  Home
 } from 'lucide-react';
 
 interface DashboardStats {
@@ -80,10 +84,21 @@ const AdminDashboard: React.FC = () => {
     is_active: true
   });
 
+  // Tenant management state
+  const [showCreateTenantModal, setShowCreateTenantModal] = useState(false);
+  const [showEditTenantModal, setShowEditTenantModal] = useState(false);
+  const [editingTenant, setEditingTenant] = useState<any>(null);
+  const [tenantFormData, setTenantFormData] = useState({
+    name: '',
+    slug: '',
+    description: ''
+  });
+  const [savingTenant, setSavingTenant] = useState(false);
+
   const { state } = useAuth();
 
   useEffect(() => {
-    if (state.user?.role === 'admin') {
+    if (isAdmin(state.user)) {
       loadDashboardData();
     }
   }, [state.user]);
@@ -395,13 +410,74 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
+  const handleCreateTenant = async () => {
+    if (!tenantFormData.name || !tenantFormData.slug) {
+      alert('Please fill in both name and slug');
+      return;
+    }
+
+    setSavingTenant(true);
+    try {
+      await authService.createTenant(tenantFormData);
+      
+      setShowCreateTenantModal(false);
+      setTenantFormData({ name: '', slug: '', description: '' });
+      
+      alert('Tenant created successfully!');
+      
+      // Reload the current user data to get updated available tenants
+      window.location.reload();
+    } catch (error: any) {
+      console.error('Failed to create tenant:', error);
+      alert(`Failed to create tenant: ${error.response?.data?.error || error.message}`);
+    } finally {
+      setSavingTenant(false);
+    }
+  };
+
+  const handleEditTenant = (tenant: any) => {
+    setEditingTenant(tenant);
+    setTenantFormData({
+      name: tenant.name,
+      slug: tenant.slug,
+      description: tenant.description || ''
+    });
+    setShowEditTenantModal(true);
+  };
+
+  const handleUpdateTenant = async () => {
+    if (!editingTenant || !tenantFormData.name || !tenantFormData.slug) {
+      alert('Please fill in both name and slug');
+      return;
+    }
+
+    setSavingTenant(true);
+    try {
+      await authService.updateTenant(editingTenant.id, tenantFormData);
+      
+      setShowEditTenantModal(false);
+      setEditingTenant(null);
+      setTenantFormData({ name: '', slug: '', description: '' });
+      
+      alert('Tenant updated successfully!');
+      
+      // Reload the current user data to get updated tenant info
+      window.location.reload();
+    } catch (error: any) {
+      console.error('Failed to update tenant:', error);
+      alert(`Failed to update tenant: ${error.response?.data?.error || error.message}`);
+    } finally {
+      setSavingTenant(false);
+    }
+  };
+
   useEffect(() => {
-    if (state.user?.role === 'admin' && activeTab === 'api') {
+    if (isAdmin(state.user) && activeTab === 'api') {
       loadSyncStatus();
     }
   }, [activeTab, state.user]);
 
-  if (state.user?.role !== 'admin') {
+  if (!isAdmin(state.user)) {
     return (
       <div className="max-w-2xl mx-auto p-6">
         <div className="card p-6 text-center">
@@ -430,6 +506,7 @@ const AdminDashboard: React.FC = () => {
     { id: 'hunts', label: 'Hunt Review', icon: Camera },
     { id: 'users', label: 'User Management', icon: Users },
     { id: 'areas', label: 'Game Areas', icon: MapPin },
+    { id: 'subscriptions', label: 'Group Management', icon: Home },
     { id: 'notifications', label: 'Notifications', icon: Bell },
     { id: 'api', label: 'API Sync', icon: Database },
     { id: 'settings', label: 'Settings', icon: Settings },
@@ -559,7 +636,7 @@ const AdminDashboard: React.FC = () => {
                       : user.username}
                   </p>
                   <p className="text-sm text-gray-600 dark:text-gray-400">
-                    {user.role === 'admin' ? 'Administrator' : 'Hunter'}
+                    {isAdmin(user) ? 'Administrator' : 'Hunter'}
                   </p>
                 </div>
                 <div className={`w-3 h-3 rounded-full ${user.is_active ? 'bg-green-500' : 'bg-red-500'}`} />
@@ -1598,15 +1675,125 @@ const AdminDashboard: React.FC = () => {
     </div>
   );
 
+  const renderSettings = () => (
+    <div className="space-y-6">
+      {/* Tenant Management - Only for Super Admins */}
+      {isSuperAdmin(state.user) && (
+        <div className="card p-6">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
+            Tenant Management
+          </h3>
+          <p className="text-gray-600 dark:text-gray-400 mb-6">
+            As a super administrator, you can switch between different tenant organizations to manage multiple game instances.
+          </p>
+          
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Current Organization
+              </label>
+              <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="font-semibold text-blue-900 dark:text-blue-100">
+                      {state.currentTenant?.name || 'Unknown'}
+                    </h4>
+                    <p className="text-sm text-blue-700 dark:text-blue-300">
+                      {state.currentTenant?.description || 'No description available'}
+                    </p>
+                  </div>
+                  <div className="text-xs text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-800 px-2 py-1 rounded">
+                    {state.currentTenant?.slug || 'unknown'}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Switch Organization
+              </label>
+              <TenantSwitcher className="max-w-md" />
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                Switching organizations will reload the page to ensure all data is properly scoped to the new tenant.
+              </p>
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <h4 className="text-md font-semibold text-gray-900 dark:text-gray-100">
+                  Available Organizations
+                </h4>
+                <button
+                  onClick={() => setShowCreateTenantModal(true)}
+                  className="btn btn-primary btn-sm"
+                >
+                  Create New Organization
+                </button>
+              </div>
+              <div className="space-y-2">
+                {state.availableTenants?.map((tenant) => (
+                  <div 
+                    key={tenant.id} 
+                    className={`p-3 rounded-lg border ${
+                      tenant.id === state.currentTenant?.id
+                        ? 'border-blue-300 bg-blue-50 dark:border-blue-700 dark:bg-blue-900/20'
+                        : 'border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h5 className="font-medium text-gray-900 dark:text-gray-100">
+                          {tenant.name}
+                        </h5>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                          {tenant.slug}
+                        </p>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        {tenant.id === state.currentTenant?.id && (
+                          <span className="text-xs bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-200 px-2 py-1 rounded-full">
+                            Current
+                          </span>
+                        )}
+                        <button
+                          onClick={() => handleEditTenant(tenant)}
+                          className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300 text-sm"
+                        >
+                          Edit
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Other Admin Settings */}
+      <div className="card p-6">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
+          General Settings
+        </h3>
+        <p className="text-gray-600 dark:text-gray-400">
+          Additional admin settings will be available here in future updates.
+        </p>
+      </div>
+    </div>
+  );
+
   const renderContent = () => {
     switch (activeTab) {
       case 'overview': return renderOverview();
       case 'hunts': return renderHuntReview();
       case 'users': return renderUserManagement();
       case 'areas': return renderAreaManagement();
+      case 'subscriptions': return <SubscriptionManager />;
       case 'notifications': return renderNotifications();
       case 'api': return renderApiSync();
-      case 'settings': return <div className="card p-6">Admin settings - Coming soon</div>;
+      case 'settings': return renderSettings();
       default: return renderOverview();
     }
   };
@@ -1647,6 +1834,159 @@ const AdminDashboard: React.FC = () => {
 
       {/* Tab Content */}
       {renderContent()}
+
+      {/* Create Tenant Modal */}
+      {showCreateTenantModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
+              Create New Organization
+            </h3>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Organization Name
+                </label>
+                <input
+                  type="text"
+                  value={tenantFormData.name}
+                  onChange={(e) => setTenantFormData({ ...tenantFormData, name: e.target.value })}
+                  className="input"
+                  placeholder="Jotihunt 2024"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Slug (URL identifier)
+                </label>
+                <input
+                  type="text"
+                  value={tenantFormData.slug}
+                  onChange={(e) => setTenantFormData({ ...tenantFormData, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') })}
+                  className="input"
+                  placeholder="jotihunt-2024"
+                  required
+                />
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Only lowercase letters, numbers, and hyphens allowed
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Description (optional)
+                </label>
+                <textarea
+                  value={tenantFormData.description}
+                  onChange={(e) => setTenantFormData({ ...tenantFormData, description: e.target.value })}
+                  className="input h-20 resize-none"
+                  placeholder="Official Jotihunt 2024 game instance..."
+                />
+              </div>
+            </div>
+
+            <div className="flex space-x-3 mt-6">
+              <button
+                onClick={handleCreateTenant}
+                disabled={savingTenant || !tenantFormData.name || !tenantFormData.slug}
+                className="btn btn-primary flex-1"
+              >
+                {savingTenant ? 'Creating...' : 'Create Organization'}
+              </button>
+              
+              <button
+                onClick={() => {
+                  setShowCreateTenantModal(false);
+                  setTenantFormData({ name: '', slug: '', description: '' });
+                }}
+                className="btn btn-secondary flex-1"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Tenant Modal */}
+      {showEditTenantModal && editingTenant && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
+              Edit Organization: {editingTenant.name}
+            </h3>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Organization Name
+                </label>
+                <input
+                  type="text"
+                  value={tenantFormData.name}
+                  onChange={(e) => setTenantFormData({ ...tenantFormData, name: e.target.value })}
+                  className="input"
+                  placeholder="Jotihunt 2024"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Slug (URL identifier)
+                </label>
+                <input
+                  type="text"
+                  value={tenantFormData.slug}
+                  onChange={(e) => setTenantFormData({ ...tenantFormData, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') })}
+                  className="input"
+                  placeholder="jotihunt-2024"
+                  required
+                />
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Only lowercase letters, numbers, and hyphens allowed
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Description (optional)
+                </label>
+                <textarea
+                  value={tenantFormData.description}
+                  onChange={(e) => setTenantFormData({ ...tenantFormData, description: e.target.value })}
+                  className="input h-20 resize-none"
+                  placeholder="Official Jotihunt 2024 game instance..."
+                />
+              </div>
+            </div>
+
+            <div className="flex space-x-3 mt-6">
+              <button
+                onClick={handleUpdateTenant}
+                disabled={savingTenant || !tenantFormData.name || !tenantFormData.slug}
+                className="btn btn-primary flex-1"
+              >
+                {savingTenant ? 'Updating...' : 'Update Organization'}
+              </button>
+              
+              <button
+                onClick={() => {
+                  setShowEditTenantModal(false);
+                  setEditingTenant(null);
+                  setTenantFormData({ name: '', slug: '', description: '' });
+                }}
+                className="btn btn-secondary flex-1"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

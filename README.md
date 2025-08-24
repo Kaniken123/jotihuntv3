@@ -6,7 +6,7 @@ A sophisticated location-based scouting game application where teams compete to 
 
 - **Real-time location tracking** with GPS integration
 - **Interactive mapping** with Leaflet integration
-- **Team-based gameplay** with 6 game areas (Alpha, Bravo, Charlie, Delta, Echo, Foxtrot)
+- **Team-based gameplay** with 8 game areas (Alpha, Bravo, Charlie, Delta, Echo, Foxtrot, Golf, Hotel)
 - **Hunt submission system** with photo verification
 - **Team communication** with real-time chat
 - **Admin dashboard** for game management
@@ -79,13 +79,15 @@ This will start:
 
 ## Game Areas
 
-The game is divided into 6 areas:
+The game is divided into 8 areas:
 - **Alpha** - Primary hunting zone
 - **Bravo** - Secondary hunting zone  
 - **Charlie** - Tertiary hunting zone
 - **Delta** - Quaternary hunting zone
 - **Echo** - Quinary hunting zone
 - **Foxtrot** - Senary hunting zone
+- **Golf** - Seventh hunting zone
+- **Hotel** - Eighth hunting zone
 
 ## API Endpoints
 

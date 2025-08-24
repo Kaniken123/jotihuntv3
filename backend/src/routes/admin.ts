@@ -1,6 +1,6 @@
 import express from 'express';
 import { db } from '../utils/database';
-import { authenticateToken, requireAdmin } from '../middleware/auth';
+import { authenticateToken, requireAdmin, enforceTenantIsolation } from '../middleware/auth';
 import { getSocketIO } from '../socketManager';
 
 const router = express.Router();
@@ -10,15 +10,13 @@ let statsCache: { data: any; timestamp: number } | null = null;
 const STATS_CACHE_DURATION = 30000; // 30 seconds
 
 // Get dashboard statistics
-router.get('/stats', authenticateToken, requireAdmin, async (req, res) => {
+router.get('/stats', authenticateToken, requireAdmin, enforceTenantIsolation, async (req, res) => {
   try {
     const now = Date.now();
+    const tenantId = req.user!.current_tenant_id || req.user!.tenant_id;
     
-    // Check cache
-    if (statsCache && (now - statsCache.timestamp) < STATS_CACHE_DURATION) {
-      return res.json(statsCache.data);
-    }
-
+    // Note: We don't use cache for tenant-scoped data as different tenants need different stats
+    
     const [
       totalUsers,
       totalTeams,
@@ -27,12 +25,12 @@ router.get('/stats', authenticateToken, requireAdmin, async (req, res) => {
       activeAreas,
       totalMessages
     ] = await Promise.all([
-      db('users').count('* as count').first(),
-      db('teams').count('* as count').first(),
-      db('hunts').where('status', 'pending').count('* as count').first(),
-      db('hunts').count('* as count').first(),
-      db('areas').where('status', 'active').count('* as count').first(),
-      db('team_messages').count('* as count').first()
+      db('users').where('tenant_id', tenantId).count('* as count').first(),
+      db('teams').where('tenant_id', tenantId).count('* as count').first(),
+      db('hunts').where('status', 'pending').where('tenant_id', tenantId).count('* as count').first(),
+      db('hunts').where('tenant_id', tenantId).count('* as count').first(),
+      db('areas').where('status', 'active').where('tenant_id', tenantId).count('* as count').first(),
+      db('team_messages').where('tenant_id', tenantId).count('* as count').first()
     ]);
 
     const data = {
@@ -41,11 +39,9 @@ router.get('/stats', authenticateToken, requireAdmin, async (req, res) => {
       pending_hunts: pendingHunts?.count || 0,
       total_hunts: totalHunts?.count || 0,
       active_areas: activeAreas?.count || 0,
-      total_messages: totalMessages?.count || 0
+      total_messages: totalMessages?.count || 0,
+      tenant_id: tenantId
     };
-
-    // Update cache
-    statsCache = { data, timestamp: now };
     
     res.json(data);
   } catch (error) {
@@ -55,9 +51,10 @@ router.get('/stats', authenticateToken, requireAdmin, async (req, res) => {
 });
 
 // Get game analytics
-router.get('/analytics', authenticateToken, requireAdmin, async (req, res) => {
+router.get('/analytics', authenticateToken, requireAdmin, enforceTenantIsolation, async (req, res) => {
   try {
     const { period = '24h' } = req.query;
+    const tenantId = req.user!.current_tenant_id || req.user!.tenant_id;
     
     let timeFilter = new Date();
     switch (period) {
@@ -85,6 +82,7 @@ router.get('/analytics', authenticateToken, requireAdmin, async (req, res) => {
         .select('status')
         .count('* as count')
         .where('hunt_time', '>=', timeFilter)
+        .where('tenant_id', tenantId)
         .groupBy('status'),
       
       // Hunts by area
@@ -93,6 +91,7 @@ router.get('/analytics', authenticateToken, requireAdmin, async (req, res) => {
         .count('* as count')
         .sum('points_awarded as total_points')
         .where('hunt_time', '>=', timeFilter)
+        .where('tenant_id', tenantId)
         .groupBy('fox_area'),
       
       // Top performing teams
@@ -102,6 +101,8 @@ router.get('/analytics', authenticateToken, requireAdmin, async (req, res) => {
         .count('hunts.id as hunt_count')
         .join('teams', 'hunts.hunter_team_id', 'teams.id')
         .where('hunts.status', 'approved')
+        .where('hunts.tenant_id', tenantId)
+        .where('teams.tenant_id', tenantId)
         .groupBy('teams.id', 'teams.name')
         .orderBy('total_points', 'desc')
         .limit(10),
@@ -111,6 +112,7 @@ router.get('/analytics', authenticateToken, requireAdmin, async (req, res) => {
         .select(db.raw('DATE(created_at) as date'))
         .count('* as count')
         .where('created_at', '>=', timeFilter)
+        .where('tenant_id', tenantId)
         .groupBy(db.raw('DATE(created_at)'))
         .orderBy('date')
     ]);
@@ -130,10 +132,11 @@ router.get('/analytics', authenticateToken, requireAdmin, async (req, res) => {
 });
 
 // Update area status
-router.put('/areas/:area_id/status', authenticateToken, requireAdmin, async (req, res) => {
+router.put('/areas/:area_id/status', authenticateToken, requireAdmin, enforceTenantIsolation, async (req, res) => {
   try {
     const { area_id } = req.params;
     const { status, reason } = req.body;
+    const tenantId = req.user!.current_tenant_id || req.user!.tenant_id;
 
     if (!['active', 'inactive', 'hunted'].includes(status)) {
       return res.status(400).json({ error: 'Invalid status' });
@@ -141,6 +144,7 @@ router.put('/areas/:area_id/status', authenticateToken, requireAdmin, async (req
 
     await db('areas')
       .where('id', area_id)
+      .where('tenant_id', tenantId)
       .update({
         status,
         updated_at: new Date()
@@ -158,7 +162,7 @@ router.put('/areas/:area_id/status', authenticateToken, requireAdmin, async (req
       // Table might not exist yet, ignore for now
     });
 
-    const area = await db('areas').where('id', area_id).first();
+    const area = await db('areas').where('id', area_id).where('tenant_id', tenantId).first();
     res.json(area);
   } catch (error) {
     console.error('Update area status error:', error);
@@ -411,17 +415,18 @@ router.post('/notifications/broadcast', authenticateToken, requireAdmin, async (
 });
 
 // Send notification to specific team
-router.post('/notifications/team/:team_id', authenticateToken, requireAdmin, async (req, res) => {
+router.post('/notifications/team/:team_id', authenticateToken, requireAdmin, enforceTenantIsolation, async (req, res) => {
   try {
     const { team_id } = req.params;
     const { title, message, type = 'system' } = req.body;
+    const tenantId = req.user!.current_tenant_id || req.user!.tenant_id;
     
     if (!title || !message) {
       return res.status(400).json({ error: 'Title and message are required' });
     }
 
-    // Verify team exists
-    const team = await db('teams').where('id', team_id).first();
+    // Verify team exists and belongs to current tenant
+    const team = await db('teams').where('id', team_id).where('tenant_id', tenantId).first();
     if (!team) {
       return res.status(404).json({ error: 'Team not found' });
     }
@@ -458,17 +463,18 @@ router.post('/notifications/team/:team_id', authenticateToken, requireAdmin, asy
 });
 
 // Send notification to specific user
-router.post('/notifications/user/:user_id', authenticateToken, requireAdmin, async (req, res) => {
+router.post('/notifications/user/:user_id', authenticateToken, requireAdmin, enforceTenantIsolation, async (req, res) => {
   try {
     const { user_id } = req.params;
     const { title, message, type = 'system' } = req.body;
+    const tenantId = req.user!.current_tenant_id || req.user!.tenant_id;
     
     if (!title || !message) {
       return res.status(400).json({ error: 'Title and message are required' });
     }
 
-    // Verify user exists
-    const user = await db('users').where('id', user_id).first();
+    // Verify user exists and belongs to current tenant
+    const user = await db('users').where('id', user_id).where('tenant_id', tenantId).first();
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
@@ -505,11 +511,13 @@ router.post('/notifications/user/:user_id', authenticateToken, requireAdmin, asy
 });
 
 // Get list of teams for notification targeting
-router.get('/notifications/teams', authenticateToken, requireAdmin, async (req, res) => {
+router.get('/notifications/teams', authenticateToken, requireAdmin, enforceTenantIsolation, async (req, res) => {
   try {
+    const tenantId = req.user!.current_tenant_id || req.user!.tenant_id;
     const teams = await db('teams')
       .select('id', 'name', 'area')
       .where('is_active', true)
+      .where('tenant_id', tenantId)
       .orderBy('name');
 
     res.json(teams);
@@ -520,11 +528,13 @@ router.get('/notifications/teams', authenticateToken, requireAdmin, async (req, 
 });
 
 // Get list of users for notification targeting
-router.get('/notifications/users', authenticateToken, requireAdmin, async (req, res) => {
+router.get('/notifications/users', authenticateToken, requireAdmin, enforceTenantIsolation, async (req, res) => {
   try {
+    const tenantId = req.user!.current_tenant_id || req.user!.tenant_id;
     const users = await db('users')
       .select('id', 'username', 'first_name', 'last_name')
       .where('is_active', true)
+      .where('tenant_id', tenantId)
       .orderBy('username');
 
     res.json(users);

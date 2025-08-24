@@ -55,13 +55,19 @@ const chat_1 = __importDefault(require("./routes/chat"));
 const hunts_1 = __importDefault(require("./routes/hunts"));
 const rules_1 = __importDefault(require("./routes/rules"));
 const admin_1 = __importDefault(require("./routes/admin"));
+const hints_1 = __importDefault(require("./routes/hints"));
 dotenv_1.default.config();
 const app = (0, express_1.default)();
 const server = (0, http_1.createServer)(app);
 const io = new socket_io_1.Server(server, {
+    path: '/api/socket.io/',
     cors: {
-        origin: process.env.FRONTEND_URL || "http://localhost:3000",
-        methods: ["GET", "POST"]
+        origin: [
+            process.env.FRONTEND_URL || "http://localhost:3000",
+            "https://dfef01c8947a.ngrok-free.app"
+        ],
+        methods: ["GET", "POST"],
+        credentials: true
     }
 });
 const PORT = process.env.PORT || 3001;
@@ -85,24 +91,36 @@ app.use('/api/chat', chat_1.default);
 app.use('/api/hunts', hunts_1.default);
 app.use('/api/rules', rules_1.default);
 app.use('/api/admin', admin_1.default);
+app.use('/api/hints', hints_1.default);
 app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 io.on('connection', (socket) => {
     console.log('User connected:', socket.id);
-    socket.on('join-team', (teamId) => {
-        socket.join(`team-${teamId}`);
-        console.log(`User ${socket.id} joined team ${teamId}`);
+    // Join tenant-specific rooms
+    socket.on('join-room', (roomName) => {
+        socket.join(roomName);
+        console.log(`User ${socket.id} joined room ${roomName}`);
     });
-    socket.on('leave-team', (teamId) => {
-        socket.leave(`team-${teamId}`);
-        console.log(`User ${socket.id} left team ${teamId}`);
+    // Join tenant-specific general chat
+    socket.on('join-tenant-general', (tenantId) => {
+        socket.join(`tenant-${tenantId}-general-chat`);
+        console.log(`User ${socket.id} joined tenant ${tenantId} general chat`);
+    });
+    // Join tenant-specific team rooms  
+    socket.on('join-team', (teamId, tenantId) => {
+        socket.join(`tenant-${tenantId}-team-${teamId}`);
+        console.log(`User ${socket.id} joined tenant ${tenantId} team ${teamId}`);
+    });
+    socket.on('leave-team', (teamId, tenantId) => {
+        socket.leave(`tenant-${tenantId}-team-${teamId}`);
+        console.log(`User ${socket.id} left tenant ${tenantId} team ${teamId}`);
     });
     socket.on('team-message', (data) => {
-        socket.to(`team-${data.teamId}`).emit('new-message', data);
+        socket.to(`tenant-${data.tenantId}-team-${data.teamId}`).emit('new-message', data);
     });
     socket.on('location-update', (data) => {
-        socket.to(`team-${data.teamId}`).emit('location-updated', data);
+        socket.to(`tenant-${data.tenantId}-team-${data.teamId}`).emit('location-updated', data);
     });
     socket.on('disconnect', () => {
         console.log('User disconnected:', socket.id);

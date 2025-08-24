@@ -17,8 +17,23 @@ export const gameService = {
   },
 
   async getSubscriptions() {
-    const response = await api.get('/jotihunt/subscriptions');
-    return response.data;
+    console.log('🔗 Calling subscriptions endpoint...');
+    try {
+      const response = await api.get('/jotihunt/subscriptions-with-visits');
+      console.log('✅ Subscriptions response:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('❌ Subscriptions error, trying fallback...', error);
+      // Fallback to basic endpoint
+      try {
+        const fallbackResponse = await api.get('/jotihunt/subscriptions');
+        console.log('✅ Fallback subscriptions response:', fallbackResponse.data);
+        return fallbackResponse.data;
+      } catch (fallbackError) {
+        console.error('❌ Fallback subscriptions error:', fallbackError);
+        throw fallbackError;
+      }
+    }
   },
 
   async getStatus() {
@@ -73,6 +88,11 @@ export const gameService = {
 
   async getFoxLocationHistory(areaId: number, limit: number = 50) {
     const response = await api.get(`/jotihunt/areas/${areaId}/locations?limit=${limit}`);
+    return response.data;
+  },
+
+  async getFoxRoute(areaId: number, hours: number = 24, limit: number = 100) {
+    const response = await api.get(`/jotihunt/areas/${areaId}/route?hours=${hours}&limit=${limit}`);
     return response.data;
   },
 
@@ -132,6 +152,31 @@ export const gameService = {
 
   async updateHintSolution(solutionId: number, data: { is_correct: boolean, fox_team?: string, reveals_fox_location?: boolean }) {
     const response = await api.patch(`/hints/solutions/${solutionId}`, data);
+    return response.data;
+  },
+
+  // Subscription management functions
+  async assignSubscriptionToFoxTeam(subscriptionId: number, foxTeamName: string, lat?: number, lng?: number) {
+    const response = await api.post(`/jotihunt/subscriptions/${subscriptionId}/assign-fox`, {
+      fox_team_name: foxTeamName,
+      lat,
+      lng
+    });
+    return response.data;
+  },
+
+  async recordFoxVisit(subscriptionId: number, foxTeamName: string, visitLat: number, visitLng: number, notes?: string) {
+    const response = await api.post(`/jotihunt/subscriptions/${subscriptionId}/visit`, {
+      fox_team_name: foxTeamName,
+      visit_lat: visitLat,
+      visit_lng: visitLng,
+      notes
+    });
+    return response.data;
+  },
+
+  async getSubscriptionVisits(subscriptionId: number) {
+    const response = await api.get(`/jotihunt/subscriptions/${subscriptionId}/visits`);
     return response.data;
   },
 };

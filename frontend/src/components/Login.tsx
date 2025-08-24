@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { api } from '../services/authService';
+import { api, authService } from '../services/authService';
 import LoadingSpinner from './LoadingSpinner';
 
 const Login: React.FC = () => {
@@ -13,6 +13,13 @@ const Login: React.FC = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  
+  // Tenant selection modal state
+  const [showTenantModal, setShowTenantModal] = useState(false);
+  const [tenantOptions, setTenantOptions] = useState<Array<{id: number, name: string, slug: string, user_id: number}>>([]);
+  const [pendingUsername, setPendingUsername] = useState('');
+  const [pendingPassword, setPendingPassword] = useState('');
+  
   const { login } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -23,10 +30,21 @@ const Login: React.FC = () => {
 
     try {
       if (isLoginMode) {
-        await login(username, password);
+        const result = await login(username, password);
+        
+        if (result.requires_tenant_selection) {
+          // User has multiple tenants, show selection modal
+          setTenantOptions(result.tenant_options || []);
+          setPendingUsername(username);
+          setPendingPassword(password);
+          setShowTenantModal(true);
+          setIsLoading(false);
+          return;
+        }
+        // Login successful, user will be redirected by auth state change
       } else {
         // Registration
-        await api.post('/auth/register', {
+        await authService.register({
           username,
           email,
           password,
@@ -44,6 +62,20 @@ const Login: React.FC = () => {
       }
     } catch (err: any) {
       setError(err.response?.data?.error || (isLoginMode ? 'Login failed' : 'Registration failed'));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleTenantSelection = async (tenantId: number) => {
+    setIsLoading(true);
+    try {
+      await login(pendingUsername, pendingPassword, tenantId);
+      // Login successful, modal will close and user will be redirected
+      setShowTenantModal(false);
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Login failed');
+      setShowTenantModal(false);
     } finally {
       setIsLoading(false);
     }
@@ -213,6 +245,60 @@ const Login: React.FC = () => {
           </div>
         </form>
       </div>
+
+      {/* Tenant Selection Modal */}
+      {showTenantModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
+              Select Organization
+            </h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+              You have access to multiple organizations. Please select which one you'd like to access:
+            </p>
+            
+            <div className="space-y-3">
+              {tenantOptions.map((tenant) => (
+                <button
+                  key={tenant.id}
+                  onClick={() => handleTenantSelection(tenant.id)}
+                  disabled={isLoading}
+                  className="w-full p-4 text-left border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 hover:border-primary-300 dark:hover:border-primary-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <div className="font-medium text-gray-900 dark:text-gray-100">
+                    {tenant.name}
+                  </div>
+                  <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                    {tenant.slug}
+                  </div>
+                </button>
+              ))}
+            </div>
+
+            <div className="mt-6 flex justify-end">
+              <button
+                onClick={() => {
+                  setShowTenantModal(false);
+                  setPendingUsername('');
+                  setPendingPassword('');
+                  setTenantOptions([]);
+                }}
+                disabled={isLoading}
+                className="btn btn-secondary"
+              >
+                Cancel
+              </button>
+            </div>
+
+            {isLoading && (
+              <div className="mt-4 flex items-center justify-center">
+                <LoadingSpinner size="sm" />
+                <span className="ml-2 text-gray-500">Signing in...</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

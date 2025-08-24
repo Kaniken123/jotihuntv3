@@ -70,29 +70,35 @@ app.get('/api/health', (req, res) => {
 io.on('connection', (socket) => {
   console.log('User connected:', socket.id);
 
-  // Join general rooms
+  // Join tenant-specific rooms
   socket.on('join-room', (roomName) => {
     socket.join(roomName);
     console.log(`User ${socket.id} joined room ${roomName}`);
   });
 
-  // Join team rooms  
-  socket.on('join-team', (teamId) => {
-    socket.join(`team-${teamId}`);
-    console.log(`User ${socket.id} joined team ${teamId}`);
+  // Join tenant-specific general chat
+  socket.on('join-tenant-general', (tenantId) => {
+    socket.join(`tenant-${tenantId}-general-chat`);
+    console.log(`User ${socket.id} joined tenant ${tenantId} general chat`);
   });
 
-  socket.on('leave-team', (teamId) => {
-    socket.leave(`team-${teamId}`);
-    console.log(`User ${socket.id} left team ${teamId}`);
+  // Join tenant-specific team rooms  
+  socket.on('join-team', (teamId, tenantId) => {
+    socket.join(`tenant-${tenantId}-team-${teamId}`);
+    console.log(`User ${socket.id} joined tenant ${tenantId} team ${teamId}`);
+  });
+
+  socket.on('leave-team', (teamId, tenantId) => {
+    socket.leave(`tenant-${tenantId}-team-${teamId}`);
+    console.log(`User ${socket.id} left tenant ${tenantId} team ${teamId}`);
   });
 
   socket.on('team-message', (data) => {
-    socket.to(`team-${data.teamId}`).emit('new-message', data);
+    socket.to(`tenant-${data.tenantId}-team-${data.teamId}`).emit('new-message', data);
   });
 
   socket.on('location-update', (data) => {
-    socket.to(`team-${data.teamId}`).emit('location-updated', data);
+    socket.to(`tenant-${data.tenantId}-team-${data.teamId}`).emit('location-updated', data);
   });
 
   socket.on('disconnect', () => {

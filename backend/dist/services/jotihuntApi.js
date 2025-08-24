@@ -46,26 +46,52 @@ class JotihuntApiService {
     // Sync external data with local database
     static async syncSubscriptions() {
         try {
+            console.log('🔄 Starting subscriptions sync...');
             const externalSubscriptions = await this.getSubscriptions();
+            // Get all active tenants
+            const tenants = await (0, database_1.db)('tenants').where('is_active', true);
             let synced = 0;
             let errors = 0;
             for (const subscription of externalSubscriptions) {
                 try {
-                    await (0, database_1.db)('subscriptions')
-                        .insert({
-                        external_id: subscription.id,
-                        team_name: subscription.name || subscription.team_name,
-                        is_participating: subscription.is_participating,
-                        synced_at: new Date(),
-                        updated_at: new Date()
-                    })
-                        .onConflict('external_id')
-                        .merge({
-                        team_name: subscription.name || subscription.team_name,
-                        is_participating: subscription.is_participating,
-                        synced_at: new Date(),
-                        updated_at: new Date()
-                    });
+                    // Sync to all tenants
+                    for (const tenant of tenants) {
+                        // Convert lat/lng from strings to numbers, skip invalid coordinates
+                        let lat = null;
+                        let lng = null;
+                        if (subscription.lat && subscription.long &&
+                            subscription.lat !== 'lat' && subscription.long !== 'long') {
+                            const parsedLat = parseFloat(subscription.lat);
+                            const parsedLng = parseFloat(subscription.long);
+                            // Validate coordinates are within reasonable bounds for Netherlands
+                            if (!isNaN(parsedLat) && !isNaN(parsedLng) &&
+                                parsedLat >= 50.0 && parsedLat <= 54.0 &&
+                                parsedLng >= 3.0 && parsedLng <= 8.0) {
+                                lat = parsedLat;
+                                lng = parsedLng;
+                            }
+                        }
+                        await (0, database_1.db)('subscriptions')
+                            .insert({
+                            external_id: subscription.id,
+                            team_name: subscription.name || subscription.team_name,
+                            is_participating: subscription.is_participating ?? true, // Default to true
+                            lat,
+                            lng,
+                            tenant_id: tenant.id,
+                            synced_at: new Date(),
+                            updated_at: new Date()
+                        })
+                            .onConflict(['external_id', 'tenant_id'])
+                            .merge({
+                            team_name: subscription.name || subscription.team_name,
+                            is_participating: subscription.is_participating ?? true,
+                            lat,
+                            lng,
+                            synced_at: new Date(),
+                            updated_at: new Date()
+                        });
+                    }
                     synced++;
                 }
                 catch (error) {
@@ -94,37 +120,73 @@ class JotihuntApiService {
     }
     static async syncAreas() {
         try {
+            console.log('🔄 Starting areas sync...');
             const externalAreas = await this.getAreas();
+            // Get all active tenants
+            const tenants = await (0, database_1.db)('tenants').where('is_active', true);
             let synced = 0;
             let errors = 0;
             for (const area of externalAreas) {
                 try {
-                    await (0, database_1.db)('areas')
-                        .where('name', area.name)
-                        .update({
-                        status: area.status,
-                        lat: area.lat,
-                        lng: area.lng,
-                        last_seen: area.last_seen ? new Date(area.last_seen) : null,
-                        synced_at: new Date(),
-                        updated_at: new Date()
-                    });
-                    // If no rows were updated, the area doesn't exist locally
-                    const result = await (0, database_1.db)('areas').where('name', area.name).first();
-                    if (!result) {
-                        await (0, database_1.db)('areas').insert({
-                            external_id: area.id,
-                            name: area.name,
-                            fox_team_name: area.fox_team_name,
-                            status: area.status,
-                            lat: area.lat,
-                            lng: area.lng,
-                            last_seen: area.last_seen ? new Date(area.last_seen) : null,
-                            points: 0, // Default points
-                            synced_at: new Date(),
-                            created_at: new Date(),
-                            updated_at: new Date()
-                        });
+                    // Sync to all tenants
+                    for (const tenant of tenants) {
+                        // Check if area exists for this tenant
+                        const localArea = await (0, database_1.db)('areas')
+                            .where('name', area.name)
+                            .where('tenant_id', tenant.id)
+                            .first();
+                        if (localArea) {
+                            // Update existing area
+                            await (0, database_1.db)('areas')
+                                .where('id', localArea.id)
+                                .update({
+                                fox_team_name: area.fox_team_name,
+                                status: area.status,
+                                lat: area.lat,
+                                lng: area.lng,
+                                last_seen: area.last_seen ? new Date(area.last_seen) : null,
+                                synced_at: new Date(),
+                                updated_at: new Date()
+                            });
+                            // Add location history if coordinates changed
+                            if (area.lat && area.lng &&
+                                (localArea.lat !== area.lat || localArea.lng !== area.lng)) {
+                                await (0, database_1.db)('area_locations').insert({
+                                    area_id: localArea.id,
+                                    lat: area.lat,
+                                    lng: area.lng,
+                                    recorded_at: area.last_seen ? new Date(area.last_seen) : new Date(),
+                                    source: 'api'
+                                });
+                            }
+                        }
+                        else {
+                            // Create new area for this tenant
+                            const [newAreaId] = await (0, database_1.db)('areas').insert({
+                                external_id: area.id,
+                                name: area.name,
+                                fox_team_name: area.fox_team_name,
+                                status: area.status,
+                                lat: area.lat,
+                                lng: area.lng,
+                                last_seen: area.last_seen ? new Date(area.last_seen) : null,
+                                points: 0, // Default points
+                                tenant_id: tenant.id,
+                                synced_at: new Date(),
+                                created_at: new Date(),
+                                updated_at: new Date()
+                            }).returning('id');
+                            // Store initial location in history if coordinates exist
+                            if (area.lat && area.lng) {
+                                await (0, database_1.db)('area_locations').insert({
+                                    area_id: newAreaId,
+                                    lat: area.lat,
+                                    lng: area.lng,
+                                    recorded_at: area.last_seen ? new Date(area.last_seen) : new Date(),
+                                    source: 'api'
+                                });
+                            }
+                        }
                     }
                     synced++;
                 }
@@ -153,34 +215,41 @@ class JotihuntApiService {
     }
     static async syncArticles() {
         try {
+            console.log('🔄 Starting articles sync...');
             const externalArticles = await this.getArticles();
+            // Get all active tenants
+            const tenants = await (0, database_1.db)('tenants').where('is_active', true);
             let synced = 0;
             let errors = 0;
             for (const article of externalArticles) {
                 try {
-                    await (0, database_1.db)('articles')
-                        .insert({
-                        external_id: article.id,
-                        title: article.title,
-                        content: article.message.content,
-                        type: article.type,
-                        area: article.area,
-                        published_at: new Date(article.publish_at),
-                        is_active: true,
-                        synced_at: new Date(),
-                        created_at: new Date(),
-                        updated_at: new Date()
-                    })
-                        .onConflict('external_id')
-                        .merge({
-                        title: article.title,
-                        content: article.message.content,
-                        type: article.type,
-                        area: article.area,
-                        published_at: new Date(article.publish_at),
-                        synced_at: new Date(),
-                        updated_at: new Date()
-                    });
+                    // Sync to all tenants
+                    for (const tenant of tenants) {
+                        await (0, database_1.db)('articles')
+                            .insert({
+                            external_id: article.id,
+                            title: article.title,
+                            content: article.message.content,
+                            type: article.type,
+                            area: article.area,
+                            published_at: new Date(article.publish_at),
+                            is_active: true,
+                            tenant_id: tenant.id,
+                            synced_at: new Date(),
+                            created_at: new Date(),
+                            updated_at: new Date()
+                        })
+                            .onConflict(['external_id', 'tenant_id'])
+                            .merge({
+                            title: article.title,
+                            content: article.message.content,
+                            type: article.type,
+                            area: article.area,
+                            published_at: new Date(article.publish_at),
+                            synced_at: new Date(),
+                            updated_at: new Date()
+                        });
+                    }
                     synced++;
                 }
                 catch (error) {

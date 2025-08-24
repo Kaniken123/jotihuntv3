@@ -1,10 +1,10 @@
 import express from 'express';
 import { db } from '../utils/database';
-import { authenticateToken } from '../middleware/auth';
+import { authenticateToken, isAdmin, enforceTenantIsolation } from '../middleware/auth';
 
 const router = express.Router();
 
-router.get('/settings', authenticateToken, async (req, res) => {
+router.get('/settings', authenticateToken, enforceTenantIsolation, async (req, res) => {
   try {
     let settings = await db('location_settings')
       .where('user_id', req.user!.id)
@@ -31,7 +31,7 @@ router.get('/settings', authenticateToken, async (req, res) => {
   }
 });
 
-router.post('/settings', authenticateToken, async (req, res) => {
+router.post('/settings', authenticateToken, enforceTenantIsolation, async (req, res) => {
   try {
     const { tracking_interval, offline_threshold, location_sharing_enabled, privacy_mode } = req.body;
 
@@ -53,7 +53,7 @@ router.post('/settings', authenticateToken, async (req, res) => {
   }
 });
 
-router.post('/update', authenticateToken, async (req, res) => {
+router.post('/update', authenticateToken, enforceTenantIsolation, async (req, res) => {
   try {
     const { lat, lng, accuracy } = req.body;
 
@@ -108,7 +108,8 @@ router.post('/update', authenticateToken, async (req, res) => {
         .first();
 
       if (teamMember) {
-        io.to(`team-${teamMember.team_id}`).emit('team-location-update', locationUpdate);
+        const tenantId = req.user!.current_tenant_id || req.user!.tenant_id;
+        io.to(`tenant-${tenantId}-team-${teamMember.team_id}`).emit('team-location-update', locationUpdate);
       }
     } catch (socketError) {
       console.error('Socket emission error:', socketError);
@@ -129,7 +130,7 @@ router.post('/update', authenticateToken, async (req, res) => {
   }
 });
 
-router.get('/latest', authenticateToken, async (req, res) => {
+router.get('/latest', authenticateToken, enforceTenantIsolation, async (req, res) => {
   try {
     res.setHeader('Cache-Control', 'private, max-age=10'); // Short cache for location data
     
@@ -170,7 +171,7 @@ router.get('/latest', authenticateToken, async (req, res) => {
 
     // Then get the full location data for those IDs
     let query = db('user_locations')
-      .select('user_locations.*', 'users.username', 'users.first_name', 'users.last_name', 'users.role', 'teams.name as team_name', 'teams.area as team_area', 'team_members.role as team_role')
+      .select('user_locations.*', 'users.username', 'users.first_name', 'users.last_name', 'teams.name as team_name', 'teams.area as team_area', 'team_members.role as team_role')
       .join('users', 'user_locations.user_id', 'users.id')
       .leftJoin('team_members', 'users.id', 'team_members.user_id')
       .leftJoin('teams', 'team_members.team_id', 'teams.id')
@@ -210,7 +211,7 @@ router.get('/history/:user_id', authenticateToken, async (req, res) => {
     const { limit = 100, offset = 0 } = req.query;
 
     // Check if user can access this data
-    if (req.user!.id !== parseInt(user_id) && req.user!.role !== 'admin') {
+    if (req.user!.id !== parseInt(user_id) && !isAdmin(req.user!)) {
       return res.status(403).json({ error: 'Access denied' });
     }
 
@@ -231,7 +232,7 @@ router.delete('/history/:user_id', authenticateToken, async (req, res) => {
   try {
     const { user_id } = req.params;
 
-    if (req.user!.id !== parseInt(user_id) && req.user!.role !== 'admin') {
+    if (req.user!.id !== parseInt(user_id) && !isAdmin(req.user!)) {
       return res.status(403).json({ error: 'Access denied' });
     }
 
@@ -247,7 +248,7 @@ router.delete('/history/:user_id', authenticateToken, async (req, res) => {
 router.get('/route/:user_id', authenticateToken, async (req, res) => {
   try {
     // Only admins can view user routes
-    if (req.user!.role !== 'admin') {
+    if (!isAdmin(req.user!)) {
       return res.status(403).json({ error: 'Admin access required' });
     }
 
@@ -268,7 +269,7 @@ router.get('/route/:user_id', authenticateToken, async (req, res) => {
 
     // Get user info
     const user = await db('users')
-      .select('users.id', 'users.username', 'users.first_name', 'users.last_name', 'users.role')
+      .select('users.id', 'users.username', 'users.first_name', 'users.last_name')
       .leftJoin('team_members', 'users.id', 'team_members.user_id')
       .leftJoin('teams', 'team_members.team_id', 'teams.id')
       .select('teams.name as team_name', 'teams.area as team_area', 'team_members.role as team_role')
@@ -356,12 +357,12 @@ function toRad(degrees: number): number {
 router.get('/users', authenticateToken, async (req, res) => {
   try {
     // Only admins can view user list
-    if (req.user!.role !== 'admin') {
+    if (!isAdmin(req.user!)) {
       return res.status(403).json({ error: 'Admin access required' });
     }
 
     const users = await db('users')
-      .select('users.id', 'users.username', 'users.first_name', 'users.last_name', 'users.role')
+      .select('users.id', 'users.username', 'users.first_name', 'users.last_name')
       .leftJoin('team_members', 'users.id', 'team_members.user_id')
       .leftJoin('teams', 'team_members.team_id', 'teams.id')
       .leftJoin('location_settings', 'users.id', 'location_settings.user_id')
@@ -372,6 +373,7 @@ router.get('/users', authenticateToken, async (req, res) => {
         'location_settings.location_sharing_enabled',
         'location_settings.privacy_mode'
       )
+      .where('users.tenant_id', req.user!.current_tenant_id || req.user!.tenant_id)
       .orderBy('users.username');
 
     // Get latest location for each user

@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Map, MessageSquare, Camera, FileText, Book, Shield, Route, Menu, X } from 'lucide-react';
 import NotificationCenter from './NotificationCenter';
+import { isAdmin } from '../utils/roleUtils';
 
 const Navbar: React.FC = () => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -27,7 +28,7 @@ const Navbar: React.FC = () => {
     { name: 'Hunt', href: '/hunt', icon: Camera, current: location.pathname === '/hunt' },
     { name: 'Updates', href: '/updates', icon: FileText, current: location.pathname === '/updates' },
     { name: 'Regels', href: '/rules', icon: Book, current: location.pathname === '/rules' },
-    ...(user?.role === 'admin' ? [
+    ...(isAdmin(user) ? [
       { name: 'Admin', href: '/admin', icon: Shield, current: location.pathname === '/admin' }
     ] : []),
   ];
@@ -76,6 +77,7 @@ const Navbar: React.FC = () => {
                 )}
               </div>
             )}
+
           </div>
           
           <div className="flex items-center space-x-4">
@@ -120,7 +122,7 @@ const Navbar: React.FC = () => {
                         : user?.username}
                     </div>
                     <div className="text-xs text-gray-500 dark:text-gray-400">
-                      {user?.role === 'admin' ? 'Administrator' : 'Hunter'}
+                      {isAdmin(user) ? 'Administrator' : 'Hunter'}
                     </div>
                   </div>
                   <svg
@@ -156,7 +158,7 @@ const Navbar: React.FC = () => {
                       Location Settings
                     </Link>
                     
-                    {user?.role === 'admin' && (
+                    {isAdmin(user) && (
                       <>
                         <Link
                           to="/admin"
@@ -229,7 +231,7 @@ const Navbar: React.FC = () => {
                         : user?.username}
                     </p>
                     <p className="text-xs text-gray-600 dark:text-gray-400">
-                      {user?.role === 'admin' ? 'Administrator' : 'Hunter'}
+                      {isAdmin(user) ? 'Administrator' : 'Hunter'}
                     </p>
                   </div>
                 </div>
@@ -252,7 +254,8 @@ const Navbar: React.FC = () => {
                     <span>Location Settings</span>
                   </Link>
                   
-                  {user?.role === 'admin' && (
+
+                  {isAdmin(user) && (
                     <>
                       <Link
                         to="/admin"

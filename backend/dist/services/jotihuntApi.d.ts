@@ -1,8 +1,16 @@
 interface JotihuntSubscription {
     id: number;
     name: string;
+    accomodation?: string;
+    street?: string;
+    housenumber?: number;
+    housenumber_addition?: string;
+    postcode?: string;
+    city?: string;
+    lat: string;
+    long: string;
     team_name?: string;
-    is_participating: boolean;
+    is_participating?: boolean;
 }
 interface JotihuntArea {
     id: number;

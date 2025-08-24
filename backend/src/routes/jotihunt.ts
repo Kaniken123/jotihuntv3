@@ -1,12 +1,12 @@
 import express from 'express';
 import { db } from '../utils/database';
-import { authenticateToken, requireAdmin } from '../middleware/auth';
+import { authenticateToken, requireAdmin, enforceTenantIsolation } from '../middleware/auth';
 import { getSocketIO } from '../socketManager';
 import { JotihuntApiService } from '../services/jotihuntApi';
 
 const router = express.Router();
 
-router.get('/areas', authenticateToken, async (req, res) => {
+router.get('/areas', authenticateToken, enforceTenantIsolation, async (req, res) => {
   try {
     res.setHeader('Cache-Control', 'private, max-age=30');
     
@@ -14,6 +14,7 @@ router.get('/areas', authenticateToken, async (req, res) => {
     
     const areas = await db('areas')
       .select('*')
+      .where('tenant_id', req.tenantId)
       .orderBy('name');
 
     // Only fetch location history if explicitly requested
@@ -50,7 +51,51 @@ router.get('/areas', authenticateToken, async (req, res) => {
   }
 });
 
-router.get('/articles', authenticateToken, async (req, res) => {
+// Get fox route history for a specific area  
+router.get('/areas/:areaId/route', authenticateToken, enforceTenantIsolation, async (req, res) => {
+  try {
+    const { areaId } = req.params;
+    const { limit = '100', hours = '24' } = req.query;
+    
+    // Validate area exists and belongs to current tenant
+    const area = await db('areas')
+      .where('id', areaId)
+      .where('tenant_id', req.tenantId)
+      .first();
+    if (!area) {
+      return res.status(404).json({ error: 'Area not found' });
+    }
+    
+    // Get route history for the specified time period
+    const timeThreshold = new Date(Date.now() - parseInt(hours as string) * 60 * 60 * 1000);
+    
+    const routePoints = await db('area_locations')
+      .where('area_id', areaId)
+      .where('recorded_at', '>', timeThreshold)
+      .orderBy('recorded_at', 'asc')
+      .limit(parseInt(limit as string));
+    
+    res.json({
+      area: {
+        id: area.id,
+        name: area.name,
+        fox_team_name: area.fox_team_name
+      },
+      route: routePoints,
+      route_stats: {
+        total_points: routePoints.length,
+        time_span_hours: parseInt(hours as string),
+        first_point: routePoints[0]?.recorded_at || null,
+        last_point: routePoints[routePoints.length - 1]?.recorded_at || null
+      }
+    });
+  } catch (error) {
+    console.error('Get fox route error:', error);
+    res.status(500).json({ error: 'Failed to get fox route' });
+  }
+});
+
+router.get('/articles', authenticateToken, enforceTenantIsolation, async (req, res) => {
   try {
     res.setHeader('Cache-Control', 'private, max-age=60');
     
@@ -74,6 +119,7 @@ router.get('/articles', authenticateToken, async (req, res) => {
             .andOn('user_assignment_completions.user_id', '=', db.raw('?', [userId]));
       })
       .where('articles.is_active', true)
+      .where('articles.tenant_id', req.tenantId)
       .orderBy('articles.published_at', 'desc');
 
     if (type) {
@@ -232,7 +278,10 @@ router.get('/subscriptions', authenticateToken, async (req, res) => {
     res.setHeader('Cache-Control', 'private, max-age=30');
     
     const subscriptions = await db('subscriptions')
-      .where('is_participating', true)
+      .where(function() {
+        this.where('is_participating', true).orWhereNull('is_participating');
+      })
+      .where('tenant_id', req.user!.current_tenant_id || req.user!.tenant_id)
       .orderBy('team_name');
 
     const subscriptionIds = subscriptions.map(sub => sub.id);
@@ -599,6 +648,207 @@ router.post('/areas/bulk-update', authenticateToken, requireAdmin, async (req, r
   } catch (error) {
     console.error('Bulk update error:', error);
     res.status(500).json({ error: 'Failed to perform bulk update' });
+  }
+});
+
+// SUBSCRIPTION MANAGEMENT ENDPOINTS
+
+// Admin: Assign subscription to fox team
+router.post('/subscriptions/:subscription_id/assign-fox', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { subscription_id } = req.params;
+    const { fox_team_name, lat, lng } = req.body;
+
+    if (!fox_team_name) {
+      return res.status(400).json({ error: 'Fox team name is required' });
+    }
+
+    // Validate fox team exists
+    const foxArea = await db('areas').where('name', fox_team_name).first();
+    if (!foxArea) {
+      return res.status(400).json({ error: 'Fox team not found' });
+    }
+
+    // Update subscription with fox team assignment and coordinates
+    await db('subscriptions')
+      .where('id', subscription_id)
+      .where('tenant_id', req.user!.tenant_id)
+      .update({
+        fox_team_name,
+        lat: lat ? parseFloat(lat) : null,
+        lng: lng ? parseFloat(lng) : null,
+        updated_at: new Date()
+      });
+
+    const subscription = await db('subscriptions')
+      .where('id', subscription_id)
+      .where('tenant_id', req.user!.tenant_id)
+      .first();
+
+    res.json({
+      message: 'Subscription assigned to fox team',
+      subscription
+    });
+  } catch (error) {
+    console.error('Assign fox team error:', error);
+    res.status(500).json({ error: 'Failed to assign fox team' });
+  }
+});
+
+// Admin: Record fox visit to subscription/group
+router.post('/subscriptions/:subscription_id/visit', authenticateToken, async (req, res) => {
+  try {
+    const { subscription_id } = req.params;
+    const { fox_team_name, visit_lat, visit_lng, notes } = req.body;
+
+    if (!fox_team_name || !visit_lat || !visit_lng) {
+      return res.status(400).json({ error: 'Fox team name and visit coordinates are required' });
+    }
+
+    // Get fox area for the team
+    const foxArea = await db('areas')
+      .where('name', fox_team_name)
+      .where('tenant_id', req.user!.tenant_id)
+      .first();
+
+    if (!foxArea) {
+      return res.status(400).json({ error: 'Fox team not found' });
+    }
+
+    // Verify subscription exists
+    const subscription = await db('subscriptions')
+      .where('id', subscription_id)
+      .where('tenant_id', req.user!.tenant_id)
+      .first();
+
+    if (!subscription) {
+      return res.status(404).json({ error: 'Subscription not found' });
+    }
+
+    // Record the visit (will replace existing visit from same fox team)
+    await db('subscription_visits')
+      .insert({
+        subscription_id: parseInt(subscription_id),
+        area_id: foxArea.id,
+        fox_team_name,
+        visit_lat: parseFloat(visit_lat),
+        visit_lng: parseFloat(visit_lng),
+        user_id: req.user!.id,
+        notes,
+        tenant_id: req.user!.tenant_id,
+        created_at: new Date(),
+        updated_at: new Date()
+      })
+      .onConflict(['subscription_id', 'area_id', 'tenant_id'])
+      .merge({
+        visit_lat: parseFloat(visit_lat),
+        visit_lng: parseFloat(visit_lng),
+        user_id: req.user!.id,
+        notes,
+        updated_at: new Date()
+      });
+
+    // Get updated subscription with visit info
+    const subscriptionWithVisits = await db('subscriptions')
+      .select('subscriptions.*')
+      .where('subscriptions.id', subscription_id)
+      .where('subscriptions.tenant_id', req.user!.tenant_id)
+      .first();
+
+    // Get all visits for this subscription
+    const visits = await db('subscription_visits')
+      .where('subscription_id', subscription_id)
+      .where('tenant_id', req.user!.tenant_id)
+      .orderBy('created_at', 'desc');
+
+    res.json({
+      message: 'Visit recorded successfully',
+      subscription: {
+        ...subscriptionWithVisits,
+        visits,
+        visited_by_foxes: visits.map(v => v.fox_team_name)
+      }
+    });
+  } catch (error) {
+    console.error('Record visit error:', error);
+    res.status(500).json({ error: 'Failed to record visit' });
+  }
+});
+
+// Get subscription with visit history
+router.get('/subscriptions/:subscription_id/visits', authenticateToken, async (req, res) => {
+  try {
+    const { subscription_id } = req.params;
+
+    const subscription = await db('subscriptions')
+      .where('id', subscription_id)
+      .where('tenant_id', req.user!.tenant_id)
+      .first();
+
+    if (!subscription) {
+      return res.status(404).json({ error: 'Subscription not found' });
+    }
+
+    const visits = await db('subscription_visits')
+      .select(
+        'subscription_visits.*',
+        'users.username',
+        'users.first_name',
+        'users.last_name'
+      )
+      .leftJoin('users', 'subscription_visits.user_id', 'users.id')
+      .where('subscription_visits.subscription_id', subscription_id)
+      .where('subscription_visits.tenant_id', req.user!.tenant_id)
+      .orderBy('subscription_visits.created_at', 'desc');
+
+    res.json({
+      subscription,
+      visits,
+      visited_by_foxes: visits.map(v => v.fox_team_name)
+    });
+  } catch (error) {
+    console.error('Get subscription visits error:', error);
+    res.status(500).json({ error: 'Failed to get subscription visits' });
+  }
+});
+
+// Update subscriptions endpoint to include visit data
+router.get('/subscriptions-with-visits', authenticateToken, async (req, res) => {
+  try {
+    console.log('📊 Fetching subscriptions for tenant:', req.user!.tenant_id);
+    res.setHeader('Cache-Control', 'private, max-age=30');
+    
+    const subscriptions = await db('subscriptions')
+      .where('tenant_id', req.user!.tenant_id)
+      .where('is_participating', true)
+      .orderBy('team_name');
+      
+    console.log('📊 Found subscriptions:', subscriptions.length);
+
+    // Get all visits for these subscriptions
+    const subscriptionIds = subscriptions.map(sub => sub.id);
+    const visits = await db('subscription_visits')
+      .whereIn('subscription_id', subscriptionIds)
+      .where('tenant_id', req.user!.tenant_id);
+
+    // Group visits by subscription
+    const visitsBySubscription = visits.reduce((acc, visit) => {
+      if (!acc[visit.subscription_id]) acc[visit.subscription_id] = [];
+      acc[visit.subscription_id].push(visit);
+      return acc;
+    }, {} as Record<number, any[]>);
+
+    // Add visit data to subscriptions
+    const subscriptionsWithVisits = subscriptions.map(subscription => ({
+      ...subscription,
+      visits: visitsBySubscription[subscription.id] || [],
+      visited_by_foxes: visitsBySubscription[subscription.id]?.map((v: any) => v.fox_team_name) || []
+    }));
+
+    res.json(subscriptionsWithVisits);
+  } catch (error) {
+    console.error('Get subscriptions with visits error:', error);
+    res.status(500).json({ error: 'Failed to get subscriptions with visits' });
   }
 });
 

@@ -13,7 +13,7 @@ export interface Team {
     id: number;
     name: string;
     description?: string;
-    area?: 'Alpha' | 'Bravo' | 'Charlie' | 'Delta' | 'Echo' | 'Foxtrot';
+    area?: 'Alpha' | 'Bravo' | 'Charlie' | 'Delta' | 'Echo' | 'Foxtrot' | 'Golf' | 'Hotel';
     base_lat?: number;
     base_lng?: number;
     is_active: boolean;

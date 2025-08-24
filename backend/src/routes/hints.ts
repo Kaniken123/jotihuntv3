@@ -1,6 +1,6 @@
 import express from 'express';
 import { db } from '../utils/database';
-import { authenticateToken } from '../middleware/auth';
+import { authenticateToken, isAdmin } from '../middleware/auth';
 import { rdToWgs84, parseRDCoordinates, validateRDCoordinates, formatRDCoordinates } from '../utils/coordinates';
 
 const router = express.Router();
@@ -180,7 +180,7 @@ router.get('/solutions', authenticateToken, async (req, res) => {
 // Admin: Get all solutions
 router.get('/solutions/all', authenticateToken, async (req, res) => {
   try {
-    if (req.user!.role !== 'admin') {
+    if (!isAdmin(req.user!)) {
       return res.status(403).json({ error: 'Admin access required' });
     }
 
@@ -206,7 +206,7 @@ router.get('/solutions/all', authenticateToken, async (req, res) => {
 // Admin: Approve/reject a solution
 router.patch('/solutions/:id', authenticateToken, async (req, res) => {
   try {
-    if (req.user!.role !== 'admin') {
+    if (!isAdmin(req.user!)) {
       return res.status(403).json({ error: 'Admin access required' });
     }
 

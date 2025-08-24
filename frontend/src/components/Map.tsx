@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMapEvents, Polyline } from 'react-leaflet';
 import { Icon, LatLng } from 'leaflet';
-import { Area, UserLocation } from '../types/index';
+import { Area, UserLocation, FoxRoute, Subscription } from '../types/index';
 import { gameService } from '../services/gameService';
 import { useWebSocket } from '../contexts/WebSocketContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -23,6 +23,8 @@ const FOX_TEAM_COLORS = {
   'Delta': { primary: '#F59E0B', secondary: '#FBBF24' },    // Yellow
   'Echo': { primary: '#8B5CF6', secondary: '#A78BFA' },     // Purple
   'Foxtrot': { primary: '#EF4444', secondary: '#F87171' },  // Red
+  'Golf': { primary: '#06B6D4', secondary: '#22D3EE' },     // Cyan
+  'Hotel': { primary: '#EC4899', secondary: '#F472B6' },   // Pink
   'default': { primary: '#6B7280', secondary: '#9CA3AF' }   // Gray fallback
 };
 
@@ -89,6 +91,32 @@ const createFoxIcon = (teamName: string, size: 'small' | 'medium' | 'large' = 'm
     iconSize: [width, height],
     iconAnchor: [width / 2, height / 2],
     popupAnchor: [0, -height / 2],
+  });
+};
+
+// Simple house icon for subscription/group markers
+const createHouseIcon = (isVisited: boolean = false, size: 'small' | 'medium' | 'large' = 'medium') => {
+  const sizes = {
+    small: [16, 16],
+    medium: [20, 20],
+    large: [24, 24],
+  };
+  
+  const [width, height] = sizes[size];
+  const fillColor = isVisited ? '#10B981' : '#3B82F6'; // Green if visited, blue if not
+  
+  const svgContent = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 24 24">
+      <path d="M12 2L2 8v14h20V8L12 2z" fill="${fillColor}" stroke="white" stroke-width="1"/>
+      ${isVisited ? `<path d="M8 12l2 2 4-4" stroke="white" stroke-width="1.5" fill="none"/>` : ''}
+    </svg>
+  `;
+  
+  return new Icon({
+    iconUrl: `data:image/svg+xml;base64,${btoa(svgContent)}`,
+    iconSize: [width, height],
+    iconAnchor: [width / 2, height],
+    popupAnchor: [0, -height],
   });
 };
 
@@ -181,6 +209,7 @@ const MapClickHandler: React.FC<MapClickHandlerProps> = ({ onMapClick, isAdminMo
 
 const Map: React.FC = () => {
   const [areas, setAreas] = useState<Area[]>([]);
+  const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [userLocations, setUserLocations] = useState<UserLocation[]>([]);
   const [userPosition, setUserPosition] = useState<LatLng | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -189,22 +218,36 @@ const Map: React.FC = () => {
   const [selectedFoxTeam, setSelectedFoxTeam] = useState<string>('');
   const [isSubmittingLocation, setIsSubmittingLocation] = useState(false);
   const [isAddMode, setIsAddMode] = useState(false);
-  const [visibleFoxTeams, setVisibleFoxTeams] = useState<Set<string>>(new Set(['Alpha', 'Bravo', 'Charlie', 'Delta', 'Echo', 'Foxtrot']));
+  const [visibleFoxTeams, setVisibleFoxTeams] = useState<Set<string>>(new Set(['Alpha', 'Bravo', 'Charlie', 'Delta', 'Echo', 'Foxtrot', 'Golf', 'Hotel']));
   const [showFoxFilter, setShowFoxFilter] = useState(false);
   const [showUserMarkers, setShowUserMarkers] = useState(true);
+  const [showSubscriptions, setShowSubscriptions] = useState(true);
+  const [selectedFoxRoute, setSelectedFoxRoute] = useState<FoxRoute | null>(null);
+  const [isLoadingRoute, setIsLoadingRoute] = useState(false);
+  const [routeTimeSpan, setRouteTimeSpan] = useState<number>(24); // hours
   const { socket, isConnected } = useWebSocket();
   const { state } = useAuth();
 
   useEffect(() => {
     const loadData = async () => {
       try {
+        console.log('🗺️ Loading map data...');
         // Load areas first for immediate map display
         const areasData = await gameService.getAreas();
+        console.log('🦊 Areas loaded:', areasData?.length || 0, 'areas');
         setAreas(areasData);
         setIsLoading(false); // Show map immediately with fox markers
         
-        // Then load user locations in background
-        const locationsData = await gameService.getUserLocations();
+        // Then load subscriptions and user locations in background
+        const [subscriptionsData, locationsData] = await Promise.all([
+          gameService.getSubscriptions(),
+          gameService.getUserLocations()
+        ]);
+        
+        console.log('🏠 Subscriptions loaded:', subscriptionsData?.length || 0, 'subscriptions');
+        console.log('👥 User locations loaded:', locationsData?.length || 0, 'locations');
+        
+        setSubscriptions(subscriptionsData || []);
         setUserLocations(locationsData);
       } catch (error) {
         console.error('Error loading map data:', error);
@@ -213,8 +256,14 @@ const Map: React.FC = () => {
       }
     };
 
-    loadData();
-  }, []);
+    if (state.user) {
+      console.log('👤 User is logged in, loading map data...');
+      loadData();
+    } else {
+      console.log('❌ No user logged in');
+      setIsLoading(false);
+    }
+  }, [state.user]);
 
   const handleLocationUpdate = useCallback((locationUpdate: UserLocation) => {
     setUserLocations(prevLocations => {
@@ -332,6 +381,26 @@ const Map: React.FC = () => {
     }
   }, [selectedPosition, selectedFoxTeam, areas]);
 
+  const loadFoxRoute = useCallback(async (areaId: number) => {
+    setIsLoadingRoute(true);
+    try {
+      const routeData = await gameService.getFoxRoute(areaId, routeTimeSpan);
+      console.log('Loaded fox route data:', routeData);
+      console.log('Route points in order:', routeData.route.map((p, i) => `${i+1}. ${new Date(p.recorded_at).toLocaleTimeString()} - (${p.lat}, ${p.lng})`));
+      setSelectedFoxRoute(routeData);
+    } catch (error: any) {
+      console.error('Error loading fox route:', error);
+      const errorMessage = error.response?.data?.error || error.message || 'Unknown error occurred';
+      alert(`Failed to load fox route: ${errorMessage}`);
+    } finally {
+      setIsLoadingRoute(false);
+    }
+  }, [routeTimeSpan]);
+
+  const clearFoxRoute = useCallback(() => {
+    setSelectedFoxRoute(null);
+  }, []);
+
   const toggleFoxTeamVisibility = useCallback((teamName: string) => {
     setVisibleFoxTeams(prev => {
       const newSet = new Set(prev);
@@ -345,7 +414,7 @@ const Map: React.FC = () => {
   }, []);
 
   const showAllFoxTeams = useCallback(() => {
-    setVisibleFoxTeams(new Set(['Alpha', 'Bravo', 'Charlie', 'Delta', 'Echo', 'Foxtrot']));
+    setVisibleFoxTeams(new Set(['Alpha', 'Bravo', 'Charlie', 'Delta', 'Echo', 'Foxtrot', 'Golf', 'Hotel']));
   }, []);
 
   const hideAllFoxTeams = useCallback(() => {
@@ -355,18 +424,21 @@ const Map: React.FC = () => {
   const center: [number, number] = useMemo(() => [52.1597, 6.4131], []);
   const zoom = 11;
 
-  const foxMarkers = useMemo(() => 
-    areas
-      .filter(area => visibleFoxTeams.has(area.name))
-      .map((area) => (
-        area.lat && area.lng && (
+  const foxMarkers = useMemo(() => {
+    console.log('🦊 Creating fox markers:', areas.length, 'areas total');
+    const filteredAreas = areas.filter(area => visibleFoxTeams.has(area.name));
+    console.log('🦊 Visible fox areas:', filteredAreas.length);
+    
+    return filteredAreas.map((area) => {
+      console.log('🦊 Processing area:', area.name, 'lat:', area.lat, 'lng:', area.lng);
+      return area.lat && area.lng ? (
           <Marker
             key={`fox-${area.id}`}
             position={[area.lat, area.lng]}
             icon={createFoxIcon(area.name, 'medium')}
           >
             <Popup>
-              <div className="p-2">
+              <div className="p-2 min-w-48">
                 <h3 className="font-semibold text-lg">{area.fox_team_name || area.name}</h3>
                 <p className="text-sm text-gray-600">
                   Status: <span className={`font-medium ${
@@ -382,11 +454,29 @@ const Map: React.FC = () => {
                     Last seen: {new Date(area.last_seen).toLocaleTimeString()}
                   </p>
                 )}
+                <div className="mt-3 space-y-2">
+                  <button
+                    onClick={() => loadFoxRoute(area.id)}
+                    disabled={isLoadingRoute}
+                    className="w-full px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 disabled:opacity-50"
+                  >
+                    {isLoadingRoute ? 'Loading...' : 'Show Route'}
+                  </button>
+                  {selectedFoxRoute?.area.id === area.id && (
+                    <button
+                      onClick={clearFoxRoute}
+                      className="w-full px-3 py-1 bg-gray-600 text-white text-sm rounded hover:bg-gray-700"
+                    >
+                      Hide Route
+                    </button>
+                  )}
+                </div>
               </div>
             </Popup>
           </Marker>
-        )
-      )), [areas, visibleFoxTeams]);
+        ) : null;
+    }).filter(Boolean);
+  }, [areas, visibleFoxTeams, isLoadingRoute, selectedFoxRoute, loadFoxRoute, clearFoxRoute]);
 
   const userMarkers = useMemo(() => 
     showUserMarkers ? userLocations.map((location) => (
@@ -442,6 +532,74 @@ const Map: React.FC = () => {
       </Marker>
     )) : [], [userLocations, showUserMarkers]);
 
+  const subscriptionMarkers = useMemo(() => {
+    console.log('🏠 Creating subscription markers:', subscriptions.length, 'subscriptions total');
+    const filteredSubscriptions = showSubscriptions ? subscriptions
+      .filter(subscription => subscription.lat && subscription.lng) : []; // Only show subscriptions with coordinates
+    console.log('🏠 Visible subscriptions with coords:', filteredSubscriptions.length);
+    
+    return filteredSubscriptions.map((subscription) => {
+        // Check if any fox team has visited this subscription
+        const isVisited = subscription.visited_by_foxes && subscription.visited_by_foxes.length > 0;
+        
+        return (
+          <Marker
+            key={`subscription-${subscription.id}`}
+            position={[subscription.lat!, subscription.lng!]}
+            icon={createHouseIcon(isVisited, 'medium')}
+          >
+            <Popup>
+              <div className="p-3 min-w-52">
+                <h3 className="font-semibold text-lg mb-2">{subscription.team_name}</h3>
+                
+                {subscription.area && (
+                  <p className="text-sm text-gray-600 mb-1">
+                    <span className="font-medium">Gebied:</span> {subscription.area}
+                  </p>
+                )}
+                
+                {subscription.fox_team_name && (
+                  <p className="text-sm text-gray-600 mb-1">
+                    <span className="font-medium">Gekoppeld aan vos:</span> {subscription.fox_team_name}
+                  </p>
+                )}
+                
+                <p className="text-sm text-gray-600 mb-2">
+                  <span className="font-medium">Status:</span> {subscription.is_participating ? 'Actief' : 'Inactief'}
+                </p>
+
+                {subscription.visited_by_foxes && subscription.visited_by_foxes.length > 0 && (
+                  <div className="mt-3 p-2 bg-green-50 rounded">
+                    <p className="text-sm font-medium text-green-800 mb-1">Bezocht door:</p>
+                    <div className="flex flex-wrap gap-1">
+                      {subscription.visited_by_foxes.map((foxTeam, index) => (
+                        <span 
+                          key={index}
+                          className="px-2 py-1 text-xs bg-green-100 text-green-700 rounded-full"
+                        >
+                          {foxTeam}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
+                {(!subscription.visited_by_foxes || subscription.visited_by_foxes.length === 0) && (
+                  <div className="mt-3 p-2 bg-blue-50 rounded">
+                    <p className="text-sm text-blue-700">🏠 Nog niet bezocht door vossen</p>
+                  </div>
+                )}
+                
+                <div className="mt-3 pt-2 border-t text-xs text-gray-500">
+                  <p>Coördinaten: {subscription.lat?.toFixed(6)}, {subscription.lng?.toFixed(6)}</p>
+                </div>
+              </div>
+            </Popup>
+          </Marker>
+        );
+      });
+  }, [subscriptions, showSubscriptions]);
+
   if (isLoading) {
     return (
       <div className="map-container flex items-center justify-center">
@@ -456,6 +614,56 @@ const Map: React.FC = () => {
   return (
     <div className="map-container relative">
       <FoxStatusOverlay areas={areas} />
+      
+      {/* Fox Route Information Panel */}
+      {selectedFoxRoute && (
+        <div className="absolute top-4 left-4 z-10 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg p-4 max-w-xs">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+              {selectedFoxRoute.area.fox_team_name || selectedFoxRoute.area.name} Route
+            </h3>
+            <button
+              onClick={clearFoxRoute}
+              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+            >
+              ✕
+            </button>
+          </div>
+          <div className="space-y-1 text-xs text-gray-600 dark:text-gray-400">
+            <p>Points: {selectedFoxRoute.route_stats.total_points}</p>
+            <p>Time span: {selectedFoxRoute.route_stats.time_span_hours}h</p>
+            {selectedFoxRoute.route_stats.first_point && (
+              <p>From: {new Date(selectedFoxRoute.route_stats.first_point).toLocaleString()}</p>
+            )}
+            {selectedFoxRoute.route_stats.last_point && (
+              <p>To: {new Date(selectedFoxRoute.route_stats.last_point).toLocaleString()}</p>
+            )}
+          </div>
+          <div className="mt-3">
+            <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Time span (hours):
+            </label>
+            <select
+              value={routeTimeSpan}
+              onChange={(e) => setRouteTimeSpan(Number(e.target.value))}
+              className="w-full px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700 dark:text-gray-200"
+            >
+              <option value={1}>1 hour</option>
+              <option value={6}>6 hours</option>
+              <option value={12}>12 hours</option>
+              <option value={24}>24 hours</option>
+              <option value={48}>48 hours</option>
+            </select>
+            <button
+              onClick={() => loadFoxRoute(selectedFoxRoute.area.id)}
+              disabled={isLoadingRoute}
+              className="w-full mt-2 px-2 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 disabled:opacity-50"
+            >
+              {isLoadingRoute ? 'Loading...' : 'Reload Route'}
+            </button>
+          </div>
+        </div>
+      )}
       
       {/* Fox Team Filter */}
       <div className="absolute top-4 right-4 z-10 space-y-2">
@@ -488,7 +696,7 @@ const Map: React.FC = () => {
             </div>
             
             <div className="space-y-2">
-              {['Alpha', 'Bravo', 'Charlie', 'Delta', 'Echo', 'Foxtrot'].map((teamName) => {
+              {['Alpha', 'Bravo', 'Charlie', 'Delta', 'Echo', 'Foxtrot', 'Golf', 'Hotel'].map((teamName) => {
                 const colors = getTeamColors(teamName);
                 const isVisible = visibleFoxTeams.has(teamName);
                 
@@ -511,17 +719,34 @@ const Map: React.FC = () => {
             </div>
             
             <div className="border-t border-gray-200 dark:border-gray-600 mt-3 pt-3">
-              <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">User Markers</h4>
-              <label className="flex items-center space-x-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={showUserMarkers}
-                  onChange={(e) => setShowUserMarkers(e.target.checked)}
-                  className="rounded border-gray-300 dark:border-gray-600"
-                />
-                <div className="w-3 h-3 rounded-full border" style={{ backgroundColor: '#10B981' }}></div>
-                <span className="text-sm text-gray-700 dark:text-gray-300">Show Users</span>
-              </label>
+              <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">Other Markers</h4>
+              <div className="space-y-2">
+                <label className="flex items-center space-x-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={showUserMarkers}
+                    onChange={(e) => setShowUserMarkers(e.target.checked)}
+                    className="rounded border-gray-300 dark:border-gray-600"
+                  />
+                  <div className="w-3 h-3 rounded-full border" style={{ backgroundColor: '#10B981' }}></div>
+                  <span className="text-sm text-gray-700 dark:text-gray-300">Users</span>
+                </label>
+                <label className="flex items-center space-x-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={showSubscriptions}
+                    onChange={(e) => setShowSubscriptions(e.target.checked)}
+                    className="rounded border-gray-300 dark:border-gray-600"
+                  />
+                  <div className="w-3 h-3" style={{ 
+                    fontSize: '12px', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center'
+                  }}>🏠</div>
+                  <span className="text-sm text-gray-700 dark:text-gray-300">Groups</span>
+                </label>
+              </div>
             </div>
           </div>
         )}
@@ -573,6 +798,37 @@ const Map: React.FC = () => {
         
         {foxMarkers}
         {userMarkers}
+        {subscriptionMarkers}
+        
+        {/* Fox Route Polyline */}
+        {selectedFoxRoute && selectedFoxRoute.route.length > 1 && (
+          <>
+            <Polyline
+              positions={selectedFoxRoute.route.map(point => [point.lat, point.lng])}
+              color={getTeamColors(selectedFoxRoute.area.name).primary}
+              weight={4}
+              opacity={0.8}
+              dashArray="5, 10"
+            />
+            {/* Route point markers to show progression */}
+            {selectedFoxRoute.route.map((point, index) => (
+              <Marker
+                key={`route-point-${point.id}`}
+                position={[point.lat, point.lng]}
+                icon={createIcon(getTeamColors(selectedFoxRoute.area.name).secondary, 'small')}
+              >
+                <Popup>
+                  <div className="text-xs">
+                    <p><strong>Route Point {index + 1}</strong></p>
+                    <p>Time: {new Date(point.recorded_at).toLocaleString()}</p>
+                    <p>Coordinates: {point.lat.toFixed(6)}, {point.lng.toFixed(6)}</p>
+                    <p>Source: {point.source}</p>
+                  </div>
+                </Popup>
+              </Marker>
+            ))}
+          </>
+        )}
         
         {/* Current user position */}
         {userPosition && (

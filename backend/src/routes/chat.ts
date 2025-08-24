@@ -2,7 +2,7 @@ import express from 'express';
 import multer from 'multer';
 import path from 'path';
 import { db } from '../utils/database';
-import { authenticateToken } from '../middleware/auth';
+import { authenticateToken, isAdmin, enforceTenantIsolation } from '../middleware/auth';
 import { getSocketIO } from '../socketManager';
 
 const router = express.Router();
@@ -45,7 +45,7 @@ router.get('/messages/:team_id', authenticateToken, async (req, res) => {
       .where({ user_id: req.user!.id, team_id })
       .first();
 
-    if (!membership && req.user!.role !== 'admin') {
+    if (!membership && !isAdmin(req.user!)) {
       return res.status(403).json({ error: 'Access denied' });
     }
 
@@ -190,7 +190,7 @@ router.delete('/messages/:message_id', authenticateToken, async (req, res) => {
     }
 
     // Check if user owns the message or is admin
-    if (existingMessage.user_id !== req.user!.id && req.user!.role !== 'admin') {
+    if (existingMessage.user_id !== req.user!.id && !isAdmin(req.user!)) {
       return res.status(403).json({ error: 'Access denied' });
     }
 
@@ -208,10 +208,13 @@ router.delete('/messages/:message_id', authenticateToken, async (req, res) => {
 });
 
 // Get available channels for user
-router.get('/channels', authenticateToken, async (req, res) => {
+router.get('/channels', authenticateToken, enforceTenantIsolation, async (req, res) => {
   try {
+    const tenantId = req.user!.current_tenant_id || req.user!.tenant_id;
+    
     const channels = await db('chat_channels')
       .select('*')
+      .where('tenant_id', tenantId)
       .where(function() {
         this.where('type', 'general')
           .orWhere(function() {
@@ -235,13 +238,17 @@ router.get('/channels', authenticateToken, async (req, res) => {
 });
 
 // Get channel messages
-router.get('/channels/:channel_id/messages', authenticateToken, async (req, res) => {
+router.get('/channels/:channel_id/messages', authenticateToken, enforceTenantIsolation, async (req, res) => {
   try {
     const { channel_id } = req.params;
     const { limit = 50, offset = 0 } = req.query;
+    const tenantId = req.user!.current_tenant_id || req.user!.tenant_id;
 
-    // Check channel access
-    const channel = await db('chat_channels').where('id', channel_id).first();
+    // Check channel access with tenant isolation
+    const channel = await db('chat_channels')
+      .where('id', channel_id)
+      .where('tenant_id', tenantId)
+      .first();
     if (!channel) {
       return res.status(404).json({ error: 'Channel not found' });
     }
@@ -252,7 +259,7 @@ router.get('/channels/:channel_id/messages', authenticateToken, async (req, res)
         .where({ user_id: req.user!.id, team_id: channel.team_id })
         .first();
       
-      if (!membership && req.user!.role !== 'admin') {
+      if (!membership && !isAdmin(req.user!)) {
         return res.status(403).json({ error: 'Access denied' });
       }
     }
@@ -266,6 +273,7 @@ router.get('/channels/:channel_id/messages', authenticateToken, async (req, res)
       )
       .join('users', 'team_messages.user_id', 'users.id')
       .where('team_messages.channel_id', channel_id)
+      .where('team_messages.tenant_id', tenantId)
       .orderBy('team_messages.created_at', 'desc')
       .limit(parseInt(limit as string))
       .offset(parseInt(offset as string));
@@ -299,17 +307,21 @@ router.get('/channels/:channel_id/messages', authenticateToken, async (req, res)
 });
 
 // Send message to channel
-router.post('/channels/:channel_id/messages', authenticateToken, upload.single('attachment'), async (req, res) => {
+router.post('/channels/:channel_id/messages', authenticateToken, enforceTenantIsolation, upload.single('attachment'), async (req, res) => {
   try {
     const { channel_id } = req.params;
     const { message } = req.body;
+    const tenantId = req.user!.current_tenant_id || req.user!.tenant_id;
 
     if (!message && !req.file) {
       return res.status(400).json({ error: 'Message or attachment required' });
     }
 
-    // Check channel access
-    const channel = await db('chat_channels').where('id', channel_id).first();
+    // Check channel access with tenant isolation
+    const channel = await db('chat_channels')
+      .where('id', channel_id)
+      .where('tenant_id', tenantId)
+      .first();
     if (!channel) {
       return res.status(404).json({ error: 'Channel not found' });
     }
@@ -329,6 +341,7 @@ router.post('/channels/:channel_id/messages', authenticateToken, upload.single('
       team_id: channel.team_id, // null for general channels
       channel_id: parseInt(channel_id),
       user_id: req.user!.id,
+      tenant_id: tenantId,
       message: message || '',
       status: 'sent'
     };
@@ -354,9 +367,9 @@ router.post('/channels/:channel_id/messages', authenticateToken, upload.single('
       .where('team_messages.id', messageId)
       .first();
 
-    // Emit to appropriate room
+    // Emit to appropriate tenant-specific room
     const io = getSocketIO();
-    const roomName = channel.type === 'general' ? 'general-chat' : `team-${channel.team_id}`;
+    const roomName = channel.type === 'general' ? `tenant-${tenantId}-general-chat` : `tenant-${tenantId}-team-${channel.team_id}`;
     io.to(roomName).emit('new-message', fullMessage);
 
     res.status(201).json(fullMessage);
@@ -393,7 +406,7 @@ router.post('/messages/:message_id/reactions', authenticateToken, async (req, re
         .where({ user_id: req.user!.id, team_id: message.team_id })
         .first();
       
-      if (!membership && req.user!.role !== 'admin') {
+      if (!membership && !isAdmin(req.user!)) {
         return res.status(403).json({ error: 'Access denied' });
       }
     }
@@ -413,9 +426,10 @@ router.post('/messages/:message_id/reactions', authenticateToken, async (req, re
       .select('emoji', 'user_id')
       .where('message_id', message_id);
 
-    // Emit reaction update
+    // Emit reaction update with tenant-specific room
     const io = getSocketIO();
-    const roomName = message.type === 'general' ? 'general-chat' : `team-${message.team_id}`;
+    const tenantId = req.user!.current_tenant_id || req.user!.tenant_id;
+    const roomName = message.type === 'general' ? `tenant-${tenantId}-general-chat` : `tenant-${tenantId}-team-${message.team_id}`;
     io.to(roomName).emit('message-reaction-added', {
       message_id: parseInt(message_id),
       reactions
@@ -453,9 +467,10 @@ router.delete('/messages/:message_id/reactions/:emoji', authenticateToken, async
       .where('team_messages.id', message_id)
       .first();
 
-    // Emit reaction update
+    // Emit reaction update with tenant-specific room
     const io = getSocketIO();
-    const roomName = message.type === 'general' ? 'general-chat' : `team-${message.team_id}`;
+    const tenantId = req.user!.current_tenant_id || req.user!.tenant_id;
+    const roomName = message.type === 'general' ? `tenant-${tenantId}-general-chat` : `tenant-${tenantId}-team-${message.team_id}`;
     io.to(roomName).emit('message-reaction-removed', {
       message_id: parseInt(message_id),
       reactions

@@ -15,7 +15,7 @@
 - **Location Tracking**: GPS data collection with privacy controls
 - **Chat System**: Real-time team messaging with file attachments
 - **Hunt System**: Photo submission with cooldown management
-- **Game Areas**: Fox team tracking across 6 areas (Alpha-Foxtrot)
+- **Game Areas**: Fox team tracking across 8 areas (Alpha-Foxtrot, Golf, Hotel)
 - **Articles System**: Hints, assignments, and news management
 - **File Uploads**: Secure handling for chat attachments and hunt photos
 

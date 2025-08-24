@@ -54,10 +54,11 @@ const checkHuntCooldown = async (userId, foxArea) => {
     return !recentHunt;
 };
 // Get user's hunts
-router.get('/my-hunts', auth_1.authenticateToken, async (req, res) => {
+router.get('/my-hunts', auth_1.authenticateToken, auth_1.enforceTenantIsolation, async (req, res) => {
     try {
         const hunts = await (0, database_1.db)('hunts')
             .where('hunter_user_id', req.user.id)
+            .where('tenant_id', req.tenantId)
             .orderBy('hunt_time', 'desc');
         res.json(hunts);
     }
@@ -67,20 +68,21 @@ router.get('/my-hunts', auth_1.authenticateToken, async (req, res) => {
     }
 });
 // Get team's hunts
-router.get('/team-hunts/:team_id', auth_1.authenticateToken, async (req, res) => {
+router.get('/team-hunts/:team_id', auth_1.authenticateToken, auth_1.enforceTenantIsolation, async (req, res) => {
     try {
         const { team_id } = req.params;
         // Check if user is member of the team or admin
         const membership = await (0, database_1.db)('team_members')
             .where({ user_id: req.user.id, team_id })
             .first();
-        if (!membership && req.user.role !== 'admin') {
+        if (!membership && !(0, auth_1.isAdmin)(req.user)) {
             return res.status(403).json({ error: 'Access denied' });
         }
         const hunts = await (0, database_1.db)('hunts')
             .select('hunts.*', 'users.username', 'users.first_name', 'users.last_name')
             .join('users', 'hunts.hunter_user_id', 'users.id')
             .where('hunts.hunter_team_id', team_id)
+            .where('hunts.tenant_id', req.tenantId)
             .orderBy('hunts.hunt_time', 'desc');
         res.json(hunts);
     }
@@ -90,7 +92,7 @@ router.get('/team-hunts/:team_id', auth_1.authenticateToken, async (req, res) =>
     }
 });
 // Submit a hunt
-router.post('/submit', auth_1.authenticateToken, upload.single('photo'), async (req, res) => {
+router.post('/submit', auth_1.authenticateToken, auth_1.enforceTenantIsolation, upload.single('photo'), async (req, res) => {
     try {
         const { fox_area, hunt_lat, hunt_lng } = req.body;
         if (!fox_area || !hunt_lat || !hunt_lng || !req.file) {
@@ -98,28 +100,16 @@ router.post('/submit', auth_1.authenticateToken, upload.single('photo'), async (
                 error: 'Fox area, coordinates, and photo are required'
             });
         }
-        // Get user's team
+        // Get user's team (optional for hunt submission)
         const teamMembership = await (0, database_1.db)('team_members')
             .join('teams', 'team_members.team_id', 'teams.id')
             .select('teams.*', 'team_members.role')
             .where('team_members.user_id', req.user.id)
             .first();
-        if (!teamMembership) {
-            return res.status(400).json({ error: 'User must be part of a team to hunt' });
-        }
-        // Check hunt cooldown
-        const canHunt = await checkHuntCooldown(req.user.id, fox_area);
-        if (!canHunt) {
-            return res.status(429).json({
-                error: `Hunt cooldown active. Wait ${HUNT_COOLDOWN_MINUTES} minutes between hunts in the same area.`
-            });
-        }
-        // Validate coordinates are reasonable (Netherlands bounds roughly)
-        const lat = parseFloat(hunt_lat);
-        const lng = parseFloat(hunt_lng);
-        if (lat < 50.5 || lat > 53.7 || lng < 3.0 || lng > 7.5) {
-            return res.status(400).json({ error: 'Invalid coordinates for hunt location' });
-        }
+        // Allow hunts without team membership and without cooldown restrictions
+        // Parse coordinates (allow default values for flexible submissions)
+        const lat = parseFloat(hunt_lat) || 0;
+        const lng = parseFloat(hunt_lng) || 0;
         // Check if fox area exists and is active
         const foxArea = await (0, database_1.db)('areas')
             .where({ name: fox_area, status: 'active' })
@@ -127,11 +117,11 @@ router.post('/submit', auth_1.authenticateToken, upload.single('photo'), async (
         if (!foxArea) {
             return res.status(400).json({ error: 'Invalid or inactive fox area' });
         }
-        // Calculate points
-        const points = calculateHuntPoints(fox_area, teamMembership.area);
+        // Calculate points (use team area if available, otherwise default to 3 points)
+        const points = calculateHuntPoints(fox_area, teamMembership?.area);
         // Create hunt record
         const huntData = {
-            hunter_team_id: teamMembership.id,
+            hunter_team_id: teamMembership?.id || null,
             hunter_user_id: req.user.id,
             fox_area,
             hunt_lat: lat,
@@ -140,6 +130,7 @@ router.post('/submit', auth_1.authenticateToken, upload.single('photo'), async (
             points_awarded: points,
             status: 'pending', // Will be reviewed by admin
             hunt_time: new Date(),
+            tenant_id: req.tenantId,
         };
         const [huntId] = await (0, database_1.db)('hunts').insert(huntData).returning('id');
         // Get full hunt data with user info
@@ -161,12 +152,13 @@ router.post('/submit', auth_1.authenticateToken, upload.single('photo'), async (
     }
 });
 // Get hunt cooldowns for user
-router.get('/cooldowns', auth_1.authenticateToken, async (req, res) => {
+router.get('/cooldowns', auth_1.authenticateToken, auth_1.enforceTenantIsolation, async (req, res) => {
     try {
         const cooldownTime = new Date(Date.now() - HUNT_COOLDOWN_MINUTES * 60 * 1000);
         const recentHunts = await (0, database_1.db)('hunts')
             .select('fox_area', 'hunt_time')
             .where('hunter_user_id', req.user.id)
+            .where('tenant_id', req.tenantId)
             .where('hunt_time', '>', cooldownTime)
             .orderBy('hunt_time', 'desc');
         const cooldowns = recentHunts.map(hunt => ({
@@ -182,13 +174,14 @@ router.get('/cooldowns', auth_1.authenticateToken, async (req, res) => {
     }
 });
 // Admin: Get all pending hunts
-router.get('/pending', auth_1.authenticateToken, auth_1.requireAdmin, async (req, res) => {
+router.get('/pending', auth_1.authenticateToken, auth_1.requireAdmin, auth_1.enforceTenantIsolation, async (req, res) => {
     try {
         const pendingHunts = await (0, database_1.db)('hunts')
             .select('hunts.*', 'users.username', 'users.first_name', 'users.last_name', 'teams.name as team_name')
             .join('users', 'hunts.hunter_user_id', 'users.id')
-            .join('teams', 'hunts.hunter_team_id', 'teams.id')
+            .leftJoin('teams', 'hunts.hunter_team_id', 'teams.id')
             .where('hunts.status', 'pending')
+            .where('hunts.tenant_id', req.tenantId)
             .orderBy('hunts.hunt_time', 'desc');
         res.json(pendingHunts);
     }
@@ -198,7 +191,7 @@ router.get('/pending', auth_1.authenticateToken, auth_1.requireAdmin, async (req
     }
 });
 // Admin: Approve/Reject hunt
-router.put('/:hunt_id/review', auth_1.authenticateToken, auth_1.requireAdmin, async (req, res) => {
+router.put('/:hunt_id/review', auth_1.authenticateToken, auth_1.requireAdmin, auth_1.enforceTenantIsolation, async (req, res) => {
     try {
         const { hunt_id } = req.params;
         const { status, rejection_reason } = req.body;
@@ -213,12 +206,13 @@ router.put('/:hunt_id/review', auth_1.authenticateToken, auth_1.requireAdmin, as
             updateData.rejection_reason = rejection_reason;
             updateData.points_awarded = 0;
         }
-        await (0, database_1.db)('hunts').where('id', hunt_id).update(updateData);
+        await (0, database_1.db)('hunts').where('id', hunt_id).where('tenant_id', req.tenantId).update(updateData);
         const hunt = await (0, database_1.db)('hunts')
             .select('hunts.*', 'users.username', 'users.first_name', 'users.last_name', 'teams.name as team_name')
             .join('users', 'hunts.hunter_user_id', 'users.id')
-            .join('teams', 'hunts.hunter_team_id', 'teams.id')
+            .leftJoin('teams', 'hunts.hunter_team_id', 'teams.id')
             .where('hunts.id', hunt_id)
+            .where('hunts.tenant_id', req.tenantId)
             .first();
         if (!hunt) {
             return res.status(404).json({ error: 'Hunt not found' });
@@ -234,21 +228,21 @@ router.put('/:hunt_id/review', auth_1.authenticateToken, auth_1.requireAdmin, as
     }
 });
 // Get hunt statistics
-router.get('/stats', auth_1.authenticateToken, async (req, res) => {
+router.get('/stats', auth_1.authenticateToken, auth_1.enforceTenantIsolation, async (req, res) => {
     try {
         const { team_id } = req.query;
-        let statsQuery = (0, database_1.db)('hunts');
+        let statsQuery = (0, database_1.db)('hunts').where('tenant_id', req.tenantId);
         if (team_id) {
             // Check access
             const membership = await (0, database_1.db)('team_members')
                 .where({ user_id: req.user.id, team_id })
                 .first();
-            if (!membership && req.user.role !== 'admin') {
+            if (!membership && !(0, auth_1.isAdmin)(req.user)) {
                 return res.status(403).json({ error: 'Access denied' });
             }
             statsQuery = statsQuery.where('hunter_team_id', team_id);
         }
-        else if (req.user.role !== 'admin') {
+        else if (!(0, auth_1.isAdmin)(req.user)) {
             // Regular users can only see their own team stats
             const membership = await (0, database_1.db)('team_members')
                 .where('user_id', req.user.id)

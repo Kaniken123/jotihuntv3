@@ -1,15 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../contexts/AuthContext';
 import { api } from '../services/authService';
 import { Area, Hunt } from '../types';
 import LoadingSpinner from './LoadingSpinner';
 import { Camera, MapPin, Clock, Trophy } from 'lucide-react';
-
-interface HuntCooldown {
-  fox_area: string;
-  hunt_time: string;
-  cooldown_until: string;
-}
 
 const HuntRegistration: React.FC = () => {
   const [areas, setAreas] = useState<Area[]>([]);
@@ -18,16 +11,15 @@ const HuntRegistration: React.FC = () => {
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [currentLocation, setCurrentLocation] = useState<{lat: number, lng: number} | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [cooldowns, setCooldowns] = useState<HuntCooldown[]>([]);
+  // Cooldowns removed to allow always submitting hunts
   const [recentHunts, setRecentHunts] = useState<Hunt[]>([]);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  const { state } = useAuth();
+  // Auth state no longer needed for team requirement
 
   useEffect(() => {
     loadAreas();
-    loadCooldowns();
     loadRecentHunts();
     getCurrentLocation();
   }, []);
@@ -41,14 +33,7 @@ const HuntRegistration: React.FC = () => {
     }
   };
 
-  const loadCooldowns = async () => {
-    try {
-      const response = await api.get('/hunts/cooldowns');
-      setCooldowns(response.data);
-    } catch (error) {
-      console.error('Failed to load cooldowns:', error);
-    }
-  };
+  // Cooldown loading removed
 
   const loadRecentHunts = async () => {
     try {
@@ -104,46 +89,30 @@ const HuntRegistration: React.FC = () => {
     }
   };
 
-  const isAreaOnCooldown = (areaName: string): boolean => {
-    const cooldown = cooldowns.find(c => c.fox_area === areaName);
-    if (!cooldown) return false;
-    
-    return new Date() < new Date(cooldown.cooldown_until);
-  };
-
-  const getCooldownTime = (areaName: string): string => {
-    const cooldown = cooldowns.find(c => c.fox_area === areaName);
-    if (!cooldown) return '';
-    
-    const remaining = new Date(cooldown.cooldown_until).getTime() - new Date().getTime();
-    if (remaining <= 0) return '';
-    
-    const minutes = Math.ceil(remaining / (1000 * 60));
-    return `${minutes} min remaining`;
-  };
+  // Cooldown functions removed
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setSuccess('');
 
-    if (!selectedArea || !photo || !currentLocation) {
-      setError('Please select an area, take a photo, and ensure location is available');
+    if (!selectedArea || !photo) {
+      setError('Please select an area and take a photo');
       return;
     }
 
-    if (isAreaOnCooldown(selectedArea)) {
-      setError(`You're still on cooldown for ${selectedArea} area`);
-      return;
-    }
+    // Allow submissions without cooldown restrictions
 
     setIsSubmitting(true);
 
     try {
       const formData = new FormData();
       formData.append('fox_area', selectedArea);
-      formData.append('hunt_lat', currentLocation.lat.toString());
-      formData.append('hunt_lng', currentLocation.lng.toString());
+      // Use current location if available, otherwise use default coordinates
+      const lat = currentLocation?.lat || 0;
+      const lng = currentLocation?.lng || 0;
+      formData.append('hunt_lat', lat.toString());
+      formData.append('hunt_lng', lng.toString());
       formData.append('photo', photo);
 
       await api.post('/hunts/submit', formData, {
@@ -158,7 +127,6 @@ const HuntRegistration: React.FC = () => {
       setPhotoPreview(null);
       
       // Reload data
-      loadCooldowns();
       loadRecentHunts();
     } catch (error: any) {
       setError(error.response?.data?.error || 'Failed to submit hunt');
@@ -185,17 +153,7 @@ const HuntRegistration: React.FC = () => {
     }
   };
 
-  if (!state.team) {
-    return (
-      <div className="max-w-2xl mx-auto p-6">
-        <div className="card p-6 text-center">
-          <p className="text-gray-500 dark:text-gray-400">
-            You need to be part of a team to submit hunts
-          </p>
-        </div>
-      </div>
-    );
-  }
+  // Allow all authenticated users to submit hunts
 
   return (
     <div className="max-w-4xl mx-auto p-6 space-y-6">
@@ -234,10 +192,8 @@ const HuntRegistration: React.FC = () => {
                 <option 
                   key={area.id} 
                   value={area.name}
-                  disabled={isAreaOnCooldown(area.name)}
                 >
                   {area.name} {area.fox_team_name && `(${area.fox_team_name})`}
-                  {isAreaOnCooldown(area.name) && ` - Cooldown: ${getCooldownTime(area.name)}`}
                 </option>
               ))}
             </select>
@@ -280,8 +236,8 @@ const HuntRegistration: React.FC = () => {
                 Location acquired ({currentLocation.lat.toFixed(6)}, {currentLocation.lng.toFixed(6)})
               </span>
             ) : (
-              <span className="text-red-600 dark:text-red-400">
-                Getting location...
+              <span className="text-yellow-600 dark:text-yellow-400">
+                Location optional - will use default if not available
               </span>
             )}
           </div>
@@ -289,7 +245,7 @@ const HuntRegistration: React.FC = () => {
           {/* Submit Button */}
           <button
             type="submit"
-            disabled={isSubmitting || !currentLocation || isAreaOnCooldown(selectedArea)}
+            disabled={isSubmitting}
             className="w-full btn btn-primary flex items-center justify-center space-x-2"
           >
             {isSubmitting ? (
@@ -307,24 +263,7 @@ const HuntRegistration: React.FC = () => {
         </form>
       </div>
 
-      {/* Active Cooldowns */}
-      {cooldowns.length > 0 && (
-        <div className="card p-6">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-            Active Cooldowns
-          </h3>
-          <div className="space-y-2">
-            {cooldowns.map((cooldown) => (
-              <div key={cooldown.fox_area} className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                <span className="font-medium">{cooldown.fox_area}</span>
-                <span className="text-sm text-gray-600 dark:text-gray-400">
-                  {getCooldownTime(cooldown.fox_area)}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* Cooldowns removed - users can always submit hunts */}
 
       {/* Recent Hunts */}
       {recentHunts.length > 0 && (

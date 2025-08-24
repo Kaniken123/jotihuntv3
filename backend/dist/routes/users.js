@@ -8,106 +8,160 @@ const bcryptjs_1 = __importDefault(require("bcryptjs"));
 const database_1 = require("../utils/database");
 const auth_1 = require("../middleware/auth");
 const router = express_1.default.Router();
-router.get('/users', auth_1.authenticateToken, auth_1.requireAdmin, async (req, res) => {
+router.get('/users', auth_1.authenticateToken, auth_1.requireAdmin, auth_1.enforceTenantIsolation, async (req, res) => {
     try {
+        const currentTenantId = req.tenantId;
+        // Get users with their roles for current tenant
         const users = await (0, database_1.db)('users')
-            .select('id', 'username', 'email', 'first_name', 'last_name', 'role', 'is_active', 'created_at')
-            .orderBy('username');
-        const usersWithTeams = await Promise.all(users.map(async (user) => {
+            .select('users.id', 'users.username', 'users.email', 'users.first_name', 'users.last_name', 'users.is_active', 'users.created_at')
+            .where('users.tenant_id', currentTenantId)
+            .orderBy('users.username');
+        const usersWithDetails = await Promise.all(users.map(async (user) => {
+            // Get user roles for current tenant
+            const roles = await (0, database_1.db)('user_roles')
+                .select('role', 'is_active')
+                .where({ user_id: user.id, tenant_id: currentTenantId });
+            // Get team membership in current tenant
             const teamMembership = await (0, database_1.db)('team_members')
                 .join('teams', 'team_members.team_id', 'teams.id')
                 .select('teams.name', 'teams.area', 'team_members.role')
                 .where('team_members.user_id', user.id)
+                .where('teams.tenant_id', currentTenantId)
                 .first();
+            const primaryRole = roles.find(r => r.is_active)?.role || 'user';
             return {
                 ...user,
+                role: primaryRole,
+                roles: roles,
                 team: teamMembership
             };
         }));
-        res.json(usersWithTeams);
+        res.json(usersWithDetails);
     }
     catch (error) {
         console.error('Get users error:', error);
         res.status(500).json({ error: 'Failed to get users' });
     }
 });
-router.get('/users/:id', auth_1.authenticateToken, async (req, res) => {
+router.get('/users/:id', auth_1.authenticateToken, auth_1.enforceTenantIsolation, async (req, res) => {
     try {
         const { id } = req.params;
-        if (req.user.id !== parseInt(id) && req.user.role !== 'admin') {
+        const currentTenantId = req.tenantId;
+        if (req.user.id !== parseInt(id) && !(0, auth_1.isAdmin)(req.user)) {
             return res.status(403).json({ error: 'Access denied' });
         }
         const user = await (0, database_1.db)('users')
-            .select('id', 'username', 'email', 'first_name', 'last_name', 'role', 'is_active', 'created_at')
-            .where('id', id)
+            .select('id', 'username', 'email', 'first_name', 'last_name', 'is_active', 'created_at')
+            .where({ id, tenant_id: currentTenantId })
             .first();
         if (!user) {
             return res.status(404).json({ error: 'User not found' });
         }
+        // Get user roles for current tenant
+        const roles = await (0, database_1.db)('user_roles')
+            .select('role', 'is_active')
+            .where({ user_id: user.id, tenant_id: currentTenantId });
         const teamMembership = await (0, database_1.db)('team_members')
             .join('teams', 'team_members.team_id', 'teams.id')
             .select('teams.*', 'team_members.role as member_role')
             .where('team_members.user_id', id)
+            .where('teams.tenant_id', currentTenantId)
             .first();
-        res.json({ ...user, team: teamMembership });
+        const primaryRole = roles.find(r => r.is_active)?.role || 'user';
+        res.json({
+            ...user,
+            role: primaryRole,
+            roles: roles,
+            team: teamMembership
+        });
     }
     catch (error) {
         console.error('Get user error:', error);
         res.status(500).json({ error: 'Failed to get user' });
     }
 });
-router.post('/users', auth_1.authenticateToken, auth_1.requireAdmin, async (req, res) => {
+router.post('/users', auth_1.authenticateToken, auth_1.requireAdmin, auth_1.enforceTenantIsolation, async (req, res) => {
     try {
         const { username, email, password, first_name, last_name, role, team_id } = req.body;
+        const currentTenantId = req.tenantId;
         if (!username || !email || !password) {
             return res.status(400).json({ error: 'Username, email, and password required' });
         }
+        // Check if user exists in current tenant
         const existingUser = await (0, database_1.db)('users')
-            .where('username', username)
-            .orWhere('email', email)
+            .where({ tenant_id: currentTenantId })
+            .where(function () {
+            this.where('username', username).orWhere('email', email);
+        })
             .first();
         if (existingUser) {
-            return res.status(409).json({ error: 'Username or email already exists' });
+            return res.status(409).json({ error: 'Username or email already exists in this organization' });
         }
         const password_hash = await bcryptjs_1.default.hash(password, 10);
-        // Insert user
-        await (0, database_1.db)('users').insert({
+        // Insert user with tenant association
+        const insertResult = await (0, database_1.db)('users').insert({
             username,
             email,
             password_hash,
             first_name,
             last_name,
+            tenant_id: currentTenantId,
+            is_active: true
+        });
+        // For SQLite, the insert result is the last inserted ID
+        const userId = insertResult[0];
+        // Create user role for current tenant
+        await (0, database_1.db)('user_roles').insert({
+            user_id: userId,
+            tenant_id: currentTenantId,
             role: role || 'user',
             is_active: true
         });
         // Get the newly created user
         const user = await (0, database_1.db)('users')
-            .select('id', 'username', 'email', 'first_name', 'last_name', 'role', 'is_active', 'created_at')
-            .where('username', username)
+            .select('id', 'username', 'email', 'first_name', 'last_name', 'is_active', 'created_at')
+            .where({ id: userId, tenant_id: currentTenantId })
             .first();
         if (!user) {
             throw new Error('Failed to create user');
         }
         if (team_id) {
-            await (0, database_1.db)('team_members').insert({
-                user_id: user.id,
-                team_id,
-                role: 'member'
-            });
+            // Ensure team belongs to current tenant
+            const team = await (0, database_1.db)('teams')
+                .where({ id: team_id, tenant_id: currentTenantId })
+                .first();
+            if (team) {
+                await (0, database_1.db)('team_members').insert({
+                    user_id: user.id,
+                    team_id,
+                    role: 'member'
+                });
+            }
         }
-        res.status(201).json(user);
+        res.status(201).json({
+            ...user,
+            role: role || 'user'
+        });
     }
     catch (error) {
         console.error('Create user error:', error);
         res.status(500).json({ error: 'Failed to create user' });
     }
 });
-router.put('/users/:id', auth_1.authenticateToken, async (req, res) => {
+router.put('/users/:id', auth_1.authenticateToken, auth_1.enforceTenantIsolation, async (req, res) => {
     try {
         const { id } = req.params;
         const { username, email, first_name, last_name, role, team_id, is_active } = req.body;
-        if (req.user.id !== parseInt(id) && req.user.role !== 'admin') {
+        const currentTenantId = req.tenantId;
+        if (req.user.id !== parseInt(id) && !(0, auth_1.isAdmin)(req.user)) {
             return res.status(403).json({ error: 'Access denied' });
+        }
+        // Verify user exists in current tenant
+        const existingUser = await (0, database_1.db)('users')
+            .where({ id, tenant_id: currentTenantId })
+            .first();
+        if (!existingUser) {
+            return res.status(404).json({ error: 'User not found' });
         }
         const updateData = { updated_at: new Date() };
         if (username)
@@ -118,13 +172,17 @@ router.put('/users/:id', auth_1.authenticateToken, async (req, res) => {
             updateData.first_name = first_name;
         if (last_name)
             updateData.last_name = last_name;
-        if (role && req.user.role === 'admin')
-            updateData.role = role;
-        if (typeof is_active === 'boolean' && req.user.role === 'admin')
+        if (typeof is_active === 'boolean' && (0, auth_1.isAdmin)(req.user))
             updateData.is_active = is_active;
-        await (0, database_1.db)('users').where('id', id).update(updateData);
+        await (0, database_1.db)('users').where({ id, tenant_id: currentTenantId }).update(updateData);
+        // Update role if admin and role is provided
+        if (role && (0, auth_1.isAdmin)(req.user)) {
+            await (0, database_1.db)('user_roles')
+                .where({ user_id: id, tenant_id: currentTenantId })
+                .update({ role, updated_at: new Date() });
+        }
         // Handle team assignment if admin is making the request
-        if (req.user.role === 'admin' && team_id !== undefined) {
+        if ((0, auth_1.isAdmin)(req.user) && team_id !== undefined) {
             // Remove existing team membership
             await (0, database_1.db)('team_members').where('user_id', id).del();
             // Add new team membership if team_id is provided
@@ -194,7 +252,7 @@ router.post('/users/:id/change-password', auth_1.authenticateToken, async (req, 
     try {
         const { id } = req.params;
         const { current_password, new_password } = req.body;
-        if (req.user.id !== parseInt(id) && req.user.role !== 'admin') {
+        if (req.user.id !== parseInt(id) && !(0, auth_1.isAdmin)(req.user)) {
             return res.status(403).json({ error: 'Access denied' });
         }
         if (!new_password) {
@@ -204,7 +262,7 @@ router.post('/users/:id/change-password', auth_1.authenticateToken, async (req, 
         if (!user) {
             return res.status(404).json({ error: 'User not found' });
         }
-        if (req.user.role !== 'admin' && !await bcryptjs_1.default.compare(current_password, user.password_hash)) {
+        if (!(0, auth_1.isAdmin)(req.user) && !await bcryptjs_1.default.compare(current_password, user.password_hash)) {
             return res.status(401).json({ error: 'Current password incorrect' });
         }
         const password_hash = await bcryptjs_1.default.hash(new_password, 10);
@@ -214,6 +272,114 @@ router.post('/users/:id/change-password', auth_1.authenticateToken, async (req, 
     catch (error) {
         console.error('Change password error:', error);
         res.status(500).json({ error: 'Failed to change password' });
+    }
+});
+// Assign user to team
+router.post('/users/:user_id/assign-team', auth_1.authenticateToken, auth_1.requireAdmin, auth_1.enforceTenantIsolation, async (req, res) => {
+    try {
+        const { user_id } = req.params;
+        const { team_id } = req.body;
+        const currentTenantId = req.tenantId;
+        if (!team_id) {
+            return res.status(400).json({ error: 'Team ID is required' });
+        }
+        // Verify user exists and belongs to current tenant
+        const user = await (0, database_1.db)('users')
+            .where('id', user_id)
+            .where('tenant_id', currentTenantId)
+            .first();
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        // Verify team exists and belongs to current tenant
+        const team = await (0, database_1.db)('teams')
+            .where('id', team_id)
+            .where('tenant_id', currentTenantId)
+            .first();
+        if (!team) {
+            return res.status(404).json({ error: 'Team not found' });
+        }
+        // Remove user from any existing team in this tenant
+        // First get the team ids for this tenant
+        const teamIds = await (0, database_1.db)('teams')
+            .select('id')
+            .where('tenant_id', currentTenantId)
+            .pluck('id');
+        await (0, database_1.db)('team_members')
+            .where('user_id', user_id)
+            .whereIn('team_id', teamIds)
+            .del();
+        // Add user to new team
+        await (0, database_1.db)('team_members').insert({
+            user_id: parseInt(user_id),
+            team_id: parseInt(team_id),
+            role: 'member',
+            joined_at: new Date()
+        });
+        // Get updated user with team info
+        const updatedUser = await (0, database_1.db)('users')
+            .select('users.*', 'teams.id as team_id', 'teams.name as team_name', 'teams.area as team_area', 'team_members.role as team_role')
+            .leftJoin('team_members', 'users.id', 'team_members.user_id')
+            .leftJoin('teams', 'team_members.team_id', 'teams.id')
+            .where('users.id', user_id)
+            .where('users.tenant_id', currentTenantId)
+            .first();
+        res.json({
+            message: 'User assigned to team successfully',
+            user: updatedUser
+        });
+    }
+    catch (error) {
+        console.error('Assign user to team error:', error);
+        res.status(500).json({ error: 'Failed to assign user to team' });
+    }
+});
+// Remove user from team
+router.delete('/users/:user_id/remove-team', auth_1.authenticateToken, auth_1.requireAdmin, auth_1.enforceTenantIsolation, async (req, res) => {
+    try {
+        const { user_id } = req.params;
+        const currentTenantId = req.tenantId;
+        // Verify user exists and belongs to current tenant
+        const user = await (0, database_1.db)('users')
+            .where('id', user_id)
+            .where('tenant_id', currentTenantId)
+            .first();
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        // Remove user from all teams in this tenant
+        const teamIds = await (0, database_1.db)('teams')
+            .select('id')
+            .where('tenant_id', currentTenantId)
+            .pluck('id');
+        await (0, database_1.db)('team_members')
+            .where('user_id', user_id)
+            .whereIn('team_id', teamIds)
+            .del();
+        res.json({
+            message: 'User removed from team successfully'
+        });
+    }
+    catch (error) {
+        console.error('Remove user from team error:', error);
+        res.status(500).json({ error: 'Failed to remove user from team' });
+    }
+});
+// Get available teams for assignment
+router.get('/teams/available', auth_1.authenticateToken, auth_1.requireAdmin, auth_1.enforceTenantIsolation, async (req, res) => {
+    try {
+        const currentTenantId = req.tenantId;
+        const teams = await (0, database_1.db)('teams')
+            .select('id', 'name', 'area', 'description')
+            .where('tenant_id', currentTenantId)
+            .where('is_active', true)
+            .orderBy('area')
+            .orderBy('name');
+        res.json(teams);
+    }
+    catch (error) {
+        console.error('Get available teams error:', error);
+        res.status(500).json({ error: 'Failed to get available teams' });
     }
 });
 exports.default = router;
