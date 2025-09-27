@@ -244,25 +244,34 @@ router.delete('/history/:user_id', authenticateToken, async (req, res) => {
   }
 });
 
-// Admin route tracking - get user route for a specific time period
+// Public route tracking - get user route for a specific time period (respects privacy)
 router.get('/route/:user_id', authenticateToken, async (req, res) => {
   try {
-    // Only admins can view user routes
-    if (!isAdmin(req.user!)) {
-      return res.status(403).json({ error: 'Admin access required' });
-    }
+    // Everyone can view routes, but only for users who have location sharing enabled or are fox team members
 
     const { user_id } = req.params;
     const { hours = 24, limit = 500 } = req.query;
 
-    // Check if user has location sharing enabled and privacy mode disabled
+    // Check if user has location sharing enabled
     const settings = await db('location_settings')
       .where('user_id', user_id)
       .first();
 
-    if (!settings?.location_sharing_enabled || settings?.privacy_mode) {
+    // Allow access if user has location sharing enabled
+    const canViewRoute = settings?.location_sharing_enabled && !settings?.privacy_mode;
+    
+    if (!canViewRoute) {
       return res.json({ 
-        route: [], 
+        user: null,
+        locations: [],
+        statistics: {
+          total_points: 0,
+          total_distance_km: 0,
+          max_speed_kmh: 0,
+          time_period_hours: parseInt(hours as string),
+          first_location: null,
+          last_location: null
+        },
         message: 'User has location sharing disabled or privacy mode enabled' 
       });
     }
@@ -353,13 +362,10 @@ function toRad(degrees: number): number {
   return degrees * (Math.PI / 180);
 }
 
-// Get list of users for admin route selection
+// Get list of users for route selection (public access with privacy respect)
 router.get('/users', authenticateToken, async (req, res) => {
   try {
-    // Only admins can view user list
-    if (!isAdmin(req.user!)) {
-      return res.status(403).json({ error: 'Admin access required' });
-    }
+    // Everyone can view user list, but only those who have location sharing enabled
 
     const users = await db('users')
       .select('users.id', 'users.username', 'users.first_name', 'users.last_name')
@@ -374,6 +380,8 @@ router.get('/users', authenticateToken, async (req, res) => {
         'location_settings.privacy_mode'
       )
       .where('users.tenant_id', req.user!.current_tenant_id || req.user!.tenant_id)
+      .where('location_settings.location_sharing_enabled', true)
+      .where('location_settings.privacy_mode', false)
       .orderBy('users.username');
 
     // Get latest location for each user

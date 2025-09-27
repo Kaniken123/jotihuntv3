@@ -27,7 +27,10 @@ const HuntRegistration: React.FC = () => {
   const loadAreas = async () => {
     try {
       const response = await api.get('/jotihunt/areas');
-      setAreas(response.data.filter((area: Area) => area.status === 'active'));
+      // Show all areas - let users hunt any fox team regardless of status
+      setAreas(response.data);
+      console.log('Loaded areas:', response.data); // Debug log
+      console.log('Area count:', response.data.length);
     } catch (error) {
       console.error('Failed to load areas:', error);
     }
@@ -187,16 +190,32 @@ const HuntRegistration: React.FC = () => {
               className="input"
               required
             >
-              <option value="">Select a fox area</option>
-              {areas.map((area) => (
-                <option 
-                  key={area.id} 
-                  value={area.name}
-                >
-                  {area.name} {area.fox_team_name && `(${area.fox_team_name})`}
-                </option>
-              ))}
+              <option value="">Select a fox area to hunt</option>
+              {areas.length === 0 ? (
+                <option value="" disabled>Loading fox areas...</option>
+              ) : (
+                areas.map((area) => (
+                  <option 
+                    key={area.id} 
+                    value={area.name}
+                  >
+                    🦊 {area.name} {area.fox_team_name ? `- ${area.fox_team_name}` : ''} 
+                    {area.status === 'hunted' ? ' ✅ (Hunted)' : area.status === 'active' ? ' 🎯 (Active)' : ' ⏳ (Ready to hunt)'}
+                    {area.last_seen ? ` - Last seen: ${new Date(area.last_seen).toLocaleDateString()}` : ''}
+                  </option>
+                ))
+              )}
             </select>
+            {areas.length === 0 && (
+              <p className="text-sm text-yellow-600 dark:text-yellow-400 mt-1">
+                ⚠️ No fox areas found. Contact admin to set up fox teams.
+              </p>
+            )}
+            {areas.length > 0 && (
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                🎯 Found {areas.length} fox area{areas.length !== 1 ? 's' : ''} available for hunting
+              </p>
+            )}
           </div>
 
           {/* Photo Upload */}

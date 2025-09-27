@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { Map, MessageSquare, Camera, FileText, Book, Shield, Route, Menu, X } from 'lucide-react';
+import { Map, MessageSquare, Camera, FileText, Book, Shield, Route, Menu, X, Target } from 'lucide-react';
 import NotificationCenter from './NotificationCenter';
 import { isAdmin } from '../utils/roleUtils';
 
@@ -26,6 +26,7 @@ const Navbar: React.FC = () => {
     { name: 'Map', href: '/', icon: Map, current: location.pathname === '/' },
     { name: 'Chat', href: '/chat', icon: MessageSquare, current: location.pathname === '/chat' },
     { name: 'Hunt', href: '/hunt', icon: Camera, current: location.pathname === '/hunt' },
+    { name: 'Routes', href: '/routes', icon: Target, current: location.pathname === '/routes' },
     { name: 'Updates', href: '/updates', icon: FileText, current: location.pathname === '/updates' },
     { name: 'Regels', href: '/rules', icon: Book, current: location.pathname === '/rules' },
     ...(isAdmin(user) ? [

@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMapEvents, Polyline } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMapEvents, Polyline, Circle } from 'react-leaflet';
 import { Icon, LatLng } from 'leaflet';
-import { Area, UserLocation, FoxRoute, Subscription } from '../types/index';
+import { Area, UserLocation, FoxRoute, Subscription, Article } from '../types/index';
 import { gameService } from '../services/gameService';
 import { useWebSocket } from '../contexts/WebSocketContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -222,9 +222,43 @@ const Map: React.FC = () => {
   const [showFoxFilter, setShowFoxFilter] = useState(false);
   const [showUserMarkers, setShowUserMarkers] = useState(true);
   const [showSubscriptions, setShowSubscriptions] = useState(true);
+  const [showNoHuntZones, setShowNoHuntZones] = useState(true);
   const [selectedFoxRoute, setSelectedFoxRoute] = useState<FoxRoute | null>(null);
   const [isLoadingRoute, setIsLoadingRoute] = useState(false);
   const [routeTimeSpan, setRouteTimeSpan] = useState<number>(24); // hours
+  
+  // Fox location reporting states (public feature)
+  const [isReportFoxMode, setIsReportFoxMode] = useState(false);
+  const [reportFoxPosition, setReportFoxPosition] = useState<LatLng | null>(null);
+  const [showReportFoxModal, setShowReportFoxModal] = useState(false);
+  const [selectedReportFoxTeam, setSelectedReportFoxTeam] = useState<string>('');
+  const [isSubmittingFoxReport, setIsSubmittingFoxReport] = useState(false);
+  
+  // Fox prediction settings
+  const [foxWalkingSpeed, setFoxWalkingSpeed] = useState<number>(5); // km/h
+  
+  // Real-time circle growth - updates every 5 seconds to make circles grow autonomously
+  const [currentTime, setCurrentTime] = useState<Date>(new Date());
+  
+  // Quick Hint Solution functionality
+  const [showHintSolutionModal, setShowHintSolutionModal] = useState(false);
+  const [hints, setHints] = useState<Article[]>([]);
+  const [selectedHint, setSelectedHint] = useState<Article | null>(null);
+  const [solutionForm, setSolutionForm] = useState({
+    solution: '',
+    foxCoordinates: {
+      alpha: { rd_x: '', rd_y: '' },
+      bravo: { rd_x: '', rd_y: '' },
+      charlie: { rd_x: '', rd_y: '' },
+      delta: { rd_x: '', rd_y: '' },
+      echo: { rd_x: '', rd_y: '' },
+      foxtrot: { rd_x: '', rd_y: '' },
+      golf: { rd_x: '', rd_y: '' },
+      hotel: { rd_x: '', rd_y: '' }
+    }
+  });
+  const [isSubmittingSolution, setIsSubmittingSolution] = useState(false);
+  
   const { socket, isConnected } = useWebSocket();
   const { state } = useAuth();
 
@@ -235,7 +269,21 @@ const Map: React.FC = () => {
         // Load areas first for immediate map display
         const areasData = await gameService.getAreas();
         console.log('🦊 Areas loaded:', areasData?.length || 0, 'areas');
-        setAreas(areasData);
+        
+        // Deduplicate areas by name, keeping the most recent (highest id)
+        const uniqueAreas = areasData.reduce((acc, area) => {
+          const existing = acc.find(a => a.name === area.name);
+          if (!existing || area.id > existing.id) {
+            if (existing) {
+              acc.splice(acc.indexOf(existing), 1);
+            }
+            acc.push(area);
+          }
+          return acc;
+        }, []);
+        console.log('🦊 Unique areas after deduplication:', uniqueAreas.length);
+        
+        setAreas(uniqueAreas);
         setIsLoading(false); // Show map immediately with fox markers
         
         // Then load subscriptions and user locations in background
@@ -310,21 +358,40 @@ const Map: React.FC = () => {
     });
   }, []);
 
+  // Handle hint solution success events
+  const handleHintSolutionSubmitted = useCallback((update: any) => {
+    console.log('Hint solution submitted:', update);
+    
+    if (update.reveals_fox && update.revealed_areas?.length > 0) {
+      // Reload areas to show newly revealed fox locations
+      gameService.getAreas().then(areasData => {
+        setAreas(areasData);
+        
+        // Show success notification
+        alert(`🎯 Hint solved! Revealed ${update.revealed_areas.join(', ')} fox locations on the map!`);
+      }).catch(error => {
+        console.error('Failed to reload areas after hint solution:', error);
+      });
+    }
+  }, []);
+
   useEffect(() => {
     if (socket && isConnected) {
       socket.on('location-update', handleLocationUpdate);
       socket.on('team-location-update', handleLocationUpdate);
       socket.on('fox-status-update', handleFoxStatusUpdate);
       socket.on('fox-location-update', handleFoxLocationUpdate);
+      socket.on('hint-solution-submitted', handleHintSolutionSubmitted);
 
       return () => {
         socket.off('location-update', handleLocationUpdate);
         socket.off('team-location-update', handleLocationUpdate);
         socket.off('fox-status-update', handleFoxStatusUpdate);
         socket.off('fox-location-update', handleFoxLocationUpdate);
+        socket.off('hint-solution-submitted', handleHintSolutionSubmitted);
       };
     }
-  }, [socket, isConnected, handleLocationUpdate, handleFoxStatusUpdate, handleFoxLocationUpdate]);
+  }, [socket, isConnected, handleLocationUpdate, handleFoxStatusUpdate, handleFoxLocationUpdate, handleHintSolutionSubmitted]);
 
   const handleUserLocationUpdate = useCallback(async (position: LatLng) => {
     setUserPosition(position);
@@ -338,12 +405,19 @@ const Map: React.FC = () => {
   }, []);
 
   const handleMapClick = useCallback((position: LatLng) => {
+    // Admin fox location placement
     if (state.user?.role === 'admin' && isAddMode) {
       setSelectedPosition(position);
       setShowFoxLocationModal(true);
       setIsAddMode(false); // Exit add mode after placing
     }
-  }, [state.user?.role, isAddMode]);
+    // Public fox location reporting
+    else if (isReportFoxMode) {
+      setReportFoxPosition(position);
+      setShowReportFoxModal(true);
+      setIsReportFoxMode(false); // Exit report mode after placing
+    }
+  }, [state.user?.role, isAddMode, isReportFoxMode]);
 
   const handleFoxLocationSubmit = useCallback(async () => {
     if (!selectedPosition || !selectedFoxTeam) return;
@@ -381,15 +455,62 @@ const Map: React.FC = () => {
     }
   }, [selectedPosition, selectedFoxTeam, areas]);
 
+  // Public fox location reporting
+  const handleFoxLocationReport = useCallback(async () => {
+    if (!reportFoxPosition || !selectedReportFoxTeam) return;
+
+    setIsSubmittingFoxReport(true);
+    try {
+      const area = areas.find(a => a.name === selectedReportFoxTeam);
+      if (!area) {
+        alert('Fox team not found');
+        return;
+      }
+
+      await gameService.updateFoxLocation(area.id, reportFoxPosition.lat, reportFoxPosition.lng, 'user_report');
+      
+      // Update local state
+      setAreas(prevAreas => 
+        prevAreas.map(a => 
+          a.id === area.id 
+            ? { ...a, lat: reportFoxPosition.lat, lng: reportFoxPosition.lng, last_seen: new Date().toISOString() }
+            : a
+        )
+      );
+
+      setShowReportFoxModal(false);
+      setReportFoxPosition(null);
+      setSelectedReportFoxTeam('');
+      setIsReportFoxMode(false);
+      
+      alert('🦊 Fox location reported successfully! Thank you for helping track the foxes!');
+    } catch (error) {
+      console.error('Error reporting fox location:', error);
+      alert('Failed to report fox location');
+    } finally {
+      setIsSubmittingFoxReport(false);
+    }
+  }, [reportFoxPosition, selectedReportFoxTeam, areas]);
+
   const loadFoxRoute = useCallback(async (areaId: number) => {
     setIsLoadingRoute(true);
     try {
+      console.log(`🛣️ Loading route for area ID: ${areaId}, timeSpan: ${routeTimeSpan} hours`);
       const routeData = await gameService.getFoxRoute(areaId, routeTimeSpan);
-      console.log('Loaded fox route data:', routeData);
-      console.log('Route points in order:', routeData.route.map((p, i) => `${i+1}. ${new Date(p.recorded_at).toLocaleTimeString()} - (${p.lat}, ${p.lng})`));
+      console.log('🛣️ Raw route data:', routeData);
+      console.log('🛣️ Route points count:', routeData?.route?.length || 0);
+      console.log('🛣️ Route points in order:', routeData?.route?.map((p, i) => `${i+1}. ${new Date(p.recorded_at).toLocaleTimeString()} - (${p.lat}, ${p.lng})`) || []);
+      
+      if (routeData?.route?.length > 0) {
+        console.log('🛣️ Setting selected fox route - should show on map');
+      } else {
+        console.log('🛣️ No route points found for this fox');
+        alert('No route data found for this fox in the selected time period. Try a longer time span or the fox may not have any recorded locations yet.');
+      }
+      
       setSelectedFoxRoute(routeData);
     } catch (error: any) {
-      console.error('Error loading fox route:', error);
+      console.error('❌ Error loading fox route:', error);
       const errorMessage = error.response?.data?.error || error.message || 'Unknown error occurred';
       alert(`Failed to load fox route: ${errorMessage}`);
     } finally {
@@ -419,6 +540,97 @@ const Map: React.FC = () => {
 
   const hideAllFoxTeams = useCallback(() => {
     setVisibleFoxTeams(new Set());
+  }, []);
+
+  // Load available hints
+  const loadHints = useCallback(async () => {
+    if (!state.user) return;
+    
+    try {
+      const articles = await gameService.getArticles();
+      const hintArticles = articles.filter((article: Article) => article.type === 'hint');
+      setHints(hintArticles);
+    } catch (error) {
+      console.error('Failed to load hints:', error);
+    }
+  }, [state.user]);
+
+  useEffect(() => {
+    if (state.user) {
+      loadHints();
+    }
+  }, [state.user, loadHints]);
+
+  // Real-time circle growth timer - updates currentTime every 5 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(new Date());
+      console.log('🕒 Timer: Updating prediction circles for autonomous growth');
+    }, 5000); // 5 seconds
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // Handle hint solution submission
+  const handleSubmitHintSolution = useCallback(async () => {
+    if (!selectedHint || !solutionForm.solution.trim()) return;
+    
+    setIsSubmittingSolution(true);
+    try {
+      // Filter out empty coordinates
+      const filteredCoordinates: any = {};
+      Object.entries(solutionForm.foxCoordinates).forEach(([area, coords]) => {
+        if (coords.rd_x.trim() && coords.rd_y.trim()) {
+          filteredCoordinates[area] = {
+            rd_x: coords.rd_x.trim(),
+            rd_y: coords.rd_y.trim()
+          };
+        }
+      });
+
+      const result = await gameService.submitHintSolution(
+        selectedHint.id,
+        solutionForm.solution,
+        Object.keys(filteredCoordinates).length > 0 ? filteredCoordinates : undefined
+      );
+      
+      // Reset form
+      setSolutionForm({
+        solution: '',
+        foxCoordinates: {
+          alpha: { rd_x: '', rd_y: '' },
+          bravo: { rd_x: '', rd_y: '' },
+          charlie: { rd_x: '', rd_y: '' },
+          delta: { rd_x: '', rd_y: '' },
+          echo: { rd_x: '', rd_y: '' },
+          foxtrot: { rd_x: '', rd_y: '' },
+          golf: { rd_x: '', rd_y: '' },
+          hotel: { rd_x: '', rd_y: '' }
+        }
+      });
+      setShowHintSolutionModal(false);
+      setSelectedHint(null);
+      
+      // Show success message
+      alert(result.message || 'Solution submitted successfully!');
+      
+      // If correct and reveals fox locations, reload areas to show new fox positions
+      if (result.solution?.is_correct && result.solution?.reveals_fox_location) {
+        const areasData = await gameService.getAreas();
+        setAreas(areasData);
+      }
+      
+    } catch (error: any) {
+      console.error('Failed to submit solution:', error);
+      alert(error.response?.data?.error || 'Failed to submit solution');
+    } finally {
+      setIsSubmittingSolution(false);
+    }
+  }, [selectedHint, solutionForm]);
+
+  const openHintSolutionModal = useCallback((hint: Article) => {
+    setSelectedHint(hint);
+    setShowHintSolutionModal(true);
   }, []);
 
   const center: [number, number] = useMemo(() => [52.1597, 6.4131], []);
@@ -454,6 +666,14 @@ const Map: React.FC = () => {
                     Last seen: {new Date(area.last_seen).toLocaleTimeString()}
                   </p>
                 )}
+                {area.last_seen && (
+                  <div className="mt-2 p-2 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded text-xs">
+                    <span className="text-yellow-700 dark:text-yellow-300 font-medium">
+                      💡 Revealed by hint solution
+                    </span>
+                  </div>
+                )}
+                
                 <div className="mt-3 space-y-2">
                   <button
                     onClick={() => loadFoxRoute(area.id)}
@@ -549,28 +769,42 @@ const Map: React.FC = () => {
             icon={createHouseIcon(isVisited, 'medium')}
           >
             <Popup>
-              <div className="p-3 min-w-52">
-                <h3 className="font-semibold text-lg mb-2">{subscription.team_name}</h3>
+              <div className="p-3 min-w-64">
+                <h3 className="font-semibold text-lg mb-3">{subscription.team_name}</h3>
                 
-                {subscription.area && (
-                  <p className="text-sm text-gray-600 mb-1">
-                    <span className="font-medium">Gebied:</span> {subscription.area}
-                  </p>
-                )}
-                
-                {subscription.fox_team_name && (
-                  <p className="text-sm text-gray-600 mb-1">
-                    <span className="font-medium">Gekoppeld aan vos:</span> {subscription.fox_team_name}
-                  </p>
-                )}
-                
-                <p className="text-sm text-gray-600 mb-2">
-                  <span className="font-medium">Status:</span> {subscription.is_participating ? 'Actief' : 'Inactief'}
-                </p>
+                {/* Accommodation details */}
+                <div className="space-y-2 mb-3">
+                  {subscription.accomodation && (
+                    <p className="text-sm text-gray-600">
+                      <span className="font-medium">🏠 Type:</span> {subscription.accomodation}
+                    </p>
+                  )}
+                  
+                  {subscription.street && subscription.housenumber && (
+                    <p className="text-sm text-gray-600">
+                      <span className="font-medium">📍 Adres:</span> {subscription.street} {subscription.housenumber}
+                      {subscription.housenumber_addition && subscription.housenumber_addition}
+                    </p>
+                  )}
+                  
+                  {subscription.postcode && subscription.city && (
+                    <p className="text-sm text-gray-600">
+                      <span className="font-medium">🏙️ Plaats:</span> {subscription.postcode} {subscription.city}
+                    </p>
+                  )}
+                </div>
 
-                {subscription.visited_by_foxes && subscription.visited_by_foxes.length > 0 && (
+                {/* Fox team assignment */}
+                {subscription.fox_team_name && (
+                  <p className="text-sm text-gray-600 mb-2">
+                    <span className="font-medium">🦊 Gekoppeld aan:</span> {subscription.fox_team_name}
+                  </p>
+                )}
+
+                {/* Visit status */}
+                {subscription.visited_by_foxes && subscription.visited_by_foxes.length > 0 ? (
                   <div className="mt-3 p-2 bg-green-50 rounded">
-                    <p className="text-sm font-medium text-green-800 mb-1">Bezocht door:</p>
+                    <p className="text-sm font-medium text-green-800 mb-1">✅ Bezocht door:</p>
                     <div className="flex flex-wrap gap-1">
                       {subscription.visited_by_foxes.map((foxTeam, index) => (
                         <span 
@@ -582,16 +816,15 @@ const Map: React.FC = () => {
                       ))}
                     </div>
                   </div>
-                )}
-                
-                {(!subscription.visited_by_foxes || subscription.visited_by_foxes.length === 0) && (
+                ) : (
                   <div className="mt-3 p-2 bg-blue-50 rounded">
-                    <p className="text-sm text-blue-700">🏠 Nog niet bezocht door vossen</p>
+                    <p className="text-sm text-blue-700">⏳ Nog niet bezocht door vossen</p>
                   </div>
                 )}
                 
+                {/* Coordinates */}
                 <div className="mt-3 pt-2 border-t text-xs text-gray-500">
-                  <p>Coördinaten: {subscription.lat?.toFixed(6)}, {subscription.lng?.toFixed(6)}</p>
+                  <p>📍 {subscription.lat?.toFixed(6)}, {subscription.lng?.toFixed(6)}</p>
                 </div>
               </div>
             </Popup>
@@ -599,6 +832,44 @@ const Map: React.FC = () => {
         );
       });
   }, [subscriptions, showSubscriptions]);
+
+  // No-hunt zones - 500m circles around subscriptions
+  const noHuntZones = useMemo(() => {
+    if (!showNoHuntZones) return [];
+    
+    return subscriptions
+      .filter(subscription => subscription.lat && subscription.lng)
+      .map((subscription) => (
+        <Circle
+          key={`no-hunt-${subscription.id}`}
+          center={[subscription.lat!, subscription.lng!]}
+          radius={500} // 500 meters
+          pathOptions={{
+            fillColor: '#EF4444', // Red color
+            fillOpacity: 0.1,
+            color: '#EF4444',
+            weight: 2,
+            opacity: 0.6,
+            dashArray: '5, 5'
+          }}
+        >
+          <Popup>
+            <div className="p-2">
+              <h4 className="font-semibold text-red-600">🚫 No-Hunt Zone</h4>
+              <p className="text-sm text-gray-600 mb-1">
+                <strong>Clubhuis:</strong> {subscription.team_name}
+              </p>
+              <p className="text-xs text-gray-500">
+                500m radius - Geen vossenjacht toegestaan
+              </p>
+              <p className="text-xs text-gray-500">
+                Tegenhunt moet binnen deze zone geplaatst worden
+              </p>
+            </div>
+          </Popup>
+        </Circle>
+      ));
+  }, [subscriptions, showNoHuntZones]);
 
   if (isLoading) {
     return (
@@ -662,11 +933,59 @@ const Map: React.FC = () => {
               {isLoadingRoute ? 'Loading...' : 'Reload Route'}
             </button>
           </div>
+          
+          {/* Fox Speed Configuration */}
+          <div className="mt-3 border-t pt-3">
+            <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+              🎯 Fox walking speed (km/h):
+            </label>
+            <div className="flex items-center space-x-2">
+              <input
+                type="range"
+                min="2"
+                max="12"
+                step="0.5"
+                value={foxWalkingSpeed}
+                onChange={(e) => setFoxWalkingSpeed(Number(e.target.value))}
+                className="flex-1 h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
+              />
+              <span className="text-xs font-mono w-8">{foxWalkingSpeed}</span>
+            </div>
+            <div className="flex justify-between text-xs text-gray-500 mt-1">
+              <span>Slow</span>
+              <span>Fast</span>
+            </div>
+            <p className="text-xs text-gray-500 mt-1">
+              Adjusts prediction circle size based on assumed fox movement speed
+            </p>
+          </div>
         </div>
       )}
       
-      {/* Fox Team Filter */}
+      {/* Control Panel */}
       <div className="absolute top-4 right-4 z-10 space-y-2">
+        {/* Quick Hint Solution Button */}
+        <button
+          onClick={() => {
+            if (hints.length > 0) {
+              setSelectedHint(hints.find(h => !h.is_read) || hints[0]);
+              setShowHintSolutionModal(true);
+            } else {
+              alert('No hints available. Load hints from the Updates page first.');
+            }
+          }}
+          className="flex items-center space-x-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white border border-blue-700 rounded-md shadow-lg transition-all"
+        >
+          <span className="text-sm">💡</span>
+          <span className="text-xs font-medium">Quick Hint</span>
+          {hints.filter(h => !h.is_read).length > 0 && (
+            <span className="bg-yellow-400 text-blue-900 text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
+              {hints.filter(h => !h.is_read).length}
+            </span>
+          )}
+        </button>
+
+        {/* Fox Filter Button */}
         <button
           onClick={() => setShowFoxFilter(!showFoxFilter)}
           className="flex items-center space-x-2 px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-all"
@@ -746,15 +1065,43 @@ const Map: React.FC = () => {
                   }}>🏠</div>
                   <span className="text-sm text-gray-700 dark:text-gray-300">Groups</span>
                 </label>
+                <label className="flex items-center space-x-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={showNoHuntZones}
+                    onChange={(e) => setShowNoHuntZones(e.target.checked)}
+                    className="rounded border-gray-300 dark:border-gray-600"
+                  />
+                  <div className="w-3 h-3 rounded-full border-2 border-red-500" style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)' }}></div>
+                  <span className="text-sm text-gray-700 dark:text-gray-300">No-Hunt Zones</span>
+                </label>
               </div>
             </div>
           </div>
         )}
       </div>
 
-      {/* Admin Add Button */}
-      {state.user?.role === 'admin' && (
-        <div className="absolute bottom-4 right-4 z-10 space-y-2">
+      {/* Fox Location Buttons */}
+      <div className="absolute bottom-4 right-4 z-10 space-y-2">
+        {/* Public Fox Report Button */}
+        <button
+          onClick={() => setIsReportFoxMode(!isReportFoxMode)}
+          className={`flex items-center space-x-2 px-4 py-2 rounded-md shadow-lg transition-all ${
+            isReportFoxMode 
+              ? 'bg-red-600 hover:bg-red-700 text-white' 
+              : 'bg-green-600 hover:bg-green-700 text-white'
+          }`}
+        >
+          <span className="text-lg">
+            {isReportFoxMode ? '✕' : '🦊'}
+          </span>
+          <span className="text-sm font-medium">
+            {isReportFoxMode ? 'Cancel' : 'Report Fox Location'}
+          </span>
+        </button>
+        
+        {/* Admin Add Button */}
+        {state.user?.role === 'admin' && (
           <button
             onClick={() => setIsAddMode(!isAddMode)}
             className={`flex items-center space-x-2 px-4 py-2 rounded-md shadow-lg transition-all ${
@@ -764,23 +1111,25 @@ const Map: React.FC = () => {
             }`}
           >
             <span className="text-lg">
-              {isAddMode ? '✕' : '🦊'}
+              {isAddMode ? '✕' : '👑'}
             </span>
             <span className="text-sm font-medium">
-              {isAddMode ? 'Cancel' : 'Add Fox Location'}
+              {isAddMode ? 'Cancel' : 'Admin Add Fox'}
             </span>
           </button>
-          
-          {isAddMode && (
-            <div className="bg-yellow-100 dark:bg-yellow-900 border border-yellow-300 dark:border-yellow-700 text-yellow-800 dark:text-yellow-200 px-3 py-2 rounded-md shadow-lg">
-              <div className="flex items-center space-x-2">
-                <div className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></div>
-                <span className="text-sm font-medium">Click on map to place fox marker</span>
-              </div>
+        )}
+        
+        {(isReportFoxMode || isAddMode) && (
+          <div className="bg-yellow-100 dark:bg-yellow-900 border border-yellow-300 dark:border-yellow-700 text-yellow-800 dark:text-yellow-200 px-3 py-2 rounded-md shadow-lg">
+            <div className="flex items-center space-x-2">
+              <div className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></div>
+              <span className="text-sm font-medium">
+                {isReportFoxMode ? 'Click on map to report fox location' : 'Click on map to place fox marker'}
+              </span>
             </div>
-          )}
-        </div>
-      )}
+          </div>
+        )}
+      </div>
       
       <MapContainer
         center={center}
@@ -794,7 +1143,10 @@ const Map: React.FC = () => {
         />
         
         <LocationUpdater onLocationUpdate={handleUserLocationUpdate} />
-        <MapClickHandler onMapClick={handleMapClick} isAdminMode={state.user?.role === 'admin' && isAddMode} />
+        <MapClickHandler onMapClick={handleMapClick} isAdminMode={(state.user?.role === 'admin' && isAddMode) || isReportFoxMode} />
+        
+        {/* No-hunt zones first (behind other markers) */}
+        {noHuntZones}
         
         {foxMarkers}
         {userMarkers}
@@ -802,6 +1154,7 @@ const Map: React.FC = () => {
         
         {/* Fox Route Polyline */}
         {selectedFoxRoute && selectedFoxRoute.route.length > 1 && (
+          console.log('🗺️ Rendering fox route with', selectedFoxRoute.route.length, 'points'),
           <>
             <Polyline
               positions={selectedFoxRoute.route.map(point => [point.lat, point.lng])}
@@ -827,8 +1180,141 @@ const Map: React.FC = () => {
                 </Popup>
               </Marker>
             ))}
+            {/* Fox Prediction Circle - shows where fox could be now based on walking speed */}
+            {(() => {
+              const lastPoint = selectedFoxRoute.route[selectedFoxRoute.route.length - 1];
+              const lastSeenTime = new Date(lastPoint.recorded_at);
+              const minutesSinceLastSeen = (currentTime.getTime() - lastSeenTime.getTime()) / (1000 * 60);
+              
+              // Use configurable fox walking speed
+              const maxDistanceKm = (minutesSinceLastSeen / 60) * foxWalkingSpeed;
+              const maxDistanceMeters = maxDistanceKm * 1000;
+              
+              console.log(`🎯 Fox prediction: ${minutesSinceLastSeen.toFixed(1)} min ago, could be ${maxDistanceKm.toFixed(2)}km away`);
+              
+              // Only show prediction circle if last seen was within last 4 hours and at least 1 minute ago
+              if (minutesSinceLastSeen >= 1 && minutesSinceLastSeen <= 240) {
+                return (
+                  <Circle
+                    center={[lastPoint.lat, lastPoint.lng]}
+                    radius={maxDistanceMeters}
+                    pathOptions={{
+                      fillColor: getTeamColors(selectedFoxRoute.area.name).primary,
+                      fillOpacity: 0.1,
+                      color: getTeamColors(selectedFoxRoute.area.name).primary,
+                      weight: 2,
+                      opacity: 0.6,
+                      dashArray: '10, 10'
+                    }}
+                  >
+                    <Popup>
+                      <div className="p-2 text-sm">
+                        <h4 className="font-semibold text-green-600">🎯 Fox Prediction Zone</h4>
+                        <p className="text-gray-700 mb-1">
+                          <strong>Fox Team:</strong> {selectedFoxRoute.area.fox_team_name || selectedFoxRoute.area.name}
+                        </p>
+                        <p className="text-gray-600 text-xs mb-1">
+                          Last seen: {minutesSinceLastSeen < 60 
+                            ? `${Math.round(minutesSinceLastSeen)} min ago` 
+                            : `${(minutesSinceLastSeen/60).toFixed(1)} hours ago`}
+                        </p>
+                        <p className="text-gray-600 text-xs mb-1">
+                          Max distance: {maxDistanceKm.toFixed(2)} km radius
+                        </p>
+                        <p className="text-gray-600 text-xs">
+                          Assumes avg. walking speed: {foxWalkingSpeed} km/h
+                        </p>
+                        <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded text-xs">
+                          <p className="text-green-800 font-medium">
+                            💡 The fox could be anywhere within this circle based on walking speed since last sighting
+                          </p>
+                        </div>
+                      </div>
+                    </Popup>
+                  </Circle>
+                );
+              }
+              return null;
+            })()}
           </>
         )}
+        
+        {/* Fox Prediction Circles for All Foxes with Recent Sightings - shows independently of route selection */}
+        {areas.filter(area => 
+          area.lat && 
+          area.lng && 
+          area.last_seen && 
+          visibleFoxTeams.has(area.name) &&
+          // Skip if this fox already has a route showing (to avoid duplicate circles)
+          (!selectedFoxRoute || selectedFoxRoute.area.id !== area.id)
+        ).map((area) => {
+          const lastSeenTime = new Date(area.last_seen!);
+          const minutesSinceLastSeen = (currentTime.getTime() - lastSeenTime.getTime()) / (1000 * 60);
+          
+          // Use configurable fox walking speed
+          const maxDistanceKm = (minutesSinceLastSeen / 60) * foxWalkingSpeed;
+          const maxDistanceMeters = maxDistanceKm * 1000;
+          
+          console.log(`🎯 Fox ${area.name} (${area.status}) prediction: ${minutesSinceLastSeen.toFixed(1)} min ago, could be ${maxDistanceKm.toFixed(2)}km away`);
+          
+          // Only show prediction circle if last seen was within last 4 hours and at least 1 minute ago
+          if (minutesSinceLastSeen >= 1 && minutesSinceLastSeen <= 240) {
+            // Determine status-based styling and messaging
+            const isHunted = area.status === 'hunted';
+            const isActive = area.status === 'active';
+            const statusColor = isHunted ? 'red' : isActive ? 'green' : 'gray';
+            const statusColorCode = isHunted ? 'text-red-600' : isActive ? 'text-green-600' : 'text-gray-600';
+            const bgColorCode = isHunted ? 'bg-red-50 border-red-200' : isActive ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200';
+            const textColorCode = isHunted ? 'text-red-800' : isActive ? 'text-green-800' : 'text-gray-800';
+            
+            return (
+              <Circle
+                key={`fox-prediction-${area.id}`}
+                center={[area.lat!, area.lng!]}
+                radius={maxDistanceMeters}
+                pathOptions={{
+                  fillColor: getTeamColors(area.name).primary,
+                  fillOpacity: isHunted ? 0.15 : 0.12, // Slightly more visible for hunted foxes
+                  color: getTeamColors(area.name).primary,
+                  weight: isHunted ? 3 : 2,
+                  opacity: 0.8,
+                  dashArray: isHunted ? '10, 5' : '8, 8' // Different dash pattern for hunted foxes
+                }}
+              >
+                <Popup>
+                  <div className="p-2 text-sm">
+                    <h4 className={`font-semibold ${statusColorCode}`}>🎯 Fox Prediction Zone</h4>
+                    <p className="text-gray-700 mb-1">
+                      <strong>Fox Team:</strong> {area.fox_team_name || area.name}
+                    </p>
+                    <p className="text-gray-600 text-xs mb-1">
+                      <strong>Status:</strong> <span className={`${statusColorCode} font-medium`}>{area.status.toUpperCase()}</span>
+                    </p>
+                    <p className="text-gray-600 text-xs mb-1">
+                      Last seen: {minutesSinceLastSeen < 60 
+                        ? `${Math.round(minutesSinceLastSeen)} min ago` 
+                        : `${(minutesSinceLastSeen/60).toFixed(1)} hours ago`}
+                    </p>
+                    <p className="text-gray-600 text-xs mb-1">
+                      Max distance: {maxDistanceKm.toFixed(2)} km radius
+                    </p>
+                    <p className="text-gray-600 text-xs">
+                      Assumes avg. walking speed: {foxWalkingSpeed} km/h
+                    </p>
+                    <div className={`mt-2 p-2 ${bgColorCode} border rounded text-xs`}>
+                      <p className={`${textColorCode} font-medium`}>
+                        {isHunted ? '🚨 This fox has been HUNTED! The prediction circle shows where they could have moved since being hunted.' :
+                         isActive ? '📍 This fox is ACTIVE! The prediction circle shows their possible location based on the last sighting.' :
+                         '💤 This fox is INACTIVE. The prediction circle shows where they could have moved from their last known location.'}
+                      </p>
+                    </div>
+                  </div>
+                </Popup>
+              </Circle>
+            );
+          }
+          return null;
+        })}
         
         {/* Current user position */}
         {userPosition && (
@@ -903,6 +1389,305 @@ const Map: React.FC = () => {
               >
                 Cancel
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Fox Location Report Modal (Public Feature) */}
+      {showReportFoxModal && reportFoxPosition && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
+              🦊 Report Fox Location
+            </h3>
+            
+            <div className="space-y-4">
+              <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg">
+                <p className="text-sm text-blue-800 dark:text-blue-200 mb-2">
+                  📍 <strong>Spotted Location:</strong> {reportFoxPosition.lat.toFixed(6)}, {reportFoxPosition.lng.toFixed(6)}
+                </p>
+                <p className="text-sm text-blue-800 dark:text-blue-200">
+                  🕒 <strong>Report Time:</strong> {new Date().toLocaleString()}
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  🦊 Which Fox Team Did You Spot?
+                </label>
+                <select
+                  value={selectedReportFoxTeam}
+                  onChange={(e) => setSelectedReportFoxTeam(e.target.value)}
+                  className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                  required
+                >
+                  <option value="">Choose the fox team you spotted...</option>
+                  {areas.map((area) => (
+                    <option key={area.id} value={area.name}>
+                      🦊 {area.name} ({area.fox_team_name || 'Unknown Team'})
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-500 mt-1">
+                  💡 Help other hunters by reporting fox sightings!
+                </p>
+              </div>
+              
+              <div className="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded-lg">
+                <p className="text-sm text-green-800 dark:text-green-200">
+                  🎯 <strong>Your fox report helps everyone!</strong> Other hunters can see the latest fox locations and plan their hunts accordingly.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex space-x-3 mt-6">
+              <button
+                onClick={handleFoxLocationReport}
+                disabled={!selectedReportFoxTeam || isSubmittingFoxReport}
+                className="flex-1 bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+              >
+                {isSubmittingFoxReport ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+                    <span>Reporting...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>🦊</span>
+                    <span>Report Fox</span>
+                  </>
+                )}
+              </button>
+              
+              <button
+                onClick={() => {
+                  setShowReportFoxModal(false);
+                  setReportFoxPosition(null);
+                  setSelectedReportFoxTeam('');
+                  setIsReportFoxMode(false);
+                }}
+                className="flex-1 bg-gray-500 text-white py-2 px-4 rounded-md hover:bg-gray-600"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Quick Hint Solution Modal */}
+      {showHintSolutionModal && selectedHint && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
+                🎯 Quick Hint Solution - Fox Locations
+              </h2>
+              <button
+                onClick={() => {
+                  setShowHintSolutionModal(false);
+                  setSelectedHint(null);
+                  setSolutionForm({
+                    solution: '',
+                    foxCoordinates: {
+                      alpha: { rd_x: '', rd_y: '' },
+                      bravo: { rd_x: '', rd_y: '' },
+                      charlie: { rd_x: '', rd_y: '' },
+                      delta: { rd_x: '', rd_y: '' },
+                      echo: { rd_x: '', rd_y: '' },
+                      foxtrot: { rd_x: '', rd_y: '' },
+                      golf: { rd_x: '', rd_y: '' },
+                      hotel: { rd_x: '', rd_y: '' }
+                    }
+                  });
+                }}
+                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              >
+                ✕
+              </button>
+            </div>
+            
+            {/* Hint Display */}
+            <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-700">
+              <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                {selectedHint.title}
+              </h3>
+              {selectedHint.area && (
+                <span className="inline-block px-2 py-1 text-xs bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200 rounded-full mb-2">
+                  Area: {selectedHint.area}
+                </span>
+              )}
+              <div 
+                className="text-sm text-gray-600 dark:text-gray-400 max-h-32 overflow-y-auto"
+                dangerouslySetInnerHTML={{ __html: selectedHint.content }}
+              />
+              <div className="mt-2 text-xs text-gray-500">
+                📅 Published: {new Date(selectedHint.published_at).toLocaleString()}
+              </div>
+            </div>
+            
+            {/* Solution Form */}
+            <div className="space-y-6">
+              {/* Text Solution */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  🎯 Solution Text (Required)
+                </label>
+                <textarea
+                  value={solutionForm.solution}
+                  onChange={(e) => setSolutionForm(prev => ({ ...prev, solution: e.target.value }))}
+                  placeholder="Enter the solution text (codeword, postcode, etc.)"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-200"
+                  rows={2}
+                  required
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  💡 Enter exactly as described in the hint rules
+                </p>
+              </div>
+              
+              {/* Fox Coordinates */}
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    🦊 Fox Locations (Optional - Rijksdriehoek Coordinates)
+                  </label>
+                  <span className="text-xs text-yellow-600 dark:text-yellow-400 font-medium">
+                    ⏱️ 20 min deadline - 1 point per correct area!
+                  </span>
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+                  Fill in only the fox areas revealed by this hint. You can leave most fields empty - only enter coordinates for the areas you discovered.
+                </p>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {(['Alpha', 'Bravo', 'Charlie', 'Delta', 'Echo', 'Foxtrot', 'Golf', 'Hotel'] as const).map((area) => {
+                    const areaKey = area.toLowerCase() as keyof typeof solutionForm.foxCoordinates;
+                    const teamColors = {
+                      'Alpha': 'bg-red-50 border-red-200 dark:bg-red-900/10 dark:border-red-700',
+                      'Bravo': 'bg-blue-50 border-blue-200 dark:bg-blue-900/10 dark:border-blue-700',
+                      'Charlie': 'bg-green-50 border-green-200 dark:bg-green-900/10 dark:border-green-700',
+                      'Delta': 'bg-yellow-50 border-yellow-200 dark:bg-yellow-900/10 dark:border-yellow-700',
+                      'Echo': 'bg-purple-50 border-purple-200 dark:bg-purple-900/10 dark:border-purple-700',
+                      'Foxtrot': 'bg-pink-50 border-pink-200 dark:bg-pink-900/10 dark:border-pink-700',
+                      'Golf': 'bg-cyan-50 border-cyan-200 dark:bg-cyan-900/10 dark:border-cyan-700',
+                      'Hotel': 'bg-indigo-50 border-indigo-200 dark:bg-indigo-900/10 dark:border-indigo-700',
+                    };
+                    
+                    return (
+                      <div 
+                        key={area} 
+                        className={`p-3 rounded-lg border ${teamColors[area]}`}
+                      >
+                        <h4 className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-2 flex items-center">
+                          🦊 {area} Team
+                        </h4>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
+                              RD X-coördinaat
+                            </label>
+                            <input
+                              type="number"
+                              value={solutionForm.foxCoordinates[areaKey].rd_x}
+                              onChange={(e) => setSolutionForm(prev => ({
+                                ...prev,
+                                foxCoordinates: {
+                                  ...prev.foxCoordinates,
+                                  [areaKey]: {
+                                    ...prev.foxCoordinates[areaKey],
+                                    rd_x: e.target.value
+                                  }
+                                }
+                              }))}
+                              placeholder="123456"
+                              className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-200"
+                              min="10000"
+                              max="280000"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
+                              RD Y-coördinaat
+                            </label>
+                            <input
+                              type="number"
+                              value={solutionForm.foxCoordinates[areaKey].rd_y}
+                              onChange={(e) => setSolutionForm(prev => ({
+                                ...prev,
+                                foxCoordinates: {
+                                  ...prev.foxCoordinates,
+                                  [areaKey]: {
+                                    ...prev.foxCoordinates[areaKey],
+                                    rd_y: e.target.value
+                                  }
+                                }
+                              }))}
+                              placeholder="456789"
+                              className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-200"
+                              min="300000"
+                              max="620000"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+            
+            {/* Action Buttons */}
+            <div className="flex items-center justify-between mt-8 pt-4 border-t border-gray-200 dark:border-gray-600">
+              <div className="text-xs text-gray-500 dark:text-gray-400">
+                <p>✅ Only solution text is required - coordinates are optional</p>
+                <p>🎯 Correct coordinates reveal fox locations on the map</p>
+                <p>⚡ Submit within 20 minutes for maximum points (1 point per correct area)</p>
+              </div>
+              
+              <div className="flex space-x-3">
+                <button
+                  onClick={() => {
+                    setShowHintSolutionModal(false);
+                    setSelectedHint(null);
+                    setSolutionForm({
+                      solution: '',
+                      foxCoordinates: {
+                        alpha: { rd_x: '', rd_y: '' },
+                        bravo: { rd_x: '', rd_y: '' },
+                        charlie: { rd_x: '', rd_y: '' },
+                        delta: { rd_x: '', rd_y: '' },
+                        echo: { rd_x: '', rd_y: '' },
+                        foxtrot: { rd_x: '', rd_y: '' },
+                        golf: { rd_x: '', rd_y: '' },
+                        hotel: { rd_x: '', rd_y: '' }
+                      }
+                    });
+                  }}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-md transition-colors"
+                >
+                  Cancel
+                </button>
+                
+                <button
+                  onClick={handleSubmitHintSolution}
+                  disabled={!solutionForm.solution.trim() || isSubmittingSolution}
+                  className="flex items-center space-x-2 px-6 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed rounded-md transition-colors"
+                >
+                  {isSubmittingSolution ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+                      <span>Submitting...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>🎯</span>
+                      <span>Submit Solution</span>
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </div>

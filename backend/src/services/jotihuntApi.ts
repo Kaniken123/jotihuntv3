@@ -140,6 +140,12 @@ export class JotihuntApiService {
                 is_participating: subscription.is_participating ?? true, // Default to true
                 lat,
                 lng,
+                accomodation: subscription.accomodation,
+                street: subscription.street,
+                housenumber: subscription.housenumber,
+                housenumber_addition: subscription.housenumber_addition,
+                postcode: subscription.postcode,
+                city: subscription.city,
                 tenant_id: tenant.id,
                 synced_at: new Date(),
                 updated_at: new Date()
@@ -150,6 +156,12 @@ export class JotihuntApiService {
                 is_participating: subscription.is_participating ?? true,
                 lat,
                 lng,
+                accomodation: subscription.accomodation,
+                street: subscription.street,
+                housenumber: subscription.housenumber,
+                housenumber_addition: subscription.housenumber_addition,
+                postcode: subscription.postcode,
+                city: subscription.city,
                 synced_at: new Date(),
                 updated_at: new Date()
               });

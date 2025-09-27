@@ -198,6 +198,13 @@ export interface Subscription {
   fox_team_name?: string;
   visited_by_foxes?: string[]; // Array van fox team names die deze groep al bezocht hebben
   locations?: SubscriptionLocation[];
+  // API fields
+  accomodation?: string;
+  street?: string;
+  housenumber?: number;
+  housenumber_addition?: string;
+  postcode?: string;
+  city?: string;
   created_at: string;
   updated_at?: string;
 }

@@ -67,7 +67,7 @@ router.get('/areas/:areaId/route', authenticateToken, enforceTenantIsolation, as
     }
     
     // Get route history for the specified time period
-    const timeThreshold = new Date(Date.now() - parseInt(hours as string) * 60 * 60 * 1000);
+    const timeThreshold = Date.now() - parseInt(hours as string) * 60 * 60 * 1000;
     
     const routePoints = await db('area_locations')
       .where('area_id', areaId)
@@ -75,18 +75,24 @@ router.get('/areas/:areaId/route', authenticateToken, enforceTenantIsolation, as
       .orderBy('recorded_at', 'asc')
       .limit(parseInt(limit as string));
     
+    // Transform route points to have proper date format
+    const transformedRoutePoints = routePoints.map(point => ({
+      ...point,
+      recorded_at: new Date(point.recorded_at).toISOString()
+    }));
+    
     res.json({
       area: {
         id: area.id,
         name: area.name,
         fox_team_name: area.fox_team_name
       },
-      route: routePoints,
+      route: transformedRoutePoints,
       route_stats: {
-        total_points: routePoints.length,
+        total_points: transformedRoutePoints.length,
         time_span_hours: parseInt(hours as string),
-        first_point: routePoints[0]?.recorded_at || null,
-        last_point: routePoints[routePoints.length - 1]?.recorded_at || null
+        first_point: transformedRoutePoints[0]?.recorded_at || null,
+        last_point: transformedRoutePoints[transformedRoutePoints.length - 1]?.recorded_at || null
       }
     });
   } catch (error) {
@@ -488,17 +494,20 @@ router.put('/areas/:area_id/status', authenticateToken, requireAdmin, async (req
   }
 });
 
-// Admin: Update fox team location
-router.post('/areas/:area_id/location', authenticateToken, requireAdmin, async (req, res) => {
+// Update fox team location (accessible to all users for reporting)
+router.post('/areas/:area_id/location', authenticateToken, enforceTenantIsolation, async (req, res) => {
   try {
     const { area_id } = req.params;
-    const { lat, lng, source = 'manual' } = req.body;
+    const { lat, lng, source = 'user_report' } = req.body;
 
     if (!lat || !lng) {
       return res.status(400).json({ error: 'Latitude and longitude required' });
     }
 
-    const area = await db('areas').where('id', area_id).first();
+    const area = await db('areas')
+      .where('id', area_id)
+      .where('tenant_id', req.tenantId)
+      .first();
     if (!area) {
       return res.status(404).json({ error: 'Area not found' });
     }
@@ -506,6 +515,7 @@ router.post('/areas/:area_id/location', authenticateToken, requireAdmin, async (
     // Update area with latest location
     await db('areas')
       .where('id', area_id)
+      .where('tenant_id', req.tenantId)
       .update({
         lat: parseFloat(lat),
         lng: parseFloat(lng),
@@ -519,10 +529,13 @@ router.post('/areas/:area_id/location', authenticateToken, requireAdmin, async (
       lat: parseFloat(lat),
       lng: parseFloat(lng),
       source,
-      recorded_at: new Date()
+      recorded_at: Date.now()
     });
 
-    const updatedArea = await db('areas').where('id', area_id).first();
+    const updatedArea = await db('areas')
+      .where('id', area_id)
+      .where('tenant_id', req.tenantId)
+      .first();
 
     // Emit real-time location update
     try {
@@ -621,7 +634,7 @@ router.post('/areas/bulk-update', authenticateToken, requireAdmin, async (req, r
           lat: parseFloat(lat),
           lng: parseFloat(lng),
           source: 'bulk_update',
-          recorded_at: new Date()
+          recorded_at: Date.now()
         });
       }
 
