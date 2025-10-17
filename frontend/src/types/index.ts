@@ -195,8 +195,8 @@ export interface Subscription {
   area?: string;
   lat?: number;
   lng?: number;
-  fox_team_name?: string;
   visited_by_foxes?: string[]; // Array van fox team names die deze groep al bezocht hebben
+  visit_count?: number; // Total number of visits
   locations?: SubscriptionLocation[];
   // API fields
   accomodation?: string;

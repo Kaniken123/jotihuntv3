@@ -34,13 +34,14 @@ interface JotihuntSubscription {
   long: string;
   team_name?: string;
   is_participating?: boolean;
+  area?: string; // Deelgebied: Alpha, Bravo, Charlie, Delta, Echo, Foxtrot, Golf, Hotel
 }
 
 interface JotihuntArea {
   id: number;
   name: string;
   fox_team_name?: string;
-  status: 'active' | 'inactive' | 'hunted';
+  status: string; // API can return 'green', 'orange', 'red' or other values
   lat?: number;
   lng?: number;
   last_seen?: string;
@@ -140,6 +141,7 @@ export class JotihuntApiService {
                 is_participating: subscription.is_participating ?? true, // Default to true
                 lat,
                 lng,
+                area: subscription.area || null, // Deelgebied from API
                 accomodation: subscription.accomodation,
                 street: subscription.street,
                 housenumber: subscription.housenumber,
@@ -156,6 +158,7 @@ export class JotihuntApiService {
                 is_participating: subscription.is_participating ?? true,
                 lat,
                 lng,
+                area: subscription.area || null, // Update deelgebied on sync
                 accomodation: subscription.accomodation,
                 street: subscription.street,
                 housenumber: subscription.housenumber,
@@ -193,19 +196,33 @@ export class JotihuntApiService {
     }
   }
 
+  // Map API status values to database status values
+  private static mapStatusToDb(apiStatus: string): 'active' | 'inactive' | 'hunted' {
+    const statusMap: { [key: string]: 'active' | 'inactive' | 'hunted' } = {
+      'green': 'active',
+      'orange': 'active',  // Orange (onderweg) means still active/huntable
+      'red': 'inactive'
+    };
+
+    return statusMap[apiStatus] || 'inactive';
+  }
+
   static async syncAreas(): Promise<{ synced: number; errors: number }> {
     try {
       console.log('🔄 Starting areas sync...');
       const externalAreas = await this.getAreas();
-      
+
       // Get all active tenants
       const tenants = await db('tenants').where('is_active', true);
-      
+
       let synced = 0;
       let errors = 0;
 
       for (const area of externalAreas) {
         try {
+          // Map API status to database status
+          const dbStatus = this.mapStatusToDb(area.status);
+
           // Sync to all tenants
           for (const tenant of tenants) {
             // Check if area exists for this tenant
@@ -213,14 +230,54 @@ export class JotihuntApiService {
               .where('name', area.name)
               .where('tenant_id', tenant.id)
               .first();
-            
+
             if (localArea) {
+              // Check if status changed
+              const statusChanged = localArea.status !== dbStatus;
+
+              // If status changed, close the previous status period
+              if (statusChanged) {
+                const now = new Date();
+
+                // Get the current open status record (if any)
+                const currentStatusRecord = await db('fox_status_history')
+                  .where('area_id', localArea.id)
+                  .whereNull('ended_at')
+                  .orderBy('started_at', 'desc')
+                  .first();
+
+                if (currentStatusRecord) {
+                  // Close the previous status record
+                  const startedAt = new Date(currentStatusRecord.started_at);
+                  const durationSeconds = Math.floor((now.getTime() - startedAt.getTime()) / 1000);
+
+                  await db('fox_status_history')
+                    .where('id', currentStatusRecord.id)
+                    .update({
+                      ended_at: now,
+                      duration_seconds: durationSeconds
+                    });
+                }
+
+                // Create new status record
+                await db('fox_status_history').insert({
+                  area_id: localArea.id,
+                  api_status: area.status,
+                  db_status: dbStatus,
+                  fox_team_name: area.fox_team_name,
+                  lat: area.lat,
+                  lng: area.lng,
+                  started_at: now,
+                  tenant_id: tenant.id
+                });
+              }
+
               // Update existing area
               await db('areas')
                 .where('id', localArea.id)
                 .update({
                   fox_team_name: area.fox_team_name,
-                  status: area.status,
+                  status: dbStatus,
                   lat: area.lat,
                   lng: area.lng,
                   last_seen: area.last_seen ? new Date(area.last_seen) : null,
@@ -229,7 +286,7 @@ export class JotihuntApiService {
                 });
 
               // Add location history if coordinates changed
-              if (area.lat && area.lng && 
+              if (area.lat && area.lng &&
                   (localArea.lat !== area.lat || localArea.lng !== area.lng)) {
                 await db('area_locations').insert({
                   area_id: localArea.id,
@@ -245,7 +302,7 @@ export class JotihuntApiService {
                 external_id: area.id,
                 name: area.name,
                 fox_team_name: area.fox_team_name,
-                status: area.status,
+                status: dbStatus,
                 lat: area.lat,
                 lng: area.lng,
                 last_seen: area.last_seen ? new Date(area.last_seen) : null,
@@ -255,7 +312,19 @@ export class JotihuntApiService {
                 created_at: new Date(),
                 updated_at: new Date()
               }).returning('id');
-              
+
+              // Create initial status history record for new area
+              await db('fox_status_history').insert({
+                area_id: newAreaId,
+                api_status: area.status,
+                db_status: dbStatus,
+                fox_team_name: area.fox_team_name,
+                lat: area.lat,
+                lng: area.lng,
+                started_at: new Date(),
+                tenant_id: tenant.id
+              });
+
               // Store initial location in history if coordinates exist
               if (area.lat && area.lng) {
                 await db('area_locations').insert({

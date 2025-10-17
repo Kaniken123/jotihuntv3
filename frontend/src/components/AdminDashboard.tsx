@@ -58,7 +58,11 @@ const AdminDashboard: React.FC = () => {
   });
   const [syncStatus, setSyncStatus] = useState<any>(null);
   const [syncing, setSyncing] = useState(false);
-  
+
+  // Reset fox locations state
+  const [showResetConfirmation, setShowResetConfirmation] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
+
   // Notification state
   const [notificationData, setNotificationData] = useState({
     title: '',
@@ -173,20 +177,39 @@ const AdminDashboard: React.FC = () => {
 
   const handleAreaLocationUpdate = async (areaId: number, lat: string, lng: string) => {
     try {
-      await api.post(`/jotihunt/areas/${areaId}/location`, { 
-        lat: parseFloat(lat), 
+      await api.post(`/jotihunt/areas/${areaId}/location`, {
+        lat: parseFloat(lat),
         lng: parseFloat(lng),
         source: 'admin_update'
       });
-      
+
       // Reload areas
       const response = await api.get('/jotihunt/areas');
       setAreas(response.data);
-      
+
       setSelectedArea(null);
       setAreaUpdateData({ status: '', lat: '', lng: '', reason: '' });
     } catch (error) {
       console.error('Failed to update area location:', error);
+    }
+  };
+
+  const handleResetAllFoxLocations = async () => {
+    setIsResetting(true);
+    try {
+      const result = await gameService.resetAllFoxLocations();
+
+      // Reload areas to show cleared locations
+      const response = await api.get('/jotihunt/areas');
+      setAreas(response.data);
+
+      setShowResetConfirmation(false);
+      alert(`✅ ${result.message}\n${result.areas_updated} areas reset.`);
+    } catch (error: any) {
+      console.error('Failed to reset fox locations:', error);
+      alert(`❌ Failed to reset fox locations: ${error.response?.data?.error || error.message}`);
+    } finally {
+      setIsResetting(false);
     }
   };
 
@@ -1187,9 +1210,18 @@ const AdminDashboard: React.FC = () => {
   const renderAreaManagement = () => (
     <div className="space-y-6">
       <div className="card p-6">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-          Fox Team Areas Management
-        </h3>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+            Fox Team Areas Management
+          </h3>
+          <button
+            onClick={() => setShowResetConfirmation(true)}
+            className="btn btn-sm bg-red-600 hover:bg-red-700 text-white flex items-center space-x-2"
+          >
+            <span>🗑️</span>
+            <span>Reset All Fox Locations</span>
+          </button>
+        </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
           {areas.map((area) => (
@@ -1352,6 +1384,61 @@ const AdminDashboard: React.FC = () => {
                   setAreaUpdateData({ status: '', lat: '', lng: '', reason: '' });
                 }}
                 className="btn btn-secondary"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reset Confirmation Modal */}
+      {showResetConfirmation && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4">
+            <div className="flex items-start space-x-3 mb-4">
+              <div className="flex-shrink-0">
+                <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
+                  <span className="text-2xl">⚠️</span>
+                </div>
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                  Reset All Fox Locations?
+                </h3>
+                <div className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
+                  <p>
+                    <strong className="text-red-600 dark:text-red-400">Warning:</strong> This action will:
+                  </p>
+                  <ul className="list-disc list-inside space-y-1 ml-4">
+                    <li>Clear all fox location coordinates (lat/lng)</li>
+                    <li>Remove all "last seen" timestamps</li>
+                    <li>Affect all {areas.length} fox areas</li>
+                    <li>Hide fox markers from the map</li>
+                  </ul>
+                  <p className="text-yellow-700 dark:text-yellow-500 font-medium mt-3">
+                    ⚠️ Location history will be preserved for future analysis
+                  </p>
+                  <p className="mt-3">
+                    This is useful at the start of a new game or when you want to reset all fox positions.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex space-x-3 mt-6">
+              <button
+                onClick={handleResetAllFoxLocations}
+                disabled={isResetting}
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-md font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isResetting ? 'Resetting...' : 'Yes, Reset All Locations'}
+              </button>
+
+              <button
+                onClick={() => setShowResetConfirmation(false)}
+                disabled={isResetting}
+                className="flex-1 bg-gray-500 hover:bg-gray-600 text-white py-2 px-4 rounded-md font-medium disabled:opacity-50"
               >
                 Cancel
               </button>

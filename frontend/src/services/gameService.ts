@@ -156,15 +156,6 @@ export const gameService = {
   },
 
   // Subscription management functions
-  async assignSubscriptionToFoxTeam(subscriptionId: number, foxTeamName: string, lat?: number, lng?: number) {
-    const response = await api.post(`/jotihunt/subscriptions/${subscriptionId}/assign-fox`, {
-      fox_team_name: foxTeamName,
-      lat,
-      lng
-    });
-    return response.data;
-  },
-
   async recordFoxVisit(subscriptionId: number, foxTeamName: string, visitLat: number, visitLng: number, notes?: string) {
     const response = await api.post(`/jotihunt/subscriptions/${subscriptionId}/visit`, {
       fox_team_name: foxTeamName,
@@ -177,6 +168,17 @@ export const gameService = {
 
   async getSubscriptionVisits(subscriptionId: number) {
     const response = await api.get(`/jotihunt/subscriptions/${subscriptionId}/visits`);
+    return response.data;
+  },
+
+  async updateSubscription(subscriptionId: number, data: { area?: string }) {
+    const response = await api.patch(`/jotihunt/subscriptions/${subscriptionId}`, data);
+    return response.data;
+  },
+
+  // Admin: Reset all fox locations
+  async resetAllFoxLocations() {
+    const response = await api.post('/jotihunt/areas/reset-locations');
     return response.data;
   },
 };

@@ -19,11 +19,11 @@ const Rules: React.FC = () => {
     <div className="space-y-6">
       <div className="card p-6">
         <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">
-          Jotihunt 2024 - Spelregels
+          Jotihunt 2025 - Spelregels
         </h2>
         <div className="prose dark:prose-invert max-w-none">
           <p className="text-lg text-gray-700 dark:text-gray-300 mb-4">
-            Welkom bij de Jotihunt 2024! In dit document vind je alle spelregels voor een eerlijke en veilige Jotihunt.
+            Welkom bij de Jotihunt 2025! In dit document vind je alle spelregels voor een eerlijke en veilige Jotihunt.
           </p>
           
           <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 mb-6">
@@ -46,8 +46,8 @@ const Rules: React.FC = () => {
                 <h3 className="font-semibold">Start & Einde</h3>
               </div>
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                <strong>Start:</strong> Zaterdag 19 oktober 2024, 11:00 uur<br />
-                <strong>Einde:</strong> Zondag 20 oktober 2024, 13:00 uur
+                <strong>Start:</strong> Zaterdag 18 oktober 2025, 10:00 uur<br />
+                <strong>Einde:</strong> Zondag 19 oktober 2025, 12:00 uur
               </p>
             </div>
 
@@ -57,7 +57,7 @@ const Rules: React.FC = () => {
                 <h3 className="font-semibold">Deelname</h3>
               </div>
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                Deelnamebijdrage: €25,-<br />
+                Deelnamebijdrage: €27,50<br />
                 Voor Scouts vanaf 14 jaar<br />
                 Registratie verplicht
               </p>
@@ -76,7 +76,7 @@ const Rules: React.FC = () => {
             </li>
             <li className="flex items-start space-x-2">
               <span className="text-primary-600 font-bold">•</span>
-              <span>Maximaal 4 vossenteams per speelhelft</span>
+              <span>Vossenteams worden toegewezen aan groepen</span>
             </li>
             <li className="flex items-start space-x-2">
               <span className="text-primary-600 font-bold">•</span>
@@ -106,19 +106,19 @@ const Rules: React.FC = () => {
               <div className="space-y-3">
                 <div className="flex justify-between">
                   <span className="font-medium">Start Jotihunt:</span>
-                  <span>Za 19 okt 2024, 11:00</span>
+                  <span>Za 18 okt 2025, 10:00</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="font-medium">Wisseling vossen:</span>
-                  <span>Zo 20 okt 2024, 00:00</span>
+                  <span>Za 18 okt 2025, 23:00</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="font-medium">Einde Jotihunt:</span>
-                  <span>Zo 20 okt 2024, 13:00</span>
+                  <span>Zo 19 okt 2025, 12:00</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="font-medium">Sluitingstijd codes:</span>
-                  <span>Zo 20 okt 2024, 13:15</span>
+                  <span>Zo 19 okt 2025, 12:15</span>
                 </div>
               </div>
             </div>
@@ -130,14 +130,14 @@ const Rules: React.FC = () => {
               <div className="card p-4">
                 <h4 className="font-semibold text-primary-600 dark:text-primary-400 mb-2">Eerste Helft</h4>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
-                  13 uur spelen (11:00 - 00:00)<br />
+                  13 uur spelen (10:00 - 23:00)<br />
                   Originele vossenteams actief
                 </p>
               </div>
               <div className="card p-4">
                 <h4 className="font-semibold text-primary-600 dark:text-primary-400 mb-2">Tweede Helft</h4>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
-                  13 uur spelen (00:00 - 13:00)<br />
+                  13 uur spelen (23:00 - 12:00)<br />
                   Nieuwe, fitte vossenteams
                 </p>
               </div>
@@ -148,7 +148,7 @@ const Rules: React.FC = () => {
         <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
           <h3 className="font-semibold text-blue-800 dark:text-blue-200 mb-2">Vossenwisseling</h3>
           <p className="text-blue-700 dark:text-blue-300 text-sm">
-            Om 00:00 uur (middernacht) worden alle vossen vervangen. Vossenteams gaan van 23:55 tot 00:05 op inactief.
+            Om 23:00 uur worden alle vossen vervangen. Vossenteams gaan van 22:45 tot 23:15 op inactief.
             Het nieuwe vossenteam start nabij het eindpunt van het oude vossenteam.
           </p>
         </div>
@@ -246,7 +246,7 @@ const Rules: React.FC = () => {
               <div className="flex items-start space-x-3">
                 <Camera className="w-5 h-5 text-primary-600 mt-1" />
                 <div>
-                  <p className="font-medium">Maximaal 4 vossenteams per speelhelft</p>
+                  <p className="font-medium">Toegewezen vossenteams per groep</p>
                   <p className="text-sm text-gray-600 dark:text-gray-400">
                     Welke teams dit zijn wordt vooraf bekendgemaakt
                   </p>
@@ -422,7 +422,7 @@ const Rules: React.FC = () => {
             <ul className="space-y-2 text-sm">
               <li className="flex items-start space-x-2">
                 <span className="text-primary-600">€</span>
-                <span>Deelnamebijdrage: €25,- (via iDEAL bij inschrijving)</span>
+                <span>Deelnamebijdrage: €27,50 (via iDEAL bij inschrijving)</span>
               </li>
               <li className="flex items-start space-x-2">
                 <span className="text-primary-600">🏠</span>
@@ -560,9 +560,9 @@ const Rules: React.FC = () => {
         </div>
 
         <div className="mt-6 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-          <h4 className="font-semibold text-blue-800 dark:text-blue-200 mb-2">Vossenwisseling (Middernacht)</h4>
+          <h4 className="font-semibold text-blue-800 dark:text-blue-200 mb-2">Vossenwisseling (23:00 uur)</h4>
           <p className="text-blue-700 dark:text-blue-300 text-sm">
-            Van 23:55 tot 00:05 zijn alle vossenteams inactief. Nieuwe teams starten nabij eindpunt van oude teams.
+            Van 22:45 tot 23:15 zijn alle vossenteams inactief. Nieuwe teams starten nabij eindpunt van oude teams.
             Het spel gaat gewoon door, alleen de vossen worden vervangen.
           </p>
         </div>
@@ -692,7 +692,7 @@ const Rules: React.FC = () => {
     <div className="max-w-6xl mx-auto p-6">
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">
-          Spelregels Jotihunt 2024
+          Spelregels Jotihunt 2025
         </h1>
         <p className="text-gray-600 dark:text-gray-400">
           Alle regels en informatie die je nodig hebt voor een succesvolle Jotihunt

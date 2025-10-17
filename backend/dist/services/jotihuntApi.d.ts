@@ -16,7 +16,7 @@ interface JotihuntArea {
     id: number;
     name: string;
     fox_team_name?: string;
-    status: 'active' | 'inactive' | 'hunted';
+    status: string;
     lat?: number;
     lng?: number;
     last_seen?: string;
@@ -40,6 +40,7 @@ export declare class JotihuntApiService {
         synced: number;
         errors: number;
     }>;
+    private static mapStatusToDb;
     static syncAreas(): Promise<{
         synced: number;
         errors: number;

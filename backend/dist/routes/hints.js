@@ -43,7 +43,7 @@ router.post('/solutions', auth_1.authenticateToken, async (req, res) => {
         const coordinateData = {};
         const revealedAreas = [];
         if (fox_coordinates) {
-            const areas = ['alpha', 'bravo', 'charlie', 'delta', 'echo', 'foxtrot'];
+            const areas = ['alpha', 'bravo', 'charlie', 'delta', 'echo', 'foxtrot', 'golf', 'hotel'];
             for (const area of areas) {
                 const areaCoords = fox_coordinates[area];
                 if (areaCoords && areaCoords.rd_x && areaCoords.rd_y) {

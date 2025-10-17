@@ -235,13 +235,6 @@ const Login: React.FC = () => {
               </button>
             </div>
             
-            {isLoginMode && (
-              <div className="mt-4 text-center">
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Demo credentials: <code className="bg-gray-200 dark:bg-gray-700 px-1 rounded">admin / admin123</code>
-                </p>
-              </div>
-            )}
           </div>
         </form>
       </div>

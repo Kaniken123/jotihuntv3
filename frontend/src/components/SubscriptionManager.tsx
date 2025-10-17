@@ -8,18 +8,12 @@ const SubscriptionManager: React.FC = () => {
   const [areas, setAreas] = useState<Area[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedSubscription, setSelectedSubscription] = useState<Subscription | null>(null);
-  const [assignmentForm, setAssignmentForm] = useState({
-    fox_team_name: '',
-    lat: '',
-    lng: ''
-  });
   const [visitForm, setVisitForm] = useState({
     fox_team_name: '',
     visit_lat: '',
     visit_lng: '',
     notes: ''
   });
-  const [isAssigning, setIsAssigning] = useState(false);
   const [isRecordingVisit, setIsRecordingVisit] = useState(false);
   const [showVisitModal, setShowVisitModal] = useState(false);
   const { state } = useAuth();
@@ -41,37 +35,6 @@ const SubscriptionManager: React.FC = () => {
       console.error('Error loading subscription data:', error);
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const handleAssignFoxTeam = async (subscription: Subscription) => {
-    if (!assignmentForm.fox_team_name) {
-      alert('Selecteer een vos team');
-      return;
-    }
-
-    setIsAssigning(true);
-    try {
-      await gameService.assignSubscriptionToFoxTeam(
-        subscription.id,
-        assignmentForm.fox_team_name,
-        assignmentForm.lat ? parseFloat(assignmentForm.lat) : undefined,
-        assignmentForm.lng ? parseFloat(assignmentForm.lng) : undefined
-      );
-
-      // Reload data to reflect changes
-      await loadData();
-      
-      // Reset form
-      setAssignmentForm({ fox_team_name: '', lat: '', lng: '' });
-      setSelectedSubscription(null);
-      
-      alert('Groep succesvol gekoppeld aan vos team!');
-    } catch (error) {
-      console.error('Error assigning fox team:', error);
-      alert('Fout bij koppelen van groep aan vos team');
-    } finally {
-      setIsAssigning(false);
     }
   };
 
@@ -145,9 +108,6 @@ const SubscriptionManager: React.FC = () => {
                   Groep
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Gekoppeld aan Vos
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Locatie
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -172,15 +132,6 @@ const SubscriptionManager: React.FC = () => {
                       <div className="text-sm text-gray-500">
                         Gebied: {subscription.area}
                       </div>
-                    )}
-                  </td>
-                  <td className="px-4 py-4">
-                    {subscription.fox_team_name ? (
-                      <span className="px-2 py-1 text-xs font-semibold bg-blue-100 text-blue-800 rounded-full">
-                        {subscription.fox_team_name}
-                      </span>
-                    ) : (
-                      <span className="text-gray-400 text-sm">Niet gekoppeld</span>
                     )}
                   </td>
                   <td className="px-4 py-4">
@@ -218,23 +169,15 @@ const SubscriptionManager: React.FC = () => {
                     </span>
                   </td>
                   <td className="px-4 py-4">
-                    <div className="flex space-x-2">
-                      <button
-                        onClick={() => setSelectedSubscription(subscription)}
-                        className="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
-                      >
-                        {subscription.fox_team_name ? 'Bewerken' : 'Koppelen'}
-                      </button>
-                      <button
-                        onClick={() => {
-                          setSelectedSubscription(subscription);
-                          setShowVisitModal(true);
-                        }}
-                        className="px-3 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700"
-                      >
-                        Bezoek +
-                      </button>
-                    </div>
+                    <button
+                      onClick={() => {
+                        setSelectedSubscription(subscription);
+                        setShowVisitModal(true);
+                      }}
+                      className="px-3 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700"
+                    >
+                      Bezoek +
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -242,92 +185,6 @@ const SubscriptionManager: React.FC = () => {
           </table>
         </div>
       </div>
-
-      {/* Assignment Modal */}
-      {selectedSubscription && !showVisitModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <h3 className="text-lg font-semibold mb-4">
-              {selectedSubscription.fox_team_name ? 'Bewerk Koppeling' : 'Koppel aan Vos Team'}
-            </h3>
-            
-            <div className="mb-4">
-              <p className="text-sm text-gray-600 mb-2">
-                <strong>Groep:</strong> {selectedSubscription.team_name}
-              </p>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Vos Team
-                </label>
-                <select
-                  value={assignmentForm.fox_team_name}
-                  onChange={(e) => setAssignmentForm(prev => ({ ...prev, fox_team_name: e.target.value }))}
-                  className="w-full p-2 border border-gray-300 rounded-md"
-                >
-                  <option value="">Selecteer vos team...</option>
-                  {areas.map((area) => (
-                    <option key={area.id} value={area.name}>
-                      {area.name} ({area.fox_team_name || 'Unknown Team'})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Latitude (optioneel)
-                  </label>
-                  <input
-                    type="number"
-                    step="0.000001"
-                    value={assignmentForm.lat}
-                    onChange={(e) => setAssignmentForm(prev => ({ ...prev, lat: e.target.value }))}
-                    className="w-full p-2 border border-gray-300 rounded-md"
-                    placeholder="52.123456"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Longitude (optioneel)
-                  </label>
-                  <input
-                    type="number"
-                    step="0.000001"
-                    value={assignmentForm.lng}
-                    onChange={(e) => setAssignmentForm(prev => ({ ...prev, lng: e.target.value }))}
-                    className="w-full p-2 border border-gray-300 rounded-md"
-                    placeholder="6.123456"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="flex space-x-3 mt-6">
-              <button
-                onClick={() => handleAssignFoxTeam(selectedSubscription)}
-                disabled={isAssigning}
-                className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 disabled:opacity-50"
-              >
-                {isAssigning ? 'Bezig...' : 'Opslaan'}
-              </button>
-              
-              <button
-                onClick={() => {
-                  setSelectedSubscription(null);
-                  setAssignmentForm({ fox_team_name: '', lat: '', lng: '' });
-                }}
-                className="flex-1 bg-gray-500 text-white py-2 px-4 rounded-md hover:bg-gray-600"
-              >
-                Annuleren
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Visit Recording Modal */}
       {showVisitModal && selectedSubscription && (

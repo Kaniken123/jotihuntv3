@@ -578,21 +578,75 @@ router.get('/areas/:area_id/locations', authenticateToken, async (req, res) => {
   }
 });
 
-// Get fox status history
+// Get fox status history with duration analytics
 router.get('/fox-status-history', authenticateToken, async (req, res) => {
   try {
-    const { limit = 100 } = req.query;
+    const { area_id, limit = 100, api_status } = req.query;
+    const tenantId = (req as any).user.current_tenant_id || (req as any).user.tenant_id;
 
-    // Get recent area updates (status changes)
-    const statusHistory = await db('areas')
-      .select('id', 'name', 'fox_team_name', 'status', 'updated_at', 'last_seen')
-      .orderBy('updated_at', 'desc')
-      .limit(parseInt(limit as string));
+    let query = db('fox_status_history')
+      .select('*')
+      .where('tenant_id', tenantId)
+      .orderBy('started_at', 'desc');
+
+    if (area_id) {
+      query = query.where('area_id', parseInt(area_id as string));
+    }
+
+    if (api_status) {
+      query = query.where('api_status', api_status as string);
+    }
+
+    const statusHistory = await query.limit(parseInt(limit as string));
 
     res.json(statusHistory);
   } catch (error) {
     console.error('Get fox status history error:', error);
     res.status(500).json({ error: 'Failed to get fox status history' });
+  }
+});
+
+// Get fox status analytics (average durations per status)
+router.get('/fox-status-analytics', authenticateToken, async (req, res) => {
+  try {
+    const { area_id, hours = 24 } = req.query;
+    const tenantId = (req as any).user.current_tenant_id || (req as any).user.tenant_id;
+    const hoursAgo = new Date(Date.now() - parseInt(hours as string) * 60 * 60 * 1000);
+
+    let query = db('fox_status_history')
+      .select('api_status')
+      .count('* as count')
+      .avg('duration_seconds as avg_duration')
+      .sum('duration_seconds as total_duration')
+      .min('duration_seconds as min_duration')
+      .max('duration_seconds as max_duration')
+      .where('tenant_id', tenantId)
+      .where('started_at', '>=', hoursAgo)
+      .whereNotNull('duration_seconds')
+      .groupBy('api_status');
+
+    if (area_id) {
+      query = query.where('area_id', parseInt(area_id as string));
+    }
+
+    const analytics = await query;
+
+    // Convert seconds to human-readable format
+    const formattedAnalytics = analytics.map((stat: any) => ({
+      status: stat.api_status,
+      count: parseInt(stat.count),
+      avg_duration_seconds: Math.round(stat.avg_duration),
+      avg_duration_minutes: Math.round(stat.avg_duration / 60),
+      total_duration_seconds: parseInt(stat.total_duration),
+      total_duration_minutes: Math.round(stat.total_duration / 60),
+      min_duration_seconds: parseInt(stat.min_duration),
+      max_duration_seconds: parseInt(stat.max_duration)
+    }));
+
+    res.json(formattedAnalytics);
+  } catch (error) {
+    console.error('Get fox status analytics error:', error);
+    res.status(500).json({ error: 'Failed to get fox status analytics' });
   }
 });
 
@@ -664,49 +718,48 @@ router.post('/areas/bulk-update', authenticateToken, requireAdmin, async (req, r
   }
 });
 
-// SUBSCRIPTION MANAGEMENT ENDPOINTS
-
-// Admin: Assign subscription to fox team
-router.post('/subscriptions/:subscription_id/assign-fox', authenticateToken, requireAdmin, async (req, res) => {
+// Admin: Reset all fox locations (clear lat/lng and last_seen)
+router.post('/areas/reset-locations', authenticateToken, requireAdmin, enforceTenantIsolation, async (req, res) => {
   try {
-    const { subscription_id } = req.params;
-    const { fox_team_name, lat, lng } = req.body;
+    const tenantId = req.tenantId!;
 
-    if (!fox_team_name) {
-      return res.status(400).json({ error: 'Fox team name is required' });
-    }
-
-    // Validate fox team exists
-    const foxArea = await db('areas').where('name', fox_team_name).first();
-    if (!foxArea) {
-      return res.status(400).json({ error: 'Fox team not found' });
-    }
-
-    // Update subscription with fox team assignment and coordinates
-    await db('subscriptions')
-      .where('id', subscription_id)
-      .where('tenant_id', req.user!.tenant_id)
+    // Clear lat, lng, and last_seen from all areas for this tenant
+    const updatedCount = await db('areas')
+      .where('tenant_id', tenantId)
       .update({
-        fox_team_name,
-        lat: lat ? parseFloat(lat) : null,
-        lng: lng ? parseFloat(lng) : null,
+        lat: null,
+        lng: null,
+        last_seen: null,
         updated_at: new Date()
       });
 
-    const subscription = await db('subscriptions')
-      .where('id', subscription_id)
-      .where('tenant_id', req.user!.tenant_id)
-      .first();
+    // Optionally: Delete all area_locations history (uncomment if you want to clear history too)
+    // const areaIds = await db('areas').where('tenant_id', tenantId).pluck('id');
+    // await db('area_locations').whereIn('area_id', areaIds).delete();
+
+    // Emit notification to all connected clients
+    try {
+      const io = getSocketIO();
+      io.emit('fox-locations-reset', {
+        tenant_id: tenantId,
+        timestamp: new Date(),
+        message: 'All fox locations have been reset by admin'
+      });
+    } catch (socketError) {
+      console.error('Socket emission error:', socketError);
+    }
 
     res.json({
-      message: 'Subscription assigned to fox team',
-      subscription
+      message: 'All fox locations have been reset successfully',
+      areas_updated: updatedCount
     });
   } catch (error) {
-    console.error('Assign fox team error:', error);
-    res.status(500).json({ error: 'Failed to assign fox team' });
+    console.error('Reset fox locations error:', error);
+    res.status(500).json({ error: 'Failed to reset fox locations' });
   }
 });
+
+// SUBSCRIPTION MANAGEMENT ENDPOINTS
 
 // Admin: Record fox visit to subscription/group
 router.post('/subscriptions/:subscription_id/visit', authenticateToken, async (req, res) => {
@@ -830,12 +883,12 @@ router.get('/subscriptions-with-visits', authenticateToken, async (req, res) => 
   try {
     console.log('📊 Fetching subscriptions for tenant:', req.user!.tenant_id);
     res.setHeader('Cache-Control', 'private, max-age=30');
-    
+
     const subscriptions = await db('subscriptions')
       .where('tenant_id', req.user!.tenant_id)
       .where('is_participating', true)
       .orderBy('team_name');
-      
+
     console.log('📊 Found subscriptions:', subscriptions.length);
 
     // Get all visits for these subscriptions
@@ -855,7 +908,8 @@ router.get('/subscriptions-with-visits', authenticateToken, async (req, res) => 
     const subscriptionsWithVisits = subscriptions.map(subscription => ({
       ...subscription,
       visits: visitsBySubscription[subscription.id] || [],
-      visited_by_foxes: visitsBySubscription[subscription.id]?.map((v: any) => v.fox_team_name) || []
+      visited_by_foxes: visitsBySubscription[subscription.id]?.map((v: any) => v.fox_team_name) || [],
+      visit_count: visitsBySubscription[subscription.id]?.length || 0
     }));
 
     res.json(subscriptionsWithVisits);
@@ -864,5 +918,8 @@ router.get('/subscriptions-with-visits', authenticateToken, async (req, res) => 
     res.status(500).json({ error: 'Failed to get subscriptions with visits' });
   }
 });
+
+// Note: Subscription area is now read-only and automatically synced from the Jotihunt API
+// Manual updates have been removed to maintain data consistency with the external API
 
 export default router;

@@ -61,24 +61,29 @@ router.get('/areas/:areaId/route', auth_1.authenticateToken, auth_1.enforceTenan
             return res.status(404).json({ error: 'Area not found' });
         }
         // Get route history for the specified time period
-        const timeThreshold = new Date(Date.now() - parseInt(hours) * 60 * 60 * 1000);
+        const timeThreshold = Date.now() - parseInt(hours) * 60 * 60 * 1000;
         const routePoints = await (0, database_1.db)('area_locations')
             .where('area_id', areaId)
             .where('recorded_at', '>', timeThreshold)
             .orderBy('recorded_at', 'asc')
             .limit(parseInt(limit));
+        // Transform route points to have proper date format
+        const transformedRoutePoints = routePoints.map(point => ({
+            ...point,
+            recorded_at: new Date(point.recorded_at).toISOString()
+        }));
         res.json({
             area: {
                 id: area.id,
                 name: area.name,
                 fox_team_name: area.fox_team_name
             },
-            route: routePoints,
+            route: transformedRoutePoints,
             route_stats: {
-                total_points: routePoints.length,
+                total_points: transformedRoutePoints.length,
                 time_span_hours: parseInt(hours),
-                first_point: routePoints[0]?.recorded_at || null,
-                last_point: routePoints[routePoints.length - 1]?.recorded_at || null
+                first_point: transformedRoutePoints[0]?.recorded_at || null,
+                last_point: transformedRoutePoints[transformedRoutePoints.length - 1]?.recorded_at || null
             }
         });
     }
@@ -434,21 +439,25 @@ router.put('/areas/:area_id/status', auth_1.authenticateToken, auth_1.requireAdm
         res.status(500).json({ error: 'Failed to update area status' });
     }
 });
-// Admin: Update fox team location
-router.post('/areas/:area_id/location', auth_1.authenticateToken, auth_1.requireAdmin, async (req, res) => {
+// Update fox team location (accessible to all users for reporting)
+router.post('/areas/:area_id/location', auth_1.authenticateToken, auth_1.enforceTenantIsolation, async (req, res) => {
     try {
         const { area_id } = req.params;
-        const { lat, lng, source = 'manual' } = req.body;
+        const { lat, lng, source = 'user_report' } = req.body;
         if (!lat || !lng) {
             return res.status(400).json({ error: 'Latitude and longitude required' });
         }
-        const area = await (0, database_1.db)('areas').where('id', area_id).first();
+        const area = await (0, database_1.db)('areas')
+            .where('id', area_id)
+            .where('tenant_id', req.tenantId)
+            .first();
         if (!area) {
             return res.status(404).json({ error: 'Area not found' });
         }
         // Update area with latest location
         await (0, database_1.db)('areas')
             .where('id', area_id)
+            .where('tenant_id', req.tenantId)
             .update({
             lat: parseFloat(lat),
             lng: parseFloat(lng),
@@ -461,9 +470,12 @@ router.post('/areas/:area_id/location', auth_1.authenticateToken, auth_1.require
             lat: parseFloat(lat),
             lng: parseFloat(lng),
             source,
-            recorded_at: new Date()
+            recorded_at: Date.now()
         });
-        const updatedArea = await (0, database_1.db)('areas').where('id', area_id).first();
+        const updatedArea = await (0, database_1.db)('areas')
+            .where('id', area_id)
+            .where('tenant_id', req.tenantId)
+            .first();
         // Emit real-time location update
         try {
             const io = (0, socketManager_1.getSocketIO)();
@@ -503,20 +515,66 @@ router.get('/areas/:area_id/locations', auth_1.authenticateToken, async (req, re
         res.status(500).json({ error: 'Failed to get area locations' });
     }
 });
-// Get fox status history
+// Get fox status history with duration analytics
 router.get('/fox-status-history', auth_1.authenticateToken, async (req, res) => {
     try {
-        const { limit = 100 } = req.query;
-        // Get recent area updates (status changes)
-        const statusHistory = await (0, database_1.db)('areas')
-            .select('id', 'name', 'fox_team_name', 'status', 'updated_at', 'last_seen')
-            .orderBy('updated_at', 'desc')
-            .limit(parseInt(limit));
+        const { area_id, limit = 100, api_status } = req.query;
+        const tenantId = req.user.current_tenant_id || req.user.tenant_id;
+        let query = (0, database_1.db)('fox_status_history')
+            .select('*')
+            .where('tenant_id', tenantId)
+            .orderBy('started_at', 'desc');
+        if (area_id) {
+            query = query.where('area_id', parseInt(area_id));
+        }
+        if (api_status) {
+            query = query.where('api_status', api_status);
+        }
+        const statusHistory = await query.limit(parseInt(limit));
         res.json(statusHistory);
     }
     catch (error) {
         console.error('Get fox status history error:', error);
         res.status(500).json({ error: 'Failed to get fox status history' });
+    }
+});
+// Get fox status analytics (average durations per status)
+router.get('/fox-status-analytics', auth_1.authenticateToken, async (req, res) => {
+    try {
+        const { area_id, hours = 24 } = req.query;
+        const tenantId = req.user.current_tenant_id || req.user.tenant_id;
+        const hoursAgo = new Date(Date.now() - parseInt(hours) * 60 * 60 * 1000);
+        let query = (0, database_1.db)('fox_status_history')
+            .select('api_status')
+            .count('* as count')
+            .avg('duration_seconds as avg_duration')
+            .sum('duration_seconds as total_duration')
+            .min('duration_seconds as min_duration')
+            .max('duration_seconds as max_duration')
+            .where('tenant_id', tenantId)
+            .where('started_at', '>=', hoursAgo)
+            .whereNotNull('duration_seconds')
+            .groupBy('api_status');
+        if (area_id) {
+            query = query.where('area_id', parseInt(area_id));
+        }
+        const analytics = await query;
+        // Convert seconds to human-readable format
+        const formattedAnalytics = analytics.map((stat) => ({
+            status: stat.api_status,
+            count: parseInt(stat.count),
+            avg_duration_seconds: Math.round(stat.avg_duration),
+            avg_duration_minutes: Math.round(stat.avg_duration / 60),
+            total_duration_seconds: parseInt(stat.total_duration),
+            total_duration_minutes: Math.round(stat.total_duration / 60),
+            min_duration_seconds: parseInt(stat.min_duration),
+            max_duration_seconds: parseInt(stat.max_duration)
+        }));
+        res.json(formattedAnalytics);
+    }
+    catch (error) {
+        console.error('Get fox status analytics error:', error);
+        res.status(500).json({ error: 'Failed to get fox status analytics' });
     }
 });
 // Admin: Bulk update multiple fox areas
@@ -551,7 +609,7 @@ router.post('/areas/bulk-update', auth_1.authenticateToken, auth_1.requireAdmin,
                     lat: parseFloat(lat),
                     lng: parseFloat(lng),
                     source: 'bulk_update',
-                    recorded_at: new Date()
+                    recorded_at: Date.now()
                 });
             }
             const area = await (0, database_1.db)('areas').where('id', area_id).first();
@@ -742,13 +800,51 @@ router.get('/subscriptions-with-visits', auth_1.authenticateToken, async (req, r
         const subscriptionsWithVisits = subscriptions.map(subscription => ({
             ...subscription,
             visits: visitsBySubscription[subscription.id] || [],
-            visited_by_foxes: visitsBySubscription[subscription.id]?.map((v) => v.fox_team_name) || []
+            visited_by_foxes: visitsBySubscription[subscription.id]?.map((v) => v.fox_team_name) || [],
+            visit_count: visitsBySubscription[subscription.id]?.length || 0
         }));
         res.json(subscriptionsWithVisits);
     }
     catch (error) {
         console.error('Get subscriptions with visits error:', error);
         res.status(500).json({ error: 'Failed to get subscriptions with visits' });
+    }
+});
+// Update subscription details (area, etc.)
+router.patch('/subscriptions/:subscription_id', auth_1.authenticateToken, async (req, res) => {
+    try {
+        const { subscription_id } = req.params;
+        const { area } = req.body;
+        const tenantId = req.user.tenant_id;
+        // Verify subscription belongs to this tenant
+        const subscription = await (0, database_1.db)('subscriptions')
+            .where('id', subscription_id)
+            .where('tenant_id', tenantId)
+            .first();
+        if (!subscription) {
+            return res.status(404).json({ error: 'Subscription not found' });
+        }
+        // Validate area if provided
+        const validAreas = ['Alpha', 'Bravo', 'Charlie', 'Delta', 'Echo', 'Foxtrot', 'Golf', 'Hotel'];
+        if (area && !validAreas.includes(area)) {
+            return res.status(400).json({ error: 'Invalid area. Must be one of: ' + validAreas.join(', ') });
+        }
+        // Update subscription
+        await (0, database_1.db)('subscriptions')
+            .where('id', subscription_id)
+            .update({
+            area: area || null,
+            updated_at: new Date()
+        });
+        // Fetch updated subscription
+        const updated = await (0, database_1.db)('subscriptions')
+            .where('id', subscription_id)
+            .first();
+        res.json(updated);
+    }
+    catch (error) {
+        console.error('Update subscription error:', error);
+        res.status(500).json({ error: 'Failed to update subscription' });
     }
 });
 exports.default = router;

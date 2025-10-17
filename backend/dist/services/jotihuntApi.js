@@ -130,6 +130,15 @@ class JotihuntApiService {
             throw error;
         }
     }
+    // Map API status values to database status values
+    static mapStatusToDb(apiStatus) {
+        const statusMap = {
+            'green': 'active',
+            'orange': 'active', // Orange (onderweg) means still active/huntable
+            'red': 'inactive'
+        };
+        return statusMap[apiStatus] || 'inactive';
+    }
     static async syncAreas() {
         try {
             console.log('🔄 Starting areas sync...');
@@ -140,6 +149,8 @@ class JotihuntApiService {
             let errors = 0;
             for (const area of externalAreas) {
                 try {
+                    // Map API status to database status
+                    const dbStatus = this.mapStatusToDb(area.status);
                     // Sync to all tenants
                     for (const tenant of tenants) {
                         // Check if area exists for this tenant
@@ -148,12 +159,46 @@ class JotihuntApiService {
                             .where('tenant_id', tenant.id)
                             .first();
                         if (localArea) {
+                            // Check if status changed
+                            const statusChanged = localArea.status !== dbStatus;
+                            // If status changed, close the previous status period
+                            if (statusChanged) {
+                                const now = new Date();
+                                // Get the current open status record (if any)
+                                const currentStatusRecord = await (0, database_1.db)('fox_status_history')
+                                    .where('area_id', localArea.id)
+                                    .whereNull('ended_at')
+                                    .orderBy('started_at', 'desc')
+                                    .first();
+                                if (currentStatusRecord) {
+                                    // Close the previous status record
+                                    const startedAt = new Date(currentStatusRecord.started_at);
+                                    const durationSeconds = Math.floor((now.getTime() - startedAt.getTime()) / 1000);
+                                    await (0, database_1.db)('fox_status_history')
+                                        .where('id', currentStatusRecord.id)
+                                        .update({
+                                        ended_at: now,
+                                        duration_seconds: durationSeconds
+                                    });
+                                }
+                                // Create new status record
+                                await (0, database_1.db)('fox_status_history').insert({
+                                    area_id: localArea.id,
+                                    api_status: area.status,
+                                    db_status: dbStatus,
+                                    fox_team_name: area.fox_team_name,
+                                    lat: area.lat,
+                                    lng: area.lng,
+                                    started_at: now,
+                                    tenant_id: tenant.id
+                                });
+                            }
                             // Update existing area
                             await (0, database_1.db)('areas')
                                 .where('id', localArea.id)
                                 .update({
                                 fox_team_name: area.fox_team_name,
-                                status: area.status,
+                                status: dbStatus,
                                 lat: area.lat,
                                 lng: area.lng,
                                 last_seen: area.last_seen ? new Date(area.last_seen) : null,
@@ -178,7 +223,7 @@ class JotihuntApiService {
                                 external_id: area.id,
                                 name: area.name,
                                 fox_team_name: area.fox_team_name,
-                                status: area.status,
+                                status: dbStatus,
                                 lat: area.lat,
                                 lng: area.lng,
                                 last_seen: area.last_seen ? new Date(area.last_seen) : null,
@@ -188,6 +233,17 @@ class JotihuntApiService {
                                 created_at: new Date(),
                                 updated_at: new Date()
                             }).returning('id');
+                            // Create initial status history record for new area
+                            await (0, database_1.db)('fox_status_history').insert({
+                                area_id: newAreaId,
+                                api_status: area.status,
+                                db_status: dbStatus,
+                                fox_team_name: area.fox_team_name,
+                                lat: area.lat,
+                                lng: area.lng,
+                                started_at: new Date(),
+                                tenant_id: tenant.id
+                            });
                             // Store initial location in history if coordinates exist
                             if (area.lat && area.lng) {
                                 await (0, database_1.db)('area_locations').insert({

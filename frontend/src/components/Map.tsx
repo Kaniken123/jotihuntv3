@@ -7,6 +7,106 @@ import { useWebSocket } from '../contexts/WebSocketContext';
 import { useAuth } from '../contexts/AuthContext';
 import FoxStatusOverlay from './FoxStatusOverlay';
 
+// Subscription Popup Content Component
+interface SubscriptionPopupProps {
+  subscription: Subscription;
+  onUpdate: () => void;
+}
+
+const SubscriptionPopupContent: React.FC<SubscriptionPopupProps> = ({ subscription, onUpdate }) => {
+  const [selectedArea, setSelectedArea] = useState(subscription.area || '');
+  const [isUpdating, setIsUpdating] = useState(false);
+  const areas = ['Alpha', 'Bravo', 'Charlie', 'Delta', 'Echo', 'Foxtrot', 'Golf', 'Hotel'];
+
+  const handleAreaChange = async (area: string) => {
+    setIsUpdating(true);
+    try {
+      await gameService.updateSubscription(subscription.id, { area: area || undefined });
+      setSelectedArea(area);
+      onUpdate(); // Refresh subscriptions
+    } catch (error) {
+      console.error('Failed to update area:', error);
+      alert('Fout bij het updaten van deelgebied');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  return (
+    <div className="p-3 min-w-80">
+      <h3 className="font-semibold text-lg mb-3">{subscription.team_name}</h3>
+
+      {/* Area Display (read-only, synced from API) */}
+      <div className="mb-3">
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          📍 Deelgebied
+        </label>
+        <div className="w-full px-3 py-2 border border-gray-200 bg-gray-50 rounded-md text-sm text-gray-700">
+          {subscription.area || 'Geen deelgebied'}
+        </div>
+        <p className="text-xs text-gray-500 mt-1">
+          ℹ️ Dit wordt automatisch gesynchroniseerd vanuit de Jotihunt API
+        </p>
+      </div>
+
+      {/* Visit Count and Status */}
+      <div className="mb-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Bezoek Status</span>
+          <span className="text-lg font-bold text-blue-600 dark:text-blue-400">
+            {subscription.visit_count || 0} bezoek{(subscription.visit_count || 0) !== 1 ? 'en' : ''}
+          </span>
+        </div>
+
+        {subscription.visited_by_foxes && subscription.visited_by_foxes.length > 0 ? (
+          <div>
+            <p className="text-xs font-medium text-green-800 dark:text-green-300 mb-1">✅ Bezocht door:</p>
+            <div className="flex flex-wrap gap-1">
+              {subscription.visited_by_foxes.map((foxTeam, index) => (
+                <span
+                  key={index}
+                  className="px-2 py-1 text-xs bg-green-100 dark:bg-green-800 text-green-700 dark:text-green-200 rounded-full"
+                >
+                  {foxTeam}
+                </span>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <p className="text-xs text-blue-700 dark:text-blue-300">⏳ Nog niet bezocht</p>
+        )}
+      </div>
+
+      {/* Accommodation details */}
+      <div className="space-y-2 mb-3 text-sm">
+        {subscription.accomodation && (
+          <p className="text-gray-600 dark:text-gray-400">
+            <span className="font-medium">🏠 Type:</span> {subscription.accomodation}
+          </p>
+        )}
+
+        {subscription.street && subscription.housenumber && (
+          <p className="text-gray-600 dark:text-gray-400">
+            <span className="font-medium">📍 Adres:</span> {subscription.street} {subscription.housenumber}
+            {subscription.housenumber_addition && subscription.housenumber_addition}
+          </p>
+        )}
+
+        {subscription.postcode && subscription.city && (
+          <p className="text-gray-600 dark:text-gray-400">
+            <span className="font-medium">🏙️ Plaats:</span> {subscription.postcode} {subscription.city}
+          </p>
+        )}
+      </div>
+
+      {/* Coordinates */}
+      <div className="mt-3 pt-2 border-t border-gray-200 dark:border-gray-600 text-xs text-gray-500 dark:text-gray-400">
+        <p>📍 {subscription.lat?.toFixed(6)}, {subscription.lng?.toFixed(6)}</p>
+      </div>
+    </div>
+  );
+};
+
 // Fix for default markers in React Leaflet
 delete (Icon.Default.prototype as any)._getIconUrl;
 Icon.Default.mergeOptions({
@@ -95,23 +195,32 @@ const createFoxIcon = (teamName: string, size: 'small' | 'medium' | 'large' = 'm
 };
 
 // Simple house icon for subscription/group markers
-const createHouseIcon = (isVisited: boolean = false, size: 'small' | 'medium' | 'large' = 'medium') => {
+const createHouseIcon = (isVisited: boolean = false, area?: string, size: 'small' | 'medium' | 'large' = 'medium') => {
   const sizes = {
     small: [16, 16],
     medium: [20, 20],
     large: [24, 24],
   };
-  
+
   const [width, height] = sizes[size];
-  const fillColor = isVisited ? '#10B981' : '#3B82F6'; // Green if visited, blue if not
-  
+
+  // Get color based on area (deelgebied)
+  let fillColor = '#3B82F6'; // Default blue if no area
+  if (area && FOX_TEAM_COLORS[area as keyof typeof FOX_TEAM_COLORS]) {
+    fillColor = FOX_TEAM_COLORS[area as keyof typeof FOX_TEAM_COLORS].primary;
+  }
+
+  // If visited, make it slightly darker
+  const strokeColor = isVisited ? '#000' : '#fff';
+  const strokeWidth = isVisited ? '2' : '1';
+
   const svgContent = `
     <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 24 24">
-      <path d="M12 2L2 8v14h20V8L12 2z" fill="${fillColor}" stroke="white" stroke-width="1"/>
+      <path d="M12 2L2 8v14h20V8L12 2z" fill="${fillColor}" stroke="${strokeColor}" stroke-width="${strokeWidth}"/>
       ${isVisited ? `<path d="M8 12l2 2 4-4" stroke="white" stroke-width="1.5" fill="none"/>` : ''}
     </svg>
   `;
-  
+
   return new Icon({
     iconUrl: `data:image/svg+xml;base64,${btoa(svgContent)}`,
     iconSize: [width, height],
@@ -121,10 +230,67 @@ const createHouseIcon = (isVisited: boolean = false, size: 'small' | 'medium' | 
 };
 
 
-// User icons with session status
-const createUserIcon = (isActive: boolean = true) => {
+// User icons with session status - car shape
+const createUserIcon = (isActive: boolean = true, size: 'small' | 'medium' | 'large' = 'medium') => {
+  const sizes = {
+    small: [32, 32],
+    medium: [40, 40],
+    large: [48, 48],
+  };
+
+  const [width, height] = sizes[size];
   const color = isActive ? '#10B981' : '#6B7280'; // Green for active, gray for inactive
-  return createIcon(color, 'medium');
+  const accentColor = isActive ? '#059669' : '#4B5563'; // Darker shade for depth
+
+  // Create a car-shaped SVG with more contrast and details
+  const svgContent = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 64 64">
+      <!-- Outer glow for visibility -->
+      <circle cx="32" cy="32" r="30" fill="${color}" opacity="0.3"/>
+      <circle cx="32" cy="32" r="28" fill="${color}" opacity="0.5"/>
+
+      <!-- Car body shadow -->
+      <ellipse cx="32" cy="54" rx="22" ry="5" fill="rgba(0,0,0,0.5)"/>
+
+      <!-- Car main body -->
+      <rect x="14" y="26" width="36" height="20" rx="3" fill="${color}" stroke="#fff" stroke-width="2.5"/>
+
+      <!-- Car body accent -->
+      <rect x="14" y="26" width="36" height="10" rx="3" fill="${accentColor}" stroke="#fff" stroke-width="2.5"/>
+
+      <!-- Car roof/cabin -->
+      <path d="M 20 26 L 25 14 L 39 14 L 44 26 Z" fill="${color}" stroke="#fff" stroke-width="2.5"/>
+
+      <!-- Windshield (front window) -->
+      <path d="M 38 16 L 42 24 L 36 24 L 36 16 Z" fill="rgba(135,206,250,0.8)" stroke="#fff" stroke-width="1.5"/>
+
+      <!-- Side window -->
+      <path d="M 26 16 L 30 24 L 24 24 L 22 16 Z" fill="rgba(135,206,250,0.7)" stroke="#fff" stroke-width="1.5"/>
+
+      <!-- Car wheels with more detail -->
+      <circle cx="21" cy="46" r="5" fill="#1a1a1a" stroke="#fff" stroke-width="2"/>
+      <circle cx="21" cy="46" r="3" fill="#333"/>
+      <circle cx="21" cy="46" r="1.5" fill="#888"/>
+
+      <circle cx="43" cy="46" r="5" fill="#1a1a1a" stroke="#fff" stroke-width="2"/>
+      <circle cx="43" cy="46" r="3" fill="#333"/>
+      <circle cx="43" cy="46" r="1.5" fill="#888"/>
+
+      <!-- Headlights with glow -->
+      <circle cx="50" cy="34" r="3" fill="#FFE66D" opacity="0.5"/>
+      <circle cx="50" cy="34" r="2.5" fill="#FFED4E" stroke="#FFF" stroke-width="1"/>
+
+      <!-- Taillight -->
+      <circle cx="14" cy="34" r="2" fill="#EF4444" opacity="0.8"/>
+    </svg>
+  `;
+
+  return new Icon({
+    iconUrl: `data:image/svg+xml;base64,${btoa(svgContent)}`,
+    iconSize: [width, height],
+    iconAnchor: [width / 2, height - 6],
+    popupAnchor: [0, -height + 8],
+  });
 };
 
 interface LocationUpdaterProps {
@@ -262,6 +428,17 @@ const Map: React.FC = () => {
   const { socket, isConnected } = useWebSocket();
   const { state } = useAuth();
 
+  // Separate function to fetch subscriptions (for refresh after update)
+  const fetchSubscriptions = useCallback(async () => {
+    try {
+      const subscriptionsData = await gameService.getSubscriptions();
+      console.log('🔄 Subscriptions refreshed:', subscriptionsData?.length || 0);
+      setSubscriptions(subscriptionsData || []);
+    } catch (error) {
+      console.error('Error refreshing subscriptions:', error);
+    }
+  }, []);
+
   useEffect(() => {
     const loadData = async () => {
       try {
@@ -269,7 +446,7 @@ const Map: React.FC = () => {
         // Load areas first for immediate map display
         const areasData = await gameService.getAreas();
         console.log('🦊 Areas loaded:', areasData?.length || 0, 'areas');
-        
+
         // Deduplicate areas by name, keeping the most recent (highest id)
         const uniqueAreas = areasData.reduce((acc, area) => {
           const existing = acc.find(a => a.name === area.name);
@@ -282,19 +459,19 @@ const Map: React.FC = () => {
           return acc;
         }, []);
         console.log('🦊 Unique areas after deduplication:', uniqueAreas.length);
-        
+
         setAreas(uniqueAreas);
         setIsLoading(false); // Show map immediately with fox markers
-        
+
         // Then load subscriptions and user locations in background
         const [subscriptionsData, locationsData] = await Promise.all([
           gameService.getSubscriptions(),
           gameService.getUserLocations()
         ]);
-        
+
         console.log('🏠 Subscriptions loaded:', subscriptionsData?.length || 0, 'subscriptions');
         console.log('👥 User locations loaded:', locationsData?.length || 0, 'locations');
-        
+
         setSubscriptions(subscriptionsData || []);
         setUserLocations(locationsData);
       } catch (error) {
@@ -361,18 +538,31 @@ const Map: React.FC = () => {
   // Handle hint solution success events
   const handleHintSolutionSubmitted = useCallback((update: any) => {
     console.log('Hint solution submitted:', update);
-    
+
     if (update.reveals_fox && update.revealed_areas?.length > 0) {
       // Reload areas to show newly revealed fox locations
       gameService.getAreas().then(areasData => {
         setAreas(areasData);
-        
+
         // Show success notification
         alert(`🎯 Hint solved! Revealed ${update.revealed_areas.join(', ')} fox locations on the map!`);
       }).catch(error => {
         console.error('Failed to reload areas after hint solution:', error);
       });
     }
+  }, []);
+
+  // Handle fox locations reset event
+  const handleFoxLocationsReset = useCallback((update: any) => {
+    console.log('Fox locations reset by admin:', update);
+
+    // Reload areas to show cleared fox locations
+    gameService.getAreas().then(areasData => {
+      setAreas(areasData);
+      console.log('🗑️ Fox locations cleared from map');
+    }).catch(error => {
+      console.error('Failed to reload areas after reset:', error);
+    });
   }, []);
 
   useEffect(() => {
@@ -382,6 +572,7 @@ const Map: React.FC = () => {
       socket.on('fox-status-update', handleFoxStatusUpdate);
       socket.on('fox-location-update', handleFoxLocationUpdate);
       socket.on('hint-solution-submitted', handleHintSolutionSubmitted);
+      socket.on('fox-locations-reset', handleFoxLocationsReset);
 
       return () => {
         socket.off('location-update', handleLocationUpdate);
@@ -389,9 +580,10 @@ const Map: React.FC = () => {
         socket.off('fox-status-update', handleFoxStatusUpdate);
         socket.off('fox-location-update', handleFoxLocationUpdate);
         socket.off('hint-solution-submitted', handleHintSolutionSubmitted);
+        socket.off('fox-locations-reset', handleFoxLocationsReset);
       };
     }
-  }, [socket, isConnected, handleLocationUpdate, handleFoxStatusUpdate, handleFoxLocationUpdate, handleHintSolutionSubmitted]);
+  }, [socket, isConnected, handleLocationUpdate, handleFoxStatusUpdate, handleFoxLocationUpdate, handleHintSolutionSubmitted, handleFoxLocationsReset]);
 
   const handleUserLocationUpdate = useCallback(async (position: LatLng) => {
     setUserPosition(position);
@@ -757,81 +949,24 @@ const Map: React.FC = () => {
     const filteredSubscriptions = showSubscriptions ? subscriptions
       .filter(subscription => subscription.lat && subscription.lng) : []; // Only show subscriptions with coordinates
     console.log('🏠 Visible subscriptions with coords:', filteredSubscriptions.length);
-    
+
     return filteredSubscriptions.map((subscription) => {
         // Check if any fox team has visited this subscription
         const isVisited = subscription.visited_by_foxes && subscription.visited_by_foxes.length > 0;
-        
+
         return (
           <Marker
             key={`subscription-${subscription.id}`}
             position={[subscription.lat!, subscription.lng!]}
-            icon={createHouseIcon(isVisited, 'medium')}
+            icon={createHouseIcon(isVisited, subscription.area, 'medium')}
           >
             <Popup>
-              <div className="p-3 min-w-64">
-                <h3 className="font-semibold text-lg mb-3">{subscription.team_name}</h3>
-                
-                {/* Accommodation details */}
-                <div className="space-y-2 mb-3">
-                  {subscription.accomodation && (
-                    <p className="text-sm text-gray-600">
-                      <span className="font-medium">🏠 Type:</span> {subscription.accomodation}
-                    </p>
-                  )}
-                  
-                  {subscription.street && subscription.housenumber && (
-                    <p className="text-sm text-gray-600">
-                      <span className="font-medium">📍 Adres:</span> {subscription.street} {subscription.housenumber}
-                      {subscription.housenumber_addition && subscription.housenumber_addition}
-                    </p>
-                  )}
-                  
-                  {subscription.postcode && subscription.city && (
-                    <p className="text-sm text-gray-600">
-                      <span className="font-medium">🏙️ Plaats:</span> {subscription.postcode} {subscription.city}
-                    </p>
-                  )}
-                </div>
-
-                {/* Fox team assignment */}
-                {subscription.fox_team_name && (
-                  <p className="text-sm text-gray-600 mb-2">
-                    <span className="font-medium">🦊 Gekoppeld aan:</span> {subscription.fox_team_name}
-                  </p>
-                )}
-
-                {/* Visit status */}
-                {subscription.visited_by_foxes && subscription.visited_by_foxes.length > 0 ? (
-                  <div className="mt-3 p-2 bg-green-50 rounded">
-                    <p className="text-sm font-medium text-green-800 mb-1">✅ Bezocht door:</p>
-                    <div className="flex flex-wrap gap-1">
-                      {subscription.visited_by_foxes.map((foxTeam, index) => (
-                        <span 
-                          key={index}
-                          className="px-2 py-1 text-xs bg-green-100 text-green-700 rounded-full"
-                        >
-                          {foxTeam}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="mt-3 p-2 bg-blue-50 rounded">
-                    <p className="text-sm text-blue-700">⏳ Nog niet bezocht door vossen</p>
-                  </div>
-                )}
-                
-                {/* Coordinates */}
-                <div className="mt-3 pt-2 border-t text-xs text-gray-500">
-                  <p>📍 {subscription.lat?.toFixed(6)}, {subscription.lng?.toFixed(6)}</p>
-                </div>
-              </div>
+              <SubscriptionPopupContent subscription={subscription} onUpdate={fetchSubscriptions} />
             </Popup>
           </Marker>
         );
       });
-  }, [subscriptions, showSubscriptions]);
+  }, [subscriptions, showSubscriptions, fetchSubscriptions]);
 
   // No-hunt zones - 500m circles around subscriptions
   const noHuntZones = useMemo(() => {
