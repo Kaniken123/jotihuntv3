@@ -11,6 +11,7 @@ interface JotihuntSubscription {
     long: string;
     team_name?: string;
     is_participating?: boolean;
+    area?: string;
 }
 interface JotihuntArea {
     id: number;

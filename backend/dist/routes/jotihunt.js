@@ -637,51 +637,52 @@ router.post('/areas/bulk-update', auth_1.authenticateToken, auth_1.requireAdmin,
         res.status(500).json({ error: 'Failed to perform bulk update' });
     }
 });
-// SUBSCRIPTION MANAGEMENT ENDPOINTS
-// Admin: Assign subscription to fox team
-router.post('/subscriptions/:subscription_id/assign-fox', auth_1.authenticateToken, auth_1.requireAdmin, async (req, res) => {
+// Admin: Reset all fox locations (clear lat/lng and last_seen)
+router.post('/areas/reset-locations', auth_1.authenticateToken, auth_1.requireAdmin, auth_1.enforceTenantIsolation, async (req, res) => {
     try {
-        const { subscription_id } = req.params;
-        const { fox_team_name, lat, lng } = req.body;
-        if (!fox_team_name) {
-            return res.status(400).json({ error: 'Fox team name is required' });
-        }
-        // Validate fox team exists
-        const foxArea = await (0, database_1.db)('areas').where('name', fox_team_name).first();
-        if (!foxArea) {
-            return res.status(400).json({ error: 'Fox team not found' });
-        }
-        // Update subscription with fox team assignment and coordinates
-        await (0, database_1.db)('subscriptions')
-            .where('id', subscription_id)
-            .where('tenant_id', req.user.tenant_id)
+        const tenantId = req.tenantId;
+        // Clear lat, lng, and last_seen from all areas for this tenant
+        const updatedCount = await (0, database_1.db)('areas')
+            .where('tenant_id', tenantId)
             .update({
-            fox_team_name,
-            lat: lat ? parseFloat(lat) : null,
-            lng: lng ? parseFloat(lng) : null,
+            lat: null,
+            lng: null,
+            last_seen: null,
             updated_at: new Date()
         });
-        const subscription = await (0, database_1.db)('subscriptions')
-            .where('id', subscription_id)
-            .where('tenant_id', req.user.tenant_id)
-            .first();
+        // Optionally: Delete all area_locations history (uncomment if you want to clear history too)
+        // const areaIds = await db('areas').where('tenant_id', tenantId).pluck('id');
+        // await db('area_locations').whereIn('area_id', areaIds).delete();
+        // Emit notification to all connected clients
+        try {
+            const io = (0, socketManager_1.getSocketIO)();
+            io.emit('fox-locations-reset', {
+                tenant_id: tenantId,
+                timestamp: new Date(),
+                message: 'All fox locations have been reset by admin'
+            });
+        }
+        catch (socketError) {
+            console.error('Socket emission error:', socketError);
+        }
         res.json({
-            message: 'Subscription assigned to fox team',
-            subscription
+            message: 'All fox locations have been reset successfully',
+            areas_updated: updatedCount
         });
     }
     catch (error) {
-        console.error('Assign fox team error:', error);
-        res.status(500).json({ error: 'Failed to assign fox team' });
+        console.error('Reset fox locations error:', error);
+        res.status(500).json({ error: 'Failed to reset fox locations' });
     }
 });
+// SUBSCRIPTION MANAGEMENT ENDPOINTS
 // Admin: Record fox visit to subscription/group
 router.post('/subscriptions/:subscription_id/visit', auth_1.authenticateToken, async (req, res) => {
     try {
         const { subscription_id } = req.params;
         const { fox_team_name, visit_lat, visit_lng, notes } = req.body;
-        if (!fox_team_name || !visit_lat || !visit_lng) {
-            return res.status(400).json({ error: 'Fox team name and visit coordinates are required' });
+        if (!fox_team_name) {
+            return res.status(400).json({ error: 'Fox team name is required' });
         }
         // Get fox area for the team
         const foxArea = await (0, database_1.db)('areas')
@@ -705,8 +706,8 @@ router.post('/subscriptions/:subscription_id/visit', auth_1.authenticateToken, a
             subscription_id: parseInt(subscription_id),
             area_id: foxArea.id,
             fox_team_name,
-            visit_lat: parseFloat(visit_lat),
-            visit_lng: parseFloat(visit_lng),
+            visit_lat: visit_lat ? parseFloat(visit_lat) : null,
+            visit_lng: visit_lng ? parseFloat(visit_lng) : null,
             user_id: req.user.id,
             notes,
             tenant_id: req.user.tenant_id,
@@ -715,8 +716,8 @@ router.post('/subscriptions/:subscription_id/visit', auth_1.authenticateToken, a
         })
             .onConflict(['subscription_id', 'area_id', 'tenant_id'])
             .merge({
-            visit_lat: parseFloat(visit_lat),
-            visit_lng: parseFloat(visit_lng),
+            visit_lat: visit_lat ? parseFloat(visit_lat) : null,
+            visit_lng: visit_lng ? parseFloat(visit_lng) : null,
             user_id: req.user.id,
             notes,
             updated_at: new Date()
@@ -810,42 +811,7 @@ router.get('/subscriptions-with-visits', auth_1.authenticateToken, async (req, r
         res.status(500).json({ error: 'Failed to get subscriptions with visits' });
     }
 });
-// Update subscription details (area, etc.)
-router.patch('/subscriptions/:subscription_id', auth_1.authenticateToken, async (req, res) => {
-    try {
-        const { subscription_id } = req.params;
-        const { area } = req.body;
-        const tenantId = req.user.tenant_id;
-        // Verify subscription belongs to this tenant
-        const subscription = await (0, database_1.db)('subscriptions')
-            .where('id', subscription_id)
-            .where('tenant_id', tenantId)
-            .first();
-        if (!subscription) {
-            return res.status(404).json({ error: 'Subscription not found' });
-        }
-        // Validate area if provided
-        const validAreas = ['Alpha', 'Bravo', 'Charlie', 'Delta', 'Echo', 'Foxtrot', 'Golf', 'Hotel'];
-        if (area && !validAreas.includes(area)) {
-            return res.status(400).json({ error: 'Invalid area. Must be one of: ' + validAreas.join(', ') });
-        }
-        // Update subscription
-        await (0, database_1.db)('subscriptions')
-            .where('id', subscription_id)
-            .update({
-            area: area || null,
-            updated_at: new Date()
-        });
-        // Fetch updated subscription
-        const updated = await (0, database_1.db)('subscriptions')
-            .where('id', subscription_id)
-            .first();
-        res.json(updated);
-    }
-    catch (error) {
-        console.error('Update subscription error:', error);
-        res.status(500).json({ error: 'Failed to update subscription' });
-    }
-});
+// Note: Subscription area is now read-only and automatically synced from the Jotihunt API
+// Manual updates have been removed to maintain data consistency with the external API
 exports.default = router;
 //# sourceMappingURL=jotihunt.js.map

@@ -78,6 +78,7 @@ class JotihuntApiService {
                             is_participating: subscription.is_participating ?? true, // Default to true
                             lat,
                             lng,
+                            area: subscription.area || null, // Deelgebied from API
                             accomodation: subscription.accomodation,
                             street: subscription.street,
                             housenumber: subscription.housenumber,
@@ -94,6 +95,7 @@ class JotihuntApiService {
                             is_participating: subscription.is_participating ?? true,
                             lat,
                             lng,
+                            area: subscription.area || null, // Update deelgebied on sync
                             accomodation: subscription.accomodation,
                             street: subscription.street,
                             housenumber: subscription.housenumber,

@@ -767,8 +767,8 @@ router.post('/subscriptions/:subscription_id/visit', authenticateToken, async (r
     const { subscription_id } = req.params;
     const { fox_team_name, visit_lat, visit_lng, notes } = req.body;
 
-    if (!fox_team_name || !visit_lat || !visit_lng) {
-      return res.status(400).json({ error: 'Fox team name and visit coordinates are required' });
+    if (!fox_team_name) {
+      return res.status(400).json({ error: 'Fox team name is required' });
     }
 
     // Get fox area for the team
@@ -797,8 +797,8 @@ router.post('/subscriptions/:subscription_id/visit', authenticateToken, async (r
         subscription_id: parseInt(subscription_id),
         area_id: foxArea.id,
         fox_team_name,
-        visit_lat: parseFloat(visit_lat),
-        visit_lng: parseFloat(visit_lng),
+        visit_lat: visit_lat ? parseFloat(visit_lat) : null,
+        visit_lng: visit_lng ? parseFloat(visit_lng) : null,
         user_id: req.user!.id,
         notes,
         tenant_id: req.user!.tenant_id,
@@ -807,8 +807,8 @@ router.post('/subscriptions/:subscription_id/visit', authenticateToken, async (r
       })
       .onConflict(['subscription_id', 'area_id', 'tenant_id'])
       .merge({
-        visit_lat: parseFloat(visit_lat),
-        visit_lng: parseFloat(visit_lng),
+        visit_lat: visit_lat ? parseFloat(visit_lat) : null,
+        visit_lng: visit_lng ? parseFloat(visit_lng) : null,
         user_id: req.user!.id,
         notes,
         updated_at: new Date()

@@ -156,7 +156,7 @@ export const gameService = {
   },
 
   // Subscription management functions
-  async recordFoxVisit(subscriptionId: number, foxTeamName: string, visitLat: number, visitLng: number, notes?: string) {
+  async recordFoxVisit(subscriptionId: number, foxTeamName: string, visitLat: number | null, visitLng: number | null, notes?: string) {
     const response = await api.post(`/jotihunt/subscriptions/${subscriptionId}/visit`, {
       fox_team_name: foxTeamName,
       visit_lat: visitLat,

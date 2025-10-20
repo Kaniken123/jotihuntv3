@@ -10,8 +10,6 @@ const SubscriptionManager: React.FC = () => {
   const [selectedSubscription, setSelectedSubscription] = useState<Subscription | null>(null);
   const [visitForm, setVisitForm] = useState({
     fox_team_name: '',
-    visit_lat: '',
-    visit_lng: '',
     notes: ''
   });
   const [isRecordingVisit, setIsRecordingVisit] = useState(false);
@@ -28,7 +26,7 @@ const SubscriptionManager: React.FC = () => {
         gameService.getSubscriptions(),
         gameService.getAreas()
       ]);
-      
+
       setSubscriptions(subscriptionsData || []);
       setAreas(areasData || []);
     } catch (error) {
@@ -39,8 +37,8 @@ const SubscriptionManager: React.FC = () => {
   };
 
   const handleRecordVisit = async () => {
-    if (!selectedSubscription || !visitForm.fox_team_name || !visitForm.visit_lat || !visitForm.visit_lng) {
-      alert('Alle velden zijn verplicht');
+    if (!selectedSubscription || !visitForm.fox_team_name) {
+      alert('Vos team is verplicht');
       return;
     }
 
@@ -49,19 +47,19 @@ const SubscriptionManager: React.FC = () => {
       await gameService.recordFoxVisit(
         selectedSubscription.id,
         visitForm.fox_team_name,
-        parseFloat(visitForm.visit_lat),
-        parseFloat(visitForm.visit_lng),
+        null,
+        null,
         visitForm.notes
       );
 
       // Reload data to reflect changes
       await loadData();
-      
+
       // Reset form and close modal
-      setVisitForm({ fox_team_name: '', visit_lat: '', visit_lng: '', notes: '' });
+      setVisitForm({ fox_team_name: '', notes: '' });
       setShowVisitModal(false);
       setSelectedSubscription(null);
-      
+
       alert('Bezoek succesvol geregistreerd!');
     } catch (error) {
       console.error('Error recording visit:', error);
@@ -219,37 +217,6 @@ const SubscriptionManager: React.FC = () => {
                 </select>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Bezoek Latitude *
-                  </label>
-                  <input
-                    type="number"
-                    step="0.000001"
-                    value={visitForm.visit_lat}
-                    onChange={(e) => setVisitForm(prev => ({ ...prev, visit_lat: e.target.value }))}
-                    className="w-full p-2 border border-gray-300 rounded-md"
-                    placeholder="52.123456"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Bezoek Longitude *
-                  </label>
-                  <input
-                    type="number"
-                    step="0.000001"
-                    value={visitForm.visit_lng}
-                    onChange={(e) => setVisitForm(prev => ({ ...prev, visit_lng: e.target.value }))}
-                    className="w-full p-2 border border-gray-300 rounded-md"
-                    placeholder="6.123456"
-                    required
-                  />
-                </div>
-              </div>
-
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Notities (optioneel)
@@ -277,7 +244,7 @@ const SubscriptionManager: React.FC = () => {
                 onClick={() => {
                   setShowVisitModal(false);
                   setSelectedSubscription(null);
-                  setVisitForm({ fox_team_name: '', visit_lat: '', visit_lng: '', notes: '' });
+                  setVisitForm({ fox_team_name: '', notes: '' });
                 }}
                 className="flex-1 bg-gray-500 text-white py-2 px-4 rounded-md hover:bg-gray-600"
               >
