@@ -57,10 +57,23 @@ router.post('/update', auth_1.authenticateToken, auth_1.enforceTenantIsolation, 
         if (!lat || !lng) {
             return res.status(400).json({ error: 'Latitude and longitude required' });
         }
-        // Check location sharing settings
-        const settings = await (0, database_1.db)('location_settings')
+        // Check location sharing settings - create defaults if not exist
+        let settings = await (0, database_1.db)('location_settings')
             .where('user_id', req.user.id)
             .first();
+        // Auto-create default settings if user doesn't have any yet
+        if (!settings) {
+            const [id] = await (0, database_1.db)('location_settings')
+                .insert({
+                user_id: req.user.id,
+                tracking_interval: 60,
+                offline_threshold: 300,
+                location_sharing_enabled: true,
+                privacy_mode: false
+            })
+                .returning('id');
+            settings = await (0, database_1.db)('location_settings').where('id', id).first();
+        }
         if (!settings?.location_sharing_enabled || settings?.privacy_mode) {
             return res.json({ message: 'Location sharing disabled' });
         }
