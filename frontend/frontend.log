@@ -1,0 +1,110 @@
+
+> jotihunt-frontend@1.0.0 dev
+> vite
+
+
+  VITE v5.4.19  ready in 224 ms
+
+  ➜  Local:   http://localhost:3000/
+  ➜  Network: http://10.0.1.91:3000/
+9:10:57 AM [vite] http proxy error: /api/socket.io/?EIO=4&transport=polling&t=beg78ux0
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1139:18)
+    at afterConnectMultiple (node:net:1714:7)
+9:10:59 AM [vite] http proxy error: /api/socket.io/?EIO=4&transport=polling&t=behqttkf
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1139:18)
+    at afterConnectMultiple (node:net:1714:7)
+9:11:08 AM [vite] hmr update /src/components/UpdateDetail.tsx, /src/index.css, /src/components/HintsList.tsx, /src/components/AdminDashboard.tsx, /src/components/Map.tsx
+9:12:15 AM [vite] hmr update /src/components/Navbar.tsx, /src/index.css
+9:12:18 AM [vite] hmr update /src/components/Navbar.tsx, /src/index.css
+9:12:25 AM [vite] hmr update /src/App.tsx, /src/index.css
+9:12:30 AM [vite] hmr update /src/App.tsx, /src/index.css
+9:14:50 AM [vite] hmr update /src/components/Navbar.tsx, /src/index.css
+9:14:57 AM [vite] hmr update /src/components/Navbar.tsx, /src/index.css
+9:16:14 AM [vite] hmr update /src/components/AdminRouteTracking.tsx, /src/index.css
+9:23:01 AM [vite] hmr update /src/components/AdminRouteTracking.tsx, /src/index.css
+9:23:08 AM [vite] hmr update /src/components/AdminRouteTracking.tsx, /src/index.css
+9:31:07 AM [vite] hmr update /src/components/AdminRouteTracking.tsx, /src/index.css
+9:31:22 AM [vite] hmr update /src/components/AdminRouteTracking.tsx, /src/index.css
+9:33:29 AM [vite] hmr update /src/components/Navbar.tsx, /src/index.css
+9:33:35 AM [vite] hmr update /src/components/Navbar.tsx, /src/index.css
+9:33:38 AM [vite] hmr update /src/components/Navbar.tsx, /src/index.css
+9:33:48 AM [vite] hmr update /src/components/Navbar.tsx, /src/index.css
+9:33:53 AM [vite] hmr update /src/components/Navbar.tsx, /src/index.css
+9:33:58 AM [vite] hmr update /src/components/Navbar.tsx, /src/index.css
+9:34:06 AM [vite] hmr update /src/components/Navbar.tsx, /src/index.css
+9:34:24 AM [vite] hmr update /src/components/Navbar.tsx, /src/index.css
+9:34:55 AM [vite] hmr update /src/components/AdminRouteTracking.tsx, /src/index.css
+9:35:10 AM [vite] hmr update /src/components/AdminRouteTracking.tsx, /src/index.css
+9:35:15 AM [vite] hmr update /src/components/AdminRouteTracking.tsx, /src/index.css
+9:35:23 AM [vite] hmr update /src/components/AdminRouteTracking.tsx, /src/index.css
+9:36:33 AM [vite] hmr update /src/components/Navbar.tsx, /src/index.css
+9:37:58 AM [vite] hmr update /src/components/Navbar.tsx, /src/index.css
+9:40:28 AM [vite] hmr update /src/components/Navbar.tsx, /src/index.css
+9:41:27 AM [vite] hmr update /src/components/Navbar.tsx, /src/index.css
+9:58:16 AM [vite] http proxy error: /api/auth/me
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1139:18)
+    at afterConnectMultiple (node:net:1714:7)
+9:58:16 AM [vite] hmr update /src/components/UpdateDetail.tsx, /src/index.css, /src/components/HintsList.tsx, /src/components/AdminDashboard.tsx, /src/components/Map.tsx, /src/components/AdminRouteTracking.tsx
+9:58:32 AM [vite] http proxy error: /api/socket.io/?EIO=4&transport=polling&t=d3ngibc8
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1139:18)
+    at afterConnectMultiple (node:net:1714:7)
+9:58:32 AM [vite] http proxy error: /api/socket.io/?EIO=4&transport=polling&t=czaow1px
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1139:18)
+    at afterConnectMultiple (node:net:1714:7)
+9:58:32 AM [vite] http proxy error: /api/socket.io/?EIO=4&transport=polling&t=cyq94cxv
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1139:18)
+    at afterConnectMultiple (node:net:1714:7)
+9:58:32 AM [vite] http proxy error: /api/auth/me
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1139:18)
+    at afterConnectMultiple (node:net:1714:7)
+9:58:47 AM [vite] hmr update /src/components/HintsList.tsx, /src/index.css
+9:58:58 AM [vite] hmr update /src/components/HintsList.tsx, /src/index.css
+9:59:04 AM [vite] hmr update /src/components/HintsList.tsx, /src/index.css
+10:01:27 AM [vite] hmr update /src/components/HintsList.tsx, /src/index.css
+10:02:23 AM [vite] hmr update /src/components/HintsList.tsx, /src/index.css
+10:02:33 AM [vite] hmr update /src/components/HintsList.tsx, /src/index.css
+10:02:44 AM [vite] http proxy error: /api/socket.io/?EIO=4&transport=polling&t=d9299axm
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1139:18)
+    at afterConnectMultiple (node:net:1714:7)
+10:02:44 AM [vite] http proxy error: /api/locations/route/4?hours=24&limit=500
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1139:18)
+    at afterConnectMultiple (node:net:1714:7)
+10:02:46 AM [vite] http proxy error: /api/locations/route/4?hours=24&limit=500
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1139:18)
+    at afterConnectMultiple (node:net:1714:7)
+10:02:46 AM [vite] http proxy error: /api/socket.io/?EIO=4&transport=polling&t=d93odv09
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1139:18)
+    at afterConnectMultiple (node:net:1714:7)
+10:02:46 AM [vite] http proxy error: /api/locations/route/14?hours=24&limit=500
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1139:18)
+    at afterConnectMultiple (node:net:1714:7)
+10:02:55 AM [vite] hmr update /src/components/HintsList.tsx, /src/index.css
+10:03:13 AM [vite] hmr update /src/components/HintsList.tsx, /src/index.css
+10:07:44 AM [vite] http proxy error: /api/socket.io/?EIO=4&transport=polling&t=dfh23vsx
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1139:18)
+    at afterConnectMultiple (node:net:1714:7)
+10:07:50 AM [vite] hmr update /src/components/UpdateDetail.tsx, /src/index.css, /src/components/HintsList.tsx, /src/components/AdminDashboard.tsx, /src/components/Map.tsx, /src/components/AdminRouteTracking.tsx
+10:08:26 AM [vite] hmr update /src/components/HintsList.tsx, /src/index.css
+10:09:21 AM [vite] hmr update /src/components/HintsList.tsx, /src/index.css
+10:10:22 AM [vite] hmr update /src/components/HintsList.tsx, /src/index.css
+10:14:53 AM [vite] hmr update /src/components/UpdateDetail.tsx, /src/index.css
+10:14:59 AM [vite] hmr update /src/components/UpdateDetail.tsx, /src/index.css
+10:15:10 AM [vite] hmr update /src/components/UpdateDetail.tsx, /src/index.css
+10:15:26 AM [vite] hmr update /src/components/UpdateDetail.tsx, /src/index.css
+10:15:46 AM [vite] hmr update /src/components/UpdateDetail.tsx, /src/index.css
+10:32:17 AM [vite] hmr update /src/App.tsx, /src/index.css
+10:32:26 AM [vite] hmr update /src/App.tsx, /src/index.css
+10:32:38 AM [vite] hmr update /src/contexts/WebSocketContext.tsx, /src/index.css

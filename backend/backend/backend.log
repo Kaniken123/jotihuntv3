@@ -1,0 +1,461 @@
+
+> jotihunt-backend@1.0.0 dev
+> nodemon src/server.ts
+
+[33m[nodemon] 3.1.10[39m
+[33m[nodemon] to restart at any time, enter `rs`[39m
+[33m[nodemon] watching path(s): *.*[39m
+[33m[nodemon] watching extensions: ts,json[39m
+[32m[nodemon] starting `ts-node src/server.ts`[39m
+Database migrations completed
+Setting up automatic API sync every 3 minutes...
+✅ Automatic sync scheduled every 3 minutes (1 call/minute - safe limit)
+Server running on port 3001
+Health check: http://localhost:3001/api/health
+🔄 Auto-sync: Every 3 minutes (1 call/minute safe)
+Get user route error: [Error: select `id`, `username`, `first_name`, `last_name`, `role`, `teams`.`name` as `team_name`, `teams`.`area` as `team_area`, `team_members`.`role` as `team_role` from `users` left join `team_members` on `users`.`id` = `team_members`.`user_id` left join `teams` on `team_members`.`team_id` = `teams`.`id` where `users`.`id` = '4' limit 1 - SQLITE_ERROR: ambiguous column name: id] {
+  errno: 1,
+  code: 'SQLITE_ERROR'
+}
+Get user route error: [Error: select `id`, `username`, `first_name`, `last_name`, `role`, `teams`.`name` as `team_name`, `teams`.`area` as `team_area`, `team_members`.`role` as `team_role` from `users` left join `team_members` on `users`.`id` = `team_members`.`user_id` left join `teams` on `team_members`.`team_id` = `teams`.`id` where `users`.`id` = '4' limit 1 - SQLITE_ERROR: ambiguous column name: id] {
+  errno: 1,
+  code: 'SQLITE_ERROR'
+}
+Get user route error: [Error: select `id`, `username`, `first_name`, `last_name`, `role`, `teams`.`name` as `team_name`, `teams`.`area` as `team_area`, `team_members`.`role` as `team_role` from `users` left join `team_members` on `users`.`id` = `team_members`.`user_id` left join `teams` on `team_members`.`team_id` = `teams`.`id` where `users`.`id` = '14' limit 1 - SQLITE_ERROR: ambiguous column name: id] {
+  errno: 1,
+  code: 'SQLITE_ERROR'
+}
+User connected: CgqXt0A5cNeU2mIBAAAC
+User CgqXt0A5cNeU2mIBAAAC joined team 3
+User disconnected: CgqXt0A5cNeU2mIBAAAC
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `ts-node src/server.ts`[39m
+Database migrations completed
+Setting up automatic API sync every 3 minutes...
+✅ Automatic sync scheduled every 3 minutes (1 call/minute - safe limit)
+Server running on port 3001
+Health check: http://localhost:3001/api/health
+🔄 Auto-sync: Every 3 minutes (1 call/minute safe)
+User connected: dumWfE5D4TRv6LTuAAAB
+User dumWfE5D4TRv6LTuAAAB joined team 3
+[2025-07-22T09:30:00.905Z] Running automatic API sync...
+[2025-07-22T09:30:02.293Z] Auto-sync completed: {
+  subscriptions: '0 synced, 0 errors',
+  areas: '0 synced, 0 errors',
+  articles: '2 synced, 0 errors'
+}
+User disconnected: dumWfE5D4TRv6LTuAAAB
+User connected: b9OceNVMnMxuoZAbAAAD
+User b9OceNVMnMxuoZAbAAAD joined team 3
+[2025-07-22T09:33:00.983Z] Running automatic API sync...
+[2025-07-22T09:33:02.085Z] Auto-sync completed: {
+  subscriptions: '0 synced, 0 errors',
+  areas: '0 synced, 0 errors',
+  articles: '2 synced, 0 errors'
+}
+User disconnected: b9OceNVMnMxuoZAbAAAD
+User connected: hoTxGQBcqiOzogEOAAAG
+User disconnected: hoTxGQBcqiOzogEOAAAG
+[2025-07-22T09:36:00.145Z] Running automatic API sync...
+[2025-07-22T09:36:01.234Z] Auto-sync completed: {
+  subscriptions: '0 synced, 0 errors',
+  areas: '0 synced, 0 errors',
+  articles: '2 synced, 0 errors'
+}
+User connected: ePppuhiEyib0h4zLAAAI
+User ePppuhiEyib0h4zLAAAI joined team 3
+User disconnected: ePppuhiEyib0h4zLAAAI
+User connected: XviQXMCGwNerrIG_AAAK
+User XviQXMCGwNerrIG_AAAK joined team 3
+User disconnected: XviQXMCGwNerrIG_AAAK
+User connected: 3qWBGJuPEK0Q6nzmAAAM
+User 3qWBGJuPEK0Q6nzmAAAM joined team 3
+[2025-07-22T09:39:00.338Z] Running automatic API sync...
+[2025-07-22T09:39:01.428Z] Auto-sync completed: {
+  subscriptions: '0 synced, 0 errors',
+  areas: '0 synced, 0 errors',
+  articles: '2 synced, 0 errors'
+}
+User connected: 99cljZWqb9fP3OUxAAAP
+User connected: ay_MhzQce3RI5PriAAAR
+User ay_MhzQce3RI5PriAAAR joined team 3
+User disconnected: ay_MhzQce3RI5PriAAAR
+User connected: EvSl2oohBl17Mlq-AAAT
+User EvSl2oohBl17Mlq-AAAT joined team 3
+User disconnected: EvSl2oohBl17Mlq-AAAT
+User connected: 8kfy30DZVIIzTnzlAAAV
+User 8kfy30DZVIIzTnzlAAAV joined team 3
+User connected: K5MN4of6JZSUFMM0AAAX
+User K5MN4of6JZSUFMM0AAAX joined team 3
+User disconnected: K5MN4of6JZSUFMM0AAAX
+User disconnected: 99cljZWqb9fP3OUxAAAP
+User disconnected: 8kfy30DZVIIzTnzlAAAV
+User connected: Hn3HgRNTLfTcIrCtAAAZ
+User disconnected: Hn3HgRNTLfTcIrCtAAAZ
+User connected: qQpaHV2_5IyfiyUKAAAb
+User qQpaHV2_5IyfiyUKAAAb joined team 3
+User connected: i6pr-qAOlGF6H3BVAAAd
+User i6pr-qAOlGF6H3BVAAAd joined team 3
+User disconnected: qQpaHV2_5IyfiyUKAAAb
+User disconnected: i6pr-qAOlGF6H3BVAAAd
+[2025-07-22T09:42:00.513Z] Running automatic API sync...
+[2025-07-22T09:42:01.628Z] Auto-sync completed: {
+  subscriptions: '0 synced, 0 errors',
+  areas: '0 synced, 0 errors',
+  articles: '2 synced, 0 errors'
+}
+User connected: 88dOeJHOePtap-tPAAAg
+User connected: acNR2Q8C3OzdKv-XAAAi
+User acNR2Q8C3OzdKv-XAAAi joined team 3
+User disconnected: acNR2Q8C3OzdKv-XAAAi
+User connected: bXQNdETFHSJInXniAAAl
+User bXQNdETFHSJInXniAAAl joined team 3
+User connected: NPFi3vd1Oa4eOGmdAAAn
+User NPFi3vd1Oa4eOGmdAAAn joined team 3
+User disconnected: 88dOeJHOePtap-tPAAAg
+User disconnected: NPFi3vd1Oa4eOGmdAAAn
+User connected: ei6gKcwKyRvV-1OLAAAp
+User connected: TAqQXY-3AZIM6ssdAAAr
+User TAqQXY-3AZIM6ssdAAAr joined team 3
+User disconnected: bXQNdETFHSJInXniAAAl
+User disconnected: TAqQXY-3AZIM6ssdAAAr
+User disconnected: ei6gKcwKyRvV-1OLAAAp
+User connected: esn-2iHBZXODvNhQAAAu
+User connected: 4GIuEIZmp5bRQ4m4AAAw
+User 4GIuEIZmp5bRQ4m4AAAw joined team 3
+User disconnected: 4GIuEIZmp5bRQ4m4AAAw
+[2025-07-22T09:45:00.694Z] Running automatic API sync...
+[2025-07-22T09:45:01.895Z] Auto-sync completed: {
+  subscriptions: '0 synced, 0 errors',
+  areas: '0 synced, 0 errors',
+  articles: '2 synced, 0 errors'
+}
+User disconnected: esn-2iHBZXODvNhQAAAu
+User connected: CJaSw-ZisUjCEcmcAAA0
+User connected: 3a3DIMmwMmxmWznBAAA2
+User 3a3DIMmwMmxmWznBAAA2 joined team 3
+User disconnected: 3a3DIMmwMmxmWznBAAA2
+User connected: JZpWaVuJ65_uAzVsAAA4
+User JZpWaVuJ65_uAzVsAAA4 joined team 3
+User disconnected: 3qWBGJuPEK0Q6nzmAAAM
+User connected: 5OsTtq3_SJ0VA3CYAAA6
+User 5OsTtq3_SJ0VA3CYAAA6 joined team 3
+User disconnected: CJaSw-ZisUjCEcmcAAA0
+User disconnected: 5OsTtq3_SJ0VA3CYAAA6
+[2025-07-22T09:48:00.884Z] Running automatic API sync...
+[2025-07-22T09:48:02.010Z] Auto-sync completed: {
+  subscriptions: '0 synced, 0 errors',
+  areas: '0 synced, 0 errors',
+  articles: '2 synced, 0 errors'
+}
+User connected: nOpzoZHXKPXe2PNGAAA8
+User nOpzoZHXKPXe2PNGAAA8 joined team 3
+User disconnected: JZpWaVuJ65_uAzVsAAA4
+[2025-07-22T09:51:00.066Z] Running automatic API sync...
+[2025-07-22T09:51:01.154Z] Auto-sync completed: {
+  subscriptions: '0 synced, 0 errors',
+  areas: '0 synced, 0 errors',
+  articles: '2 synced, 0 errors'
+}
+[2025-07-22T09:54:00.249Z] Running automatic API sync...
+[2025-07-22T09:54:01.350Z] Auto-sync completed: {
+  subscriptions: '0 synced, 0 errors',
+  areas: '0 synced, 0 errors',
+  articles: '2 synced, 0 errors'
+}
+User connected: xOKHiTwm_7UKDKwYAAA-
+User xOKHiTwm_7UKDKwYAAA- joined team 3
+User connected: Gbz0gGvBQgX8zqezAABA
+User Gbz0gGvBQgX8zqezAABA joined team 3
+User disconnected: Gbz0gGvBQgX8zqezAABA
+User disconnected: nOpzoZHXKPXe2PNGAAA8
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `ts-node src/server.ts`[39m
+Database migrations completed
+Setting up automatic API sync every 3 minutes...
+✅ Automatic sync scheduled every 3 minutes (1 call/minute - safe limit)
+Server running on port 3001
+Health check: http://localhost:3001/api/health
+🔄 Auto-sync: Every 3 minutes (1 call/minute safe)
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `ts-node src/server.ts`[39m
+Database migrations completed
+Setting up automatic API sync every 3 minutes...
+✅ Automatic sync scheduled every 3 minutes (1 call/minute - safe limit)
+Server running on port 3001
+Health check: http://localhost:3001/api/health
+🔄 Auto-sync: Every 3 minutes (1 call/minute safe)
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `ts-node src/server.ts`[39m
+Database migrations completed
+Setting up automatic API sync every 3 minutes...
+✅ Automatic sync scheduled every 3 minutes (1 call/minute - safe limit)
+Server running on port 3001
+Health check: http://localhost:3001/api/health
+🔄 Auto-sync: Every 3 minutes (1 call/minute safe)
+[2025-07-22T09:57:00.539Z] Running automatic API sync...
+[2025-07-22T09:57:01.710Z] Auto-sync completed: {
+  subscriptions: '0 synced, 0 errors',
+  areas: '0 synced, 0 errors',
+  articles: '2 synced, 0 errors'
+}
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `ts-node src/server.ts`[39m
+/workspaces/jotihuntv2/node_modules/ts-node/src/index.ts:859
+    return new TSError(diagnosticText, diagnosticCodes, diagnostics);
+           ^
+TSError: ⨯ Unable to compile TypeScript:
+src/utils/coordinates.ts(146,25): error TS2454: Variable 'x' is used before being assigned.
+src/utils/coordinates.ts(146,28): error TS2454: Variable 'y' is used before being assigned.
+
+    at createTSError (/workspaces/jotihuntv2/node_modules/ts-node/src/index.ts:859:12)
+    at reportTSError (/workspaces/jotihuntv2/node_modules/ts-node/src/index.ts:863:19)
+    at getOutput (/workspaces/jotihuntv2/node_modules/ts-node/src/index.ts:1077:36)
+    at Object.compile (/workspaces/jotihuntv2/node_modules/ts-node/src/index.ts:1433:41)
+    at Module.m._compile (/workspaces/jotihuntv2/node_modules/ts-node/src/index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1895:10
+    at Object.require.extensions.<computed> [as .ts] (/workspaces/jotihuntv2/node_modules/ts-node/src/index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1465:32)
+    at Function._load (node:internal/modules/cjs/loader:1282:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14) {
+  diagnosticCodes: [ 2454, 2454 ]
+}
+[31m[nodemon] app crashed - waiting for file changes before starting...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `ts-node src/server.ts`[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `ts-node src/server.ts`[39m
+Database migrations completed
+Setting up automatic API sync every 3 minutes...
+✅ Automatic sync scheduled every 3 minutes (1 call/minute - safe limit)
+Server running on port 3001
+Health check: http://localhost:3001/api/health
+🔄 Auto-sync: Every 3 minutes (1 call/minute safe)
+[2025-07-22T10:00:00.100Z] Running automatic API sync...
+[2025-07-22T10:00:01.317Z] Auto-sync completed: {
+  subscriptions: '0 synced, 0 errors',
+  areas: '0 synced, 0 errors',
+  articles: '2 synced, 0 errors'
+}
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `ts-node src/server.ts`[39m
+Database migrations completed
+Setting up automatic API sync every 3 minutes...
+✅ Automatic sync scheduled every 3 minutes (1 call/minute - safe limit)
+Server running on port 3001
+Health check: http://localhost:3001/api/health
+🔄 Auto-sync: Every 3 minutes (1 call/minute safe)
+User connected: PZOzdp8doXmfk0RRAAAB
+Get hint solutions error: [Error: select `hint_solutions`.*, `articles`.`title` as `hint_title`, `articles`.`body` as `hint_body`, `users`.`username` as `submitted_by` from `hint_solutions` inner join `articles` on `hint_solutions`.`article_id` = `articles`.`id` inner join `users` on `hint_solutions`.`user_id` = `users`.`id` where `hint_solutions`.`team_id` = 3 order by `hint_solutions`.`created_at` desc - SQLITE_ERROR: no such column: articles.body] {
+  errno: 1,
+  code: 'SQLITE_ERROR'
+}
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `ts-node src/server.ts`[39m
+Database migrations completed
+Setting up automatic API sync every 3 minutes...
+✅ Automatic sync scheduled every 3 minutes (1 call/minute - safe limit)
+Server running on port 3001
+Health check: http://localhost:3001/api/health
+🔄 Auto-sync: Every 3 minutes (1 call/minute safe)
+User connected: DJ0IjypsQYy3_f1UAAAB
+[2025-07-22T10:03:00.042Z] Running automatic API sync...
+[2025-07-22T10:03:01.199Z] Auto-sync completed: {
+  subscriptions: '0 synced, 0 errors',
+  areas: '0 synced, 0 errors',
+  articles: '2 synced, 0 errors'
+}
+User disconnected: DJ0IjypsQYy3_f1UAAAB
+User connected: U__5Xv1yE1_cXwnZAAAD
+User U__5Xv1yE1_cXwnZAAAD joined team 3
+User disconnected: U__5Xv1yE1_cXwnZAAAD
+User connected: DeTeuqtqUwrbb51rAAAF
+User DeTeuqtqUwrbb51rAAAF joined team 3
+User disconnected: DeTeuqtqUwrbb51rAAAF
+User connected: Zdw1OnjV91-KJ2fHAAAH
+User Zdw1OnjV91-KJ2fHAAAH joined team 3
+User disconnected: Zdw1OnjV91-KJ2fHAAAH
+User connected: ogbrlIL4EpnwIUg_AAAJ
+User ogbrlIL4EpnwIUg_AAAJ joined team 3
+User disconnected: ogbrlIL4EpnwIUg_AAAJ
+User connected: jxU8ivb-OgxGlPYIAAAL
+User jxU8ivb-OgxGlPYIAAAL joined team 3
+[2025-07-22T10:06:00.186Z] Running automatic API sync...
+[2025-07-22T10:06:01.300Z] Auto-sync completed: {
+  subscriptions: '0 synced, 0 errors',
+  areas: '0 synced, 0 errors',
+  articles: '2 synced, 0 errors'
+}
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `ts-node src/server.ts`[39m
+Database migrations completed
+Setting up automatic API sync every 3 minutes...
+✅ Automatic sync scheduled every 3 minutes (1 call/minute - safe limit)
+Server running on port 3001
+Health check: http://localhost:3001/api/health
+🔄 Auto-sync: Every 3 minutes (1 call/minute safe)
+User connected: VHh66wJAKrxk2h44AAAB
+User VHh66wJAKrxk2h44AAAB joined team 3
+User disconnected: VHh66wJAKrxk2h44AAAB
+[2025-07-22T10:09:00.378Z] Running automatic API sync...
+[2025-07-22T10:09:01.639Z] Auto-sync completed: {
+  subscriptions: '0 synced, 0 errors',
+  areas: '0 synced, 0 errors',
+  articles: '2 synced, 0 errors'
+}
+User connected: UtZHbA6sja8RT9ppAAAD
+User UtZHbA6sja8RT9ppAAAD joined team 3
+User disconnected: UtZHbA6sja8RT9ppAAAD
+User connected: rRz5yROEgrPCnexiAAAF
+User rRz5yROEgrPCnexiAAAF joined team 3
+[2025-07-22T10:12:00.526Z] Running automatic API sync...
+[2025-07-22T10:12:01.624Z] Auto-sync completed: {
+  subscriptions: '0 synced, 0 errors',
+  areas: '0 synced, 0 errors',
+  articles: '2 synced, 0 errors'
+}
+User disconnected: rRz5yROEgrPCnexiAAAF
+User connected: X-cDt_ScdRlNzse6AAAH
+User X-cDt_ScdRlNzse6AAAH joined team 3
+[2025-07-22T10:15:00.717Z] Running automatic API sync...
+[2025-07-22T10:15:01.840Z] Auto-sync completed: {
+  subscriptions: '0 synced, 0 errors',
+  areas: '0 synced, 0 errors',
+  articles: '2 synced, 0 errors'
+}
+User disconnected: X-cDt_ScdRlNzse6AAAH
+User connected: R8ODW2MQqp3U5lMIAAAJ
+User R8ODW2MQqp3U5lMIAAAJ joined team 3
+User disconnected: R8ODW2MQqp3U5lMIAAAJ
+User connected: 1BlVejUe9NE3453zAAAL
+User 1BlVejUe9NE3453zAAAL joined team 3
+User disconnected: 1BlVejUe9NE3453zAAAL
+User connected: d25Wx2nIMDpMd5-bAAAN
+User d25Wx2nIMDpMd5-bAAAN joined team 3
+[2025-07-22T10:18:00.902Z] Running automatic API sync...
+[2025-07-22T10:18:02.005Z] Auto-sync completed: {
+  subscriptions: '0 synced, 0 errors',
+  areas: '0 synced, 0 errors',
+  articles: '2 synced, 0 errors'
+}
+[2025-07-22T10:21:00.102Z] Running automatic API sync...
+[2025-07-22T10:21:01.207Z] Auto-sync completed: {
+  subscriptions: '0 synced, 0 errors',
+  areas: '0 synced, 0 errors',
+  articles: '2 synced, 0 errors'
+}
+User disconnected: d25Wx2nIMDpMd5-bAAAN
+[2025-07-22T10:24:00.289Z] Running automatic API sync...
+[2025-07-22T10:24:01.416Z] Auto-sync completed: {
+  subscriptions: '0 synced, 0 errors',
+  areas: '0 synced, 0 errors',
+  articles: '2 synced, 0 errors'
+}
+[2025-07-22T10:27:00.482Z] Running automatic API sync...
+[2025-07-22T10:27:01.624Z] Auto-sync completed: {
+  subscriptions: '0 synced, 0 errors',
+  areas: '0 synced, 0 errors',
+  articles: '2 synced, 0 errors'
+}
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `ts-node src/server.ts`[39m
+/workspaces/jotihuntv2/node_modules/ts-node/src/index.ts:859
+    return new TSError(diagnosticText, diagnosticCodes, diagnostics);
+           ^
+TSError: ⨯ Unable to compile TypeScript:
+src/routes/chat.ts(219,16): error TS2551: Property 'andWhereIn' does not exist on type 'QueryBuilder<any, DeferredKeySelection<any, string, false, {}, false, {}, never>[]>'. Did you mean 'andWhere'?
+src/routes/chat.ts(220,17): error TS2683: 'this' implicitly has type 'any' because it does not have a type annotation.
+
+    at createTSError (/workspaces/jotihuntv2/node_modules/ts-node/src/index.ts:859:12)
+    at reportTSError (/workspaces/jotihuntv2/node_modules/ts-node/src/index.ts:863:19)
+    at getOutput (/workspaces/jotihuntv2/node_modules/ts-node/src/index.ts:1077:36)
+    at Object.compile (/workspaces/jotihuntv2/node_modules/ts-node/src/index.ts:1433:41)
+    at Module.m._compile (/workspaces/jotihuntv2/node_modules/ts-node/src/index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1895:10
+    at Object.require.extensions.<computed> [as .ts] (/workspaces/jotihuntv2/node_modules/ts-node/src/index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1465:32)
+    at Function._load (node:internal/modules/cjs/loader:1282:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14) {
+  diagnosticCodes: [ 2551, 2683 ]
+}
+[31m[nodemon] app crashed - waiting for file changes before starting...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `ts-node src/server.ts`[39m
+Database migrations completed
+Setting up automatic API sync every 3 minutes...
+✅ Automatic sync scheduled every 3 minutes (1 call/minute - safe limit)
+Server running on port 3001
+Health check: http://localhost:3001/api/health
+🔄 Auto-sync: Every 3 minutes (1 call/minute safe)
+[2025-07-22T10:30:00.021Z] Running automatic API sync...
+[2025-07-22T10:30:01.191Z] Auto-sync completed: {
+  subscriptions: '0 synced, 0 errors',
+  areas: '0 synced, 0 errors',
+  articles: '2 synced, 0 errors'
+}
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `ts-node src/server.ts`[39m
+Database migrations completed
+Setting up automatic API sync every 3 minutes...
+✅ Automatic sync scheduled every 3 minutes (1 call/minute - safe limit)
+Server running on port 3001
+Health check: http://localhost:3001/api/health
+🔄 Auto-sync: Every 3 minutes (1 call/minute safe)
+[2025-07-22T10:33:00.711Z] Running automatic API sync...
+[2025-07-22T10:33:01.876Z] Auto-sync completed: {
+  subscriptions: '0 synced, 0 errors',
+  areas: '0 synced, 0 errors',
+  articles: '2 synced, 0 errors'
+}
+User connected: XhJ6Y-zJozyUhxomAAAB
+User XhJ6Y-zJozyUhxomAAAB joined room general-chat
+User XhJ6Y-zJozyUhxomAAAB joined team 3
+[2025-07-22T10:36:00.876Z] Running automatic API sync...
+[2025-07-22T10:36:01.986Z] Auto-sync completed: {
+  subscriptions: '0 synced, 0 errors',
+  areas: '0 synced, 0 errors',
+  articles: '2 synced, 0 errors'
+}
+User disconnected: XhJ6Y-zJozyUhxomAAAB
+[2025-07-22T10:39:00.066Z] Running automatic API sync...
+[2025-07-22T10:39:01.160Z] Auto-sync completed: {
+  subscriptions: '0 synced, 0 errors',
+  areas: '0 synced, 0 errors',
+  articles: '2 synced, 0 errors'
+}
+[2025-07-22T10:42:00.263Z] Running automatic API sync...
+[2025-07-22T10:42:01.380Z] Auto-sync completed: {
+  subscriptions: '0 synced, 0 errors',
+  areas: '0 synced, 0 errors',
+  articles: '2 synced, 0 errors'
+}
+[2025-07-22T10:45:00.450Z] Running automatic API sync...
+[2025-07-22T10:45:01.607Z] Auto-sync completed: {
+  subscriptions: '0 synced, 0 errors',
+  areas: '0 synced, 0 errors',
+  articles: '2 synced, 0 errors'
+}
+[2025-07-22T10:48:00.645Z] Running automatic API sync...
+[2025-07-22T10:48:01.745Z] Auto-sync completed: {
+  subscriptions: '0 synced, 0 errors',
+  areas: '0 synced, 0 errors',
+  articles: '2 synced, 0 errors'
+}
+[2025-07-22T10:51:00.840Z] Running automatic API sync...
+[2025-07-22T10:51:01.944Z] Auto-sync completed: {
+  subscriptions: '0 synced, 0 errors',
+  areas: '0 synced, 0 errors',
+  articles: '2 synced, 0 errors'
+}
+[2025-07-22T10:54:00.033Z] Running automatic API sync...
+[2025-07-22T10:54:01.135Z] Auto-sync completed: {
+  subscriptions: '0 synced, 0 errors',
+  areas: '0 synced, 0 errors',
+  articles: '2 synced, 0 errors'
+}
+[2025-07-22T10:57:00.236Z] Running automatic API sync...
+[2025-07-22T10:57:01.357Z] Auto-sync completed: {
+  subscriptions: '0 synced, 0 errors',
+  areas: '0 synced, 0 errors',
+  articles: '2 synced, 0 errors'
+}
