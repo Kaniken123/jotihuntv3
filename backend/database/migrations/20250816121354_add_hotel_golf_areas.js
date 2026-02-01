@@ -7,12 +7,6 @@ exports.up = function(knex) {
     // First, get all existing team data
     const existingTeams = await trx.select('*').from('teams');
     
-    // Ensure all teams have tenant_id (default to 1 if missing)
-    const teamsWithTenant = existingTeams.map(team => ({
-      ...team,
-      tenant_id: team.tenant_id || 1
-    }));
-    
     // Drop and recreate the teams table with updated enum
     await trx.schema.dropTable('teams');
     
@@ -24,13 +18,12 @@ exports.up = function(knex) {
       table.decimal('base_lat', 10, 8);
       table.decimal('base_lng', 11, 8);
       table.boolean('is_active').defaultTo(true);
-      table.integer('tenant_id').unsigned().references('id').inTable('tenants').onDelete('CASCADE');
       table.timestamps(true, true);
     });
     
     // Restore existing teams
-    if (teamsWithTenant.length > 0) {
-      await trx('teams').insert(teamsWithTenant);
+    if (existingTeams.length > 0) {
+      await trx('teams').insert(existingTeams);
     }
     
     // Insert Hotel and Golf areas only if they don't exist
@@ -47,7 +40,6 @@ exports.up = function(knex) {
         lng: null,
         points: 0,
         last_seen: null,
-        tenant_id: 1,
         created_at: new Date(),
         updated_at: new Date()
       });
@@ -61,7 +53,6 @@ exports.up = function(knex) {
         lng: null,
         points: 0,
         last_seen: null,
-        tenant_id: 1,
         created_at: new Date(),
         updated_at: new Date()
       });
@@ -84,7 +75,6 @@ exports.up = function(knex) {
         base_lat: null,
         base_lng: null,
         is_active: true,
-        tenant_id: 1,
         created_at: new Date(),
         updated_at: new Date()
       });
@@ -97,7 +87,6 @@ exports.up = function(knex) {
         base_lat: null,
         base_lng: null,
         is_active: true,
-        tenant_id: 1,
         created_at: new Date(),
         updated_at: new Date()
       });
