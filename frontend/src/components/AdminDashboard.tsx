@@ -378,7 +378,7 @@ const AdminDashboard: React.FC = () => {
       return;
     }
 
-    if (user.role === 'admin') {
+    if (user.role === 'super_admin' || user.role === 'tenant_admin') {
       alert('Cannot delete admin users for security reasons.');
       return;
     }
@@ -857,11 +857,11 @@ const AdminDashboard: React.FC = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      user.role === 'admin' 
+                      user.role === 'super_admin' || user.role === 'tenant_admin'
                         ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'
                         : 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
                     }`}>
-                      {user.role === 'admin' ? 'Administrator' : 'Hunter'}
+                      {user.role === 'super_admin' || user.role === 'tenant_admin' ? 'Admin' : 'Hunter'}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
@@ -889,7 +889,7 @@ const AdminDashboard: React.FC = () => {
                     >
                       {user.is_active ? 'Deactivate' : 'Activate'}
                     </button>
-                    {!user.is_active && user.role !== 'admin' && (
+                    {!user.is_active && user.role !== 'super_admin' && user.role !== 'tenant_admin' && (
                       <button 
                         onClick={() => handleDeleteUser(user)}
                         className="text-red-800 hover:text-red-900 dark:text-red-600 dark:hover:text-red-400 bg-red-100 dark:bg-red-900/20 px-2 py-1 rounded text-xs font-medium"
