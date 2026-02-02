@@ -1,4 +1,4 @@
-# Jotihunt V2
+# Jotihunt V3
 
 A sophisticated location-based scouting game application where teams compete to find and "hunt" other teams called "foxes" across geographic areas.
 
