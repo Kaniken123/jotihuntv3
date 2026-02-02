@@ -27,8 +27,8 @@ const DEV_WS_URL = 'http://10.0.2.2:3001';
 // Replace with your actual server URL where the Jotihunt web app is hosted.
 //
 // Example: If your website is https://jotihunt.mijngroep.nl
-const PROD_API_URL = 'https://your-production-server.com/api';  // ← Change this!
-const PROD_WS_URL = 'https://your-production-server.com';       // ← Change this!
+const PROD_API_URL = 'http://192.168.2.31:3001/api';  // Your local network
+const PROD_WS_URL = 'http://192.168.2.31:3001';       // Your local network
 // ============================================================================
 
 // Warn if production URLs are not configured

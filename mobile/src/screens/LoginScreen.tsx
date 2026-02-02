@@ -43,7 +43,9 @@ const LoginScreen: React.FC = () => {
     setError('');
 
     try {
+      console.log('[LoginScreen] Starting login...');
       const result = await login(username, password, selectedTenantId);
+      console.log('[LoginScreen] Login result:', JSON.stringify(result));
 
       if (result.requires_tenant_selection && result.tenant_options) {
         setTenantOptions(result.tenant_options);
@@ -53,12 +55,15 @@ const LoginScreen: React.FC = () => {
       }
 
       // Login successful - navigation will be handled by App.tsx
+      console.log('[LoginScreen] Login successful, waiting for navigation...');
     } catch (err: any) {
+      console.error('[LoginScreen] Login error:', err);
       const errorMessage =
         err.response?.data?.error ||
         err.message ||
         'Login failed. Please check your credentials.';
       setError(errorMessage);
+      Alert.alert('Login Error', errorMessage);
       setIsLoading(false);
     }
   };

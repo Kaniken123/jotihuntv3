@@ -73,7 +73,8 @@
         {
           "cameraPermission": "Allow Jotihunt to use your camera to take photos of fox hunts."
         }
-      ]
+      ],
+      "expo-font"
     ],
     "extra": {
       "eas": {

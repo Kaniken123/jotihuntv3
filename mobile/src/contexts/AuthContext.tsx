@@ -119,10 +119,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   useEffect(() => {
     const initAuth = async () => {
+      console.log('[AuthContext] initAuth starting...');
       const token = await getToken();
+      console.log('[AuthContext] Token found:', token ? 'yes (length: ' + token.length + ')' : 'no');
       if (token) {
         try {
+          console.log('[AuthContext] Fetching current user...');
           const response = await authService.getCurrentUser();
+          console.log('[AuthContext] User fetched:', response.user?.username);
           dispatch({
             type: 'AUTH_SUCCESS',
             payload: {
@@ -131,11 +135,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               token,
             },
           });
-        } catch (error) {
-          console.error('Auth init error:', error);
+        } catch (error: any) {
+          console.error('[AuthContext] Auth init error:', error?.message || error);
+          console.error('[AuthContext] Error details:', JSON.stringify(error?.response?.data));
           dispatch({ type: 'AUTH_FAILURE' });
         }
       } else {
+        console.log('[AuthContext] No token, dispatching AUTH_FAILURE');
         dispatch({ type: 'AUTH_FAILURE' });
       }
     };
@@ -148,9 +154,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     password: string,
     selected_tenant_id?: number
   ) => {
+    console.log('[AuthContext] login() called for user:', username);
     dispatch({ type: 'AUTH_START' });
     try {
+      console.log('[AuthContext] Calling authService.login...');
       const response = await authService.login(username, password, selected_tenant_id);
+      console.log('[AuthContext] Login response received:', {
+        hasToken: !!response.token,
+        hasUser: !!response.user,
+        requiresTenant: response.requires_tenant_selection
+      });
 
       if (response.requires_tenant_selection) {
         dispatch({ type: 'AUTH_FAILURE' });
@@ -160,6 +173,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         };
       }
 
+      console.log('[AuthContext] Dispatching AUTH_SUCCESS');
       dispatch({
         type: 'AUTH_SUCCESS',
         payload: {
@@ -169,8 +183,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         },
       });
 
+      console.log('[AuthContext] Login complete, returning');
       return {};
-    } catch (error) {
+    } catch (error: any) {
+      console.error('[AuthContext] Login error:', error?.message || error);
+      console.error('[AuthContext] Error response:', JSON.stringify(error?.response?.data));
       dispatch({ type: 'AUTH_FAILURE' });
       throw error;
     }

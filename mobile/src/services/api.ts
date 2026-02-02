@@ -1,8 +1,12 @@
 import axios, { AxiosInstance } from 'axios';
 import * as SecureStore from 'expo-secure-store';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import config from '../utils/config';
 
 const TOKEN_KEY = 'auth_token';
+
+// In-memory fallback for when storage fails
+let memoryToken: string | null = null;
 
 // Create axios instance
 const api: AxiosInstance = axios.create({
@@ -13,29 +17,74 @@ const api: AxiosInstance = axios.create({
   },
 });
 
-// Token management functions
+// Token management functions with fallback chain:
+// 1. Try SecureStore (most secure)
+// 2. Fall back to AsyncStorage (works reliably)
+// 3. Fall back to memory (last resort)
+
 export const getToken = async (): Promise<string | null> => {
   try {
-    return await SecureStore.getItemAsync(TOKEN_KEY);
+    // Try SecureStore first
+    const secureToken = await SecureStore.getItemAsync(TOKEN_KEY);
+    if (secureToken) {
+      console.log('[Auth] Token retrieved from SecureStore');
+      return secureToken;
+    }
   } catch (error) {
-    console.error('Error getting token:', error);
-    return null;
+    console.warn('[Auth] SecureStore get failed:', error);
   }
+
+  try {
+    // Fall back to AsyncStorage
+    const asyncToken = await AsyncStorage.getItem(TOKEN_KEY);
+    if (asyncToken) {
+      console.log('[Auth] Token retrieved from AsyncStorage');
+      return asyncToken;
+    }
+  } catch (error) {
+    console.warn('[Auth] AsyncStorage get failed:', error);
+  }
+
+  // Last resort: memory
+  if (memoryToken) {
+    console.log('[Auth] Token retrieved from memory');
+  }
+  return memoryToken;
 };
 
 export const setToken = async (token: string): Promise<void> => {
+  // Always store in memory as backup
+  memoryToken = token;
+  console.log('[Auth] Token stored in memory');
+
   try {
     await SecureStore.setItemAsync(TOKEN_KEY, token);
+    console.log('[Auth] Token stored in SecureStore');
   } catch (error) {
-    console.error('Error setting token:', error);
+    console.warn('[Auth] SecureStore set failed:', error);
+  }
+
+  try {
+    await AsyncStorage.setItem(TOKEN_KEY, token);
+    console.log('[Auth] Token stored in AsyncStorage');
+  } catch (error) {
+    console.warn('[Auth] AsyncStorage set failed:', error);
   }
 };
 
 export const removeToken = async (): Promise<void> => {
+  memoryToken = null;
+
   try {
     await SecureStore.deleteItemAsync(TOKEN_KEY);
   } catch (error) {
-    console.error('Error removing token:', error);
+    console.warn('[Auth] SecureStore delete failed:', error);
+  }
+
+  try {
+    await AsyncStorage.removeItem(TOKEN_KEY);
+  } catch (error) {
+    console.warn('[Auth] AsyncStorage delete failed:', error);
   }
 };
 

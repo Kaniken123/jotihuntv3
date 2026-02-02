@@ -24,14 +24,21 @@ export const authService = {
     password: string,
     selected_tenant_id?: number
   ): Promise<LoginResponse> {
+    console.log('[authService] Attempting login for:', username);
     const response = await api.post('/auth/login', {
       username,
       password,
       selected_tenant_id,
     });
+    console.log('[authService] Login response status:', response.status);
+    console.log('[authService] Has token:', !!response.data.token);
     
     if (response.data.token) {
+      console.log('[authService] Saving token...');
       await setToken(response.data.token);
+      console.log('[authService] Token saved, verifying...');
+      const savedToken = await getToken();
+      console.log('[authService] Token verification:', savedToken ? 'SUCCESS' : 'FAILED');
     }
     
     return response.data;
