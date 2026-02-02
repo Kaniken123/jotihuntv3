@@ -16,6 +16,19 @@ import { format } from 'date-fns';
 
 type FilterType = 'all' | 'hint' | 'assignment' | 'news';
 
+// Helper function to strip HTML tags safely (iterative to handle nested tags)
+// Note: Content is rendered as plain text in React Native, not as HTML
+const stripHtmlTags = (html: string): string => {
+  if (!html) return '';
+  let text = html;
+  let previousText = '';
+  while (previousText !== text) {
+    previousText = text;
+    text = text.replace(/<[^>]*>/g, '');
+  }
+  return text.replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').trim();
+};
+
 const HintsScreen: React.FC = () => {
   const navigation = useNavigation();
   const [articles, setArticles] = useState<Article[]>([]);
@@ -97,7 +110,7 @@ const HintsScreen: React.FC = () => {
           {!item.is_read && <View style={styles.unreadDot} />}
         </View>
         <Text style={styles.articlePreview} numberOfLines={2}>
-          {item.content.replace(/<[^>]*>/g, '')}
+          {stripHtmlTags(item.content)}
         </Text>
         <View style={styles.articleMeta}>
           {item.area && (

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, useState, useRef, ReactNode } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { useAuth } from './AuthContext';
 import config from '../utils/config';
@@ -21,9 +21,16 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
   const { state } = useAuth();
   const [socket, setSocket] = useState<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
+  const socketRef = useRef<Socket | null>(null);
 
   useEffect(() => {
     if (state.isAuthenticated && state.token) {
+      // Close existing socket if any
+      if (socketRef.current) {
+        socketRef.current.close();
+        socketRef.current = null;
+      }
+
       // Create socket connection
       const newSocket = io(config.WS_URL, {
         auth: {
@@ -56,17 +63,20 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
         setIsConnected(false);
       });
 
+      socketRef.current = newSocket;
       setSocket(newSocket);
 
       return () => {
         newSocket.close();
+        socketRef.current = null;
         setSocket(null);
         setIsConnected(false);
       };
     } else {
       // Close socket if not authenticated
-      if (socket) {
-        socket.close();
+      if (socketRef.current) {
+        socketRef.current.close();
+        socketRef.current = null;
         setSocket(null);
         setIsConnected(false);
       }

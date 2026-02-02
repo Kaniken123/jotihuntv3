@@ -100,18 +100,41 @@ const HintDetailScreen: React.FC = () => {
   };
 
   // Simple HTML to text conversion
+  // Note: This is for display purposes only - content is rendered as plain text
+  // in React Native Text components, not as HTML, so XSS is not a concern
   const parseHtmlContent = (html: string): string => {
-    return html
-      .replace(/<br\s*\/?>/gi, '\n')
-      .replace(/<p>/gi, '')
-      .replace(/<\/p>/gi, '\n\n')
-      .replace(/<[^>]*>/g, '')
-      .replace(/&nbsp;/g, ' ')
-      .replace(/&amp;/g, '&')
-      .replace(/&lt;/g, '<')
-      .replace(/&gt;/g, '>')
-      .replace(/&quot;/g, '"')
-      .trim();
+    if (!html) return '';
+    
+    let text = html;
+    
+    // Convert common block elements to newlines first
+    text = text.replace(/<br\s*\/?>/gi, '\n');
+    text = text.replace(/<\/p>/gi, '\n\n');
+    text = text.replace(/<\/div>/gi, '\n');
+    text = text.replace(/<\/li>/gi, '\n');
+    
+    // Remove all remaining HTML tags iteratively to handle nested tags
+    let previousText = '';
+    while (previousText !== text) {
+      previousText = text;
+      text = text.replace(/<[^>]*>/g, '');
+    }
+    
+    // Decode common HTML entities - process &amp; last to avoid double-unescaping
+    // First decode entities that don't contain '&' in their decoded form
+    text = text.replace(/&nbsp;/g, ' ');
+    text = text.replace(/&lt;/g, '<');
+    text = text.replace(/&gt;/g, '>');
+    text = text.replace(/&quot;/g, '"');
+    text = text.replace(/&#39;/g, "'");
+    text = text.replace(/&apos;/g, "'");
+    // Decode &amp; last since other entities might have been double-encoded as &amp;lt; etc.
+    text = text.replace(/&amp;/g, '&');
+    
+    // Clean up excessive whitespace
+    text = text.replace(/\n{3,}/g, '\n\n');
+    
+    return text.trim();
   };
 
   return (
