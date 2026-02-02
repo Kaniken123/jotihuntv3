@@ -2,6 +2,8 @@
 
 A React Native (Expo) mobile application for the Jotihunt game. This app allows hunters to track their location, submit fox hunts, view updates/hints, and communicate with their team.
 
+> 📖 **First time building the APK?** See [DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md) for a complete step-by-step guide with examples!
+
 ## Features
 
 - **Real-time Map**: View fox team locations, hunter locations, and routes on an interactive map
@@ -11,6 +13,18 @@ A React Native (Expo) mobile application for the Jotihunt game. This app allows 
 - **Team Chat**: Real-time messaging with your team via WebSocket
 - **Location Settings**: Control location sharing and privacy settings
 - **Game Rules**: View official Jotihunt rules
+
+## Quick Start
+
+### What is the API URL?
+
+**The API URL is your website URL with `/api` added at the end.**
+
+For example:
+- If your web app runs at: `https://jotihunt.mijngroep.nl`
+- Then your API URL should be: `https://jotihunt.mijngroep.nl/api`
+
+Both the web app and mobile app connect to the **same backend server**, so all data syncs automatically!
 
 ## Requirements
 
@@ -33,15 +47,11 @@ npm install
 
 3. Configure the API URL:
    
-   Edit `src/utils/config.ts` and update the API URLs:
+   Edit `src/utils/config.ts` and update the production URLs (lines 28-29):
    ```typescript
-   // For development with local backend
-   const DEV_API_URL = 'http://10.0.2.2:3001/api'; // Android emulator
-   // or
-   const DEV_API_URL = 'http://localhost:3001/api'; // iOS simulator
-   
-   // For production
-   const PROD_API_URL = 'https://your-production-server.com/api';
+   // Replace with your actual server URL
+   const PROD_API_URL = 'https://jotihunt.mijngroep.nl/api';  // Your website + /api
+   const PROD_WS_URL = 'https://jotihunt.mijngroep.nl';       // Your website URL
    ```
 
 ## Development
