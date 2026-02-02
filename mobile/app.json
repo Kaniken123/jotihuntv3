@@ -1,0 +1,84 @@
+{
+  "expo": {
+    "name": "Jotihunt",
+    "slug": "jotihunt-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#1E40AF"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.jotihunt.mobile",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "We need your location to show your position on the map and track your hunting routes.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "We need your location to track your hunting routes even when the app is in the background.",
+        "NSLocationAlwaysUsageDescription": "We need your location to track your hunting routes even when the app is in the background.",
+        "NSCameraUsageDescription": "We need camera access to take photos of your fox hunts.",
+        "NSPhotoLibraryUsageDescription": "We need photo library access to select photos for your fox hunts."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#1E40AF"
+      },
+      "package": "com.jotihunt.mobile",
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION",
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "FOREGROUND_SERVICE",
+        "FOREGROUND_SERVICE_LOCATION",
+        "RECEIVE_BOOT_COMPLETED",
+        "VIBRATE"
+      ],
+      "config": {
+        "googleMaps": {
+          "apiKey": "YOUR_GOOGLE_MAPS_API_KEY"
+        }
+      }
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow Jotihunt to use your location to track your hunting routes.",
+          "isAndroidBackgroundLocationEnabled": true,
+          "isAndroidForegroundServiceEnabled": true
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Jotihunt to access your photos to submit fox hunts.",
+          "cameraPermission": "Allow Jotihunt to use your camera to take photos of fox hunts."
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow Jotihunt to use your camera to take photos of fox hunts."
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "your-eas-project-id"
+      }
+    }
+  }
+}
