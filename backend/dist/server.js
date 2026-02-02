@@ -59,21 +59,53 @@ const hints_1 = __importDefault(require("./routes/hints"));
 dotenv_1.default.config();
 const app = (0, express_1.default)();
 const server = (0, http_1.createServer)(app);
+// Define allowed origins for CORS (web app and mobile app)
+const allowedOrigins = [
+    process.env.FRONTEND_URL || "http://localhost:3000",
+    "https://dfef01c8947a.ngrok-free.app",
+    "capacitor://localhost", // Capacitor iOS
+    "http://localhost", // Capacitor Android
+    "ionic://localhost" // Ionic apps
+];
 const io = new socket_io_1.Server(server, {
     path: '/api/socket.io/',
     cors: {
-        origin: [
-            process.env.FRONTEND_URL || "http://localhost:3000",
-            "https://dfef01c8947a.ngrok-free.app"
-        ],
+        origin: allowedOrigins,
         methods: ["GET", "POST"],
         credentials: true
     }
 });
 const PORT = process.env.PORT || 3001;
-app.use((0, helmet_1.default)());
+app.use((0, helmet_1.default)({
+    contentSecurityPolicy: {
+        directives: {
+            defaultSrc: ["'self'"],
+            styleSrc: ["'self'", "'unsafe-inline'", "https://unpkg.com", "https://cdnjs.cloudflare.com"],
+            imgSrc: ["'self'", "data:", "https:", "blob:"],
+            connectSrc: ["'self'", "https:", "wss:"],
+            fontSrc: ["'self'", "https:", "data:"],
+            scriptSrc: ["'self'", "'unsafe-inline'"],
+        },
+    },
+}));
 app.use((0, cors_1.default)({
-    origin: process.env.FRONTEND_URL || "http://localhost:3000",
+    origin: function (origin, callback) {
+        // Allow requests with no origin (mobile apps, curl, etc.)
+        if (!origin)
+            return callback(null, true);
+        if (allowedOrigins.indexOf(origin) !== -1) {
+            callback(null, true);
+        }
+        else {
+            // For development, allow any origin
+            if (process.env.NODE_ENV !== 'production') {
+                callback(null, true);
+            }
+            else {
+                callback(new Error('Not allowed by CORS'));
+            }
+        }
+    },
     credentials: true
 }));
 app.use(express_1.default.json({ limit: '10mb' }));
@@ -83,6 +115,8 @@ app.use('/uploads', (req, res, next) => {
     res.setHeader('Cache-Control', 'public, max-age=86400'); // 24 hours
     next();
 }, express_1.default.static(path_1.default.join(__dirname, '../uploads')));
+// Serve APK downloads for mobile app
+app.use('/downloads', express_1.default.static(path_1.default.join(__dirname, '../downloads')));
 app.use('/api/auth', auth_1.default);
 app.use('/api/jotihunt', jotihunt_1.default);
 app.use('/api/locations', locations_1.default);

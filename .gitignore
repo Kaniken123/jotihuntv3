@@ -1,1 +1,34 @@
 node_modules
+dist
+
+# Build artifacts
+*.log
+
+# Environment files
+.env.local
+.env.*.local
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Android build artifacts (keep project structure, exclude builds)
+frontend/android/app/build/
+frontend/android/.gradle/
+frontend/android/build/
+frontend/android/local.properties
+frontend/android/*.iml
+frontend/android/.idea/
+
+# APK files
+*.apk
+*.aab
+
+# Backend downloads (APKs are generated, not stored in git)
+backend/downloads/*.apk

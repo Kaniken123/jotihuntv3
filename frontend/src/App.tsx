@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { WebSocketProvider } from './contexts/WebSocketContext';
 import { NotificationProvider } from './contexts/NotificationContext';
+import { MobileProvider } from './contexts/MobileContext';
 import ErrorBoundary from './components/ErrorBoundary';
 import LoadingSpinner from './components/LoadingSpinner';
 import Login from './components/Login';
@@ -17,6 +18,7 @@ import AdminDashboard from './components/AdminDashboard';
 import AdminRouteTracking from './components/AdminRouteTracking';
 import RouteTracker from './components/RouteTracker';
 import LocationSettings from './components/LocationSettings';
+import MobileAppSettings from './components/MobileAppSettings';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { state } = useAuth();
@@ -182,6 +184,19 @@ const AppContent: React.FC = () => {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/mobile"
+            element={
+              <ProtectedRoute>
+                <div className="flex flex-col h-screen">
+                  <Navbar />
+                  <div className="flex-1 overflow-y-auto">
+                    <MobileAppSettings />
+                  </div>
+                </div>
+              </ProtectedRoute>
+            }
+          />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>
@@ -192,13 +207,15 @@ const AppContent: React.FC = () => {
 const App: React.FC = () => {
   return (
     <ErrorBoundary>
-      <AuthProvider>
-        <WebSocketProvider>
-          <NotificationProvider>
-            <AppContent />
-          </NotificationProvider>
-        </WebSocketProvider>
-      </AuthProvider>
+      <MobileProvider>
+        <AuthProvider>
+          <WebSocketProvider>
+            <NotificationProvider>
+              <AppContent />
+            </NotificationProvider>
+          </WebSocketProvider>
+        </AuthProvider>
+      </MobileProvider>
     </ErrorBoundary>
   );
 };

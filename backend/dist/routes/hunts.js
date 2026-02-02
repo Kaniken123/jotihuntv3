@@ -126,7 +126,7 @@ router.post('/submit', auth_1.authenticateToken, auth_1.enforceTenantIsolation, 
             fox_area,
             hunt_lat: lat,
             hunt_lng: lng,
-            photo_url: `/uploads/hunts/${req.file.filename}`,
+            photo_url: `/api/uploads/hunts/${req.file.filename}`,
             points_awarded: points,
             status: 'pending', // Will be reviewed by admin
             hunt_time: new Date(),
@@ -141,7 +141,9 @@ router.post('/submit', auth_1.authenticateToken, auth_1.enforceTenantIsolation, 
             .first();
         // Emit to team members
         const io = (0, socketManager_1.getSocketIO)();
-        io.to(`team-${teamMembership.id}`).emit('new-hunt', hunt);
+        if (teamMembership?.id) {
+            io.to(`team-${teamMembership.id}`).emit('new-hunt', hunt);
+        }
         // Emit to admins for review
         io.emit('hunt-pending-review', hunt);
         res.status(201).json(hunt);

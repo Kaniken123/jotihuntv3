@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { Map, MessageSquare, Camera, FileText, Book, Shield, Route, Menu, X, Target } from 'lucide-react';
+import { Map, MessageSquare, Camera, FileText, Book, Shield, Route, Menu, X, Target, Smartphone } from 'lucide-react';
 import NotificationCenter from './NotificationCenter';
 import { isAdmin } from '../utils/roleUtils';
 
@@ -159,6 +159,15 @@ const Navbar: React.FC = () => {
                       Location Settings
                     </Link>
                     
+                    <Link
+                      to="/mobile"
+                      onClick={() => setIsProfileOpen(false)}
+                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center space-x-2"
+                    >
+                      <Smartphone className="w-4 h-4" />
+                      <span>Mobile App</span>
+                    </Link>
+                    
                     {isAdmin(user) && (
                       <>
                         <Link
@@ -255,6 +264,14 @@ const Navbar: React.FC = () => {
                     <span>Location Settings</span>
                   </Link>
                   
+                  <Link
+                    to="/mobile"
+                    onClick={closeMobileMenu}
+                    className="flex items-center space-x-3 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md"
+                  >
+                    <Smartphone className="w-4 h-4" />
+                    <span>Mobile App</span>
+                  </Link>
 
                   {isAdmin(user) && (
                     <>
