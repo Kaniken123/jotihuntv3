@@ -1,4 +1,4 @@
-# Jotihunt V2
+# Jotihunt V3
 
 A sophisticated location-based scouting game application where teams compete to find and "hunt" other teams called "foxes" across geographic areas.
 
@@ -12,6 +12,7 @@ A sophisticated location-based scouting game application where teams compete to 
 - **Admin dashboard** for game management
 - **Progressive Web App** capabilities
 - **Responsive design** optimized for mobile devices
+- **Mobile App** - Native Android app with background location tracking
 
 ## Tech Stack
 
@@ -23,13 +24,21 @@ A sophisticated location-based scouting game application where teams compete to 
 - **JWT** authentication
 - **Bcrypt** for password hashing
 
-### Frontend
+### Frontend (Web)
 - **React 18** with TypeScript
 - **Vite** for fast development
 - **Tailwind CSS** for styling
 - **React Leaflet** for maps
 - **Socket.io Client** for real-time features
 - **Axios** for API calls
+
+### Mobile App
+- **React Native** with Expo
+- **TypeScript** for type safety
+- **React Native Maps** for mapping
+- **Expo Location** for background GPS tracking
+- **Socket.io Client** for real-time features
+- **EAS Build** for APK generation
 
 ## Quick Start
 
@@ -145,6 +154,17 @@ npm run dev  # Start Vite dev server
 npm run build  # Build for production
 npm run preview  # Preview production build
 ```
+
+### Mobile App Development
+```bash
+cd mobile
+npm install  # Install dependencies
+npm start    # Start Expo development server
+npm run android  # Run on Android emulator
+npm run build:apk  # Build APK for distribution
+```
+
+See [mobile/README.md](./mobile/README.md) for detailed mobile app documentation.
 
 ### Database Management
 ```bash
