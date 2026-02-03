@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -8,48 +8,43 @@ import {
   Alert,
   Dimensions,
 } from 'react-native';
-import MapView, { Marker, Polyline, Region } from 'react-native-maps';
+import { WebView } from 'react-native-webview';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
 import { useWebSocket } from '../contexts/WebSocketContext';
 import { gameService } from '../services/gameService';
 import { locationService } from '../services/locationService';
-import { Area, UserLocation } from '../types';
+import { Area, UserLocation, Subscription } from '../types';
 
 const { width, height } = Dimensions.get('window');
 
-// Fox team colors
-const FOX_TEAM_COLORS: Record<string, string> = {
-  Alpha: '#FF6B35',
-  Bravo: '#3B82F6',
-  Charlie: '#10B981',
-  Delta: '#F59E0B',
-  Echo: '#8B5CF6',
-  Foxtrot: '#EF4444',
-  Golf: '#06B6D4',
-  Hotel: '#EC4899',
+// Fox team colors matching the web frontend
+const FOX_TEAM_COLORS: Record<string, { primary: string; secondary: string }> = {
+  Alpha: { primary: '#FF6B35', secondary: '#FF8C42' },
+  Bravo: { primary: '#3B82F6', secondary: '#60A5FA' },
+  Charlie: { primary: '#10B981', secondary: '#34D399' },
+  Delta: { primary: '#F59E0B', secondary: '#FBBF24' },
+  Echo: { primary: '#8B5CF6', secondary: '#A78BFA' },
+  Foxtrot: { primary: '#EF4444', secondary: '#F87171' },
+  Golf: { primary: '#06B6D4', secondary: '#22D3EE' },
+  Hotel: { primary: '#EC4899', secondary: '#F472B6' },
 };
 
 const MapScreen: React.FC = () => {
   const { state: authState } = useAuth();
   const { on, off, isConnected } = useWebSocket();
-  const mapRef = useRef<MapView>(null);
+  const webViewRef = useRef<WebView>(null);
 
   const [areas, setAreas] = useState<Area[]>([]);
   const [userLocations, setUserLocations] = useState<UserLocation[]>([]);
+  const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isTrackingEnabled, setIsTrackingEnabled] = useState(false);
   const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [showFoxes, setShowFoxes] = useState(true);
   const [showHunters, setShowHunters] = useState(true);
-
-  // Initial map region (Netherlands - Jotihunt area)
-  const [region, setRegion] = useState<Region>({
-    latitude: 52.1326,
-    longitude: 5.2913,
-    latitudeDelta: 0.5,
-    longitudeDelta: 0.5,
-  });
+  const [showSubscriptions, setShowSubscriptions] = useState(true);
+  const [mapReady, setMapReady] = useState(false);
 
   // Load initial data
   useEffect(() => {
@@ -92,15 +87,24 @@ const MapScreen: React.FC = () => {
     };
   }, [on, off]);
 
+  // Update map when data changes
+  useEffect(() => {
+    if (mapReady) {
+      updateMapMarkers();
+    }
+  }, [areas, userLocations, subscriptions, showFoxes, showHunters, showSubscriptions, mapReady]);
+
   const loadData = async () => {
     try {
       setIsLoading(true);
-      const [areasData, locationsData] = await Promise.all([
+      const [areasData, locationsData, subscriptionsData] = await Promise.all([
         gameService.getAreas(),
         gameService.getLatestLocations(),
+        gameService.getSubscriptions(),
       ]);
       setAreas(areasData);
       setUserLocations(locationsData);
+      setSubscriptions(subscriptionsData);
     } catch (error) {
       console.error('Failed to load map data:', error);
       Alert.alert('Error', 'Failed to load map data. Please try again.');
@@ -136,23 +140,210 @@ const MapScreen: React.FC = () => {
   const centerOnCurrentLocation = async () => {
     const location = await locationService.getCurrentLocation();
     if (location) {
-      const newRegion = {
-        latitude: location.coords.latitude,
-        longitude: location.coords.longitude,
-        latitudeDelta: 0.02,
-        longitudeDelta: 0.02,
-      };
-      setCurrentLocation({
-        lat: location.coords.latitude,
-        lng: location.coords.longitude,
-      });
-      mapRef.current?.animateToRegion(newRegion, 500);
+      const lat = location.coords.latitude;
+      const lng = location.coords.longitude;
+      setCurrentLocation({ lat, lng });
+      webViewRef.current?.injectJavaScript(`
+        map.setView([${lat}, ${lng}], 15);
+        if (currentLocationMarker) {
+          currentLocationMarker.setLatLng([${lat}, ${lng}]);
+        } else {
+          currentLocationMarker = L.circleMarker([${lat}, ${lng}], {
+            radius: 10,
+            fillColor: '#1E40AF',
+            color: '#fff',
+            weight: 3,
+            opacity: 1,
+            fillOpacity: 1
+          }).addTo(map).bindPopup('You are here');
+        }
+        true;
+      `);
     }
   };
 
-  const getTeamColor = (teamName: string): string => {
-    return FOX_TEAM_COLORS[teamName] || '#6B7280';
+  const updateMapMarkers = () => {
+    const foxMarkers = showFoxes ? areas.filter(a => a.lat && a.lng).map(area => ({
+      type: 'fox',
+      id: area.id,
+      lat: area.lat,
+      lng: area.lng,
+      name: area.name,
+      status: area.status,
+      color: FOX_TEAM_COLORS[area.name]?.primary || '#6B7280',
+    })) : [];
+
+    const hunterMarkers = showHunters ? userLocations
+      .filter(loc => loc.user_id !== authState.user?.id)
+      .map(loc => ({
+        type: 'hunter',
+        id: loc.id,
+        lat: loc.lat,
+        lng: loc.lng,
+        name: loc.first_name || loc.username || 'Hunter',
+        team: loc.team_name,
+        active: loc.session_status === 'active',
+      })) : [];
+
+    const subMarkers = showSubscriptions ? subscriptions
+      .filter(sub => sub.lat && sub.lng)
+      .map(sub => ({
+        type: 'subscription',
+        id: sub.id,
+        lat: sub.lat,
+        lng: sub.lng,
+        name: sub.team_name,
+        area: sub.area,
+        color: FOX_TEAM_COLORS[sub.area || '']?.primary || '#6B7280',
+        visits: sub.visit_count || 0,
+      })) : [];
+
+    const foxRoutes = showFoxes ? areas
+      .filter(area => area.locations && area.locations.length > 1)
+      .map(area => ({
+        id: area.id,
+        name: area.name,
+        color: FOX_TEAM_COLORS[area.name]?.primary || '#6B7280',
+        points: area.locations!.map(loc => [loc.lat, loc.lng]),
+      })) : [];
+
+    const script = `
+      updateMarkers(
+        ${JSON.stringify(foxMarkers)},
+        ${JSON.stringify(hunterMarkers)},
+        ${JSON.stringify(subMarkers)},
+        ${JSON.stringify(foxRoutes)}
+      );
+      true;
+    `;
+    webViewRef.current?.injectJavaScript(script);
   };
+
+  const handleMapMessage = (event: any) => {
+    try {
+      const data = JSON.parse(event.nativeEvent.data);
+      if (data.type === 'mapReady') {
+        setMapReady(true);
+      }
+    } catch (e) {
+      console.error('Error parsing map message:', e);
+    }
+  };
+
+  const mapHtml = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body, #map { width: 100%; height: 100%; }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <script>
+    var map = L.map('map').setView([52.1326, 5.2913], 9);
+    
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '© OpenStreetMap'
+    }).addTo(map);
+    
+    var foxLayer = L.layerGroup().addTo(map);
+    var hunterLayer = L.layerGroup().addTo(map);
+    var subLayer = L.layerGroup().addTo(map);
+    var routeLayer = L.layerGroup().addTo(map);
+    var noHuntLayer = L.layerGroup().addTo(map);
+    var currentLocationMarker = null;
+    
+    function createFoxIcon(color) {
+      return L.divIcon({
+        className: 'custom-fox-icon',
+        html: '<div style="background:' + color + ';width:30px;height:30px;border-radius:50%;border:3px solid white;display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:0 2px 6px rgba(0,0,0,0.3);">🦊</div>',
+        iconSize: [30, 30],
+        iconAnchor: [15, 15]
+      });
+    }
+    
+    function createHunterIcon(active) {
+      var color = active ? '#10B981' : '#9CA3AF';
+      return L.divIcon({
+        className: 'custom-hunter-icon',
+        html: '<div style="background:' + color + ';width:26px;height:26px;border-radius:50%;border:2px solid white;display:flex;align-items:center;justify-content:center;font-size:14px;box-shadow:0 2px 4px rgba(0,0,0,0.3);">🎯</div>',
+        iconSize: [26, 26],
+        iconAnchor: [13, 13]
+      });
+    }
+    
+    function createSubIcon(color) {
+      return L.divIcon({
+        className: 'custom-sub-icon',
+        html: '<div style="background:' + color + ';width:28px;height:28px;border-radius:6px;border:2px solid white;display:flex;align-items:center;justify-content:center;font-size:14px;box-shadow:0 2px 4px rgba(0,0,0,0.3);">🏠</div>',
+        iconSize: [28, 28],
+        iconAnchor: [14, 14]
+      });
+    }
+    
+    function updateMarkers(foxes, hunters, subs, routes) {
+      foxLayer.clearLayers();
+      hunterLayer.clearLayers();
+      subLayer.clearLayers();
+      routeLayer.clearLayers();
+      noHuntLayer.clearLayers();
+      
+      // Add fox markers
+      foxes.forEach(function(fox) {
+        L.marker([fox.lat, fox.lng], { icon: createFoxIcon(fox.color) })
+          .bindPopup('<b>🦊 ' + fox.name + '</b><br>Status: ' + fox.status)
+          .addTo(foxLayer);
+      });
+      
+      // Add hunter markers
+      hunters.forEach(function(hunter) {
+        L.marker([hunter.lat, hunter.lng], { icon: createHunterIcon(hunter.active) })
+          .bindPopup('<b>🎯 ' + hunter.name + '</b><br>Team: ' + (hunter.team || 'None'))
+          .addTo(hunterLayer);
+      });
+      
+      // Add subscription markers and no-hunt zones
+      subs.forEach(function(sub) {
+        L.marker([sub.lat, sub.lng], { icon: createSubIcon(sub.color) })
+          .bindPopup('<b>🏠 ' + sub.name + '</b><br>Area: ' + (sub.area || 'None') + '<br>Visits: ' + sub.visits)
+          .addTo(subLayer);
+        
+        // 500m no-hunt zone
+        L.circle([sub.lat, sub.lng], {
+          radius: 500,
+          color: '#EF4444',
+          fillColor: '#EF4444',
+          fillOpacity: 0.1,
+          weight: 2,
+          dashArray: '5, 5'
+        }).addTo(noHuntLayer);
+      });
+      
+      // Add fox routes
+      routes.forEach(function(route) {
+        L.polyline(route.points, {
+          color: route.color,
+          weight: 3,
+          opacity: 0.8
+        }).addTo(routeLayer);
+      });
+    }
+    
+    // Signal that map is ready
+    setTimeout(function() {
+      window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'mapReady' }));
+    }, 500);
+  </script>
+</body>
+</html>
+  `;
 
   if (isLoading) {
     return (
@@ -165,68 +356,20 @@ const MapScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      <MapView
-        ref={mapRef}
+      <WebView
+        ref={webViewRef}
+        source={{ html: mapHtml }}
         style={styles.map}
-        initialRegion={region}
-        showsUserLocation
-        showsMyLocationButton={false}
-        showsCompass
-        onRegionChangeComplete={setRegion}
-      >
-        {/* Fox Areas */}
-        {showFoxes &&
-          areas
-            .filter((area) => area.lat && area.lng)
-            .map((area) => (
-              <Marker
-                key={`area-${area.id}`}
-                coordinate={{ latitude: area.lat!, longitude: area.lng! }}
-                title={`🦊 ${area.name}`}
-                description={`Status: ${area.status}${area.fox_team_name ? ` - ${area.fox_team_name}` : ''}`}
-                pinColor={getTeamColor(area.name)}
-              />
-            ))}
-
-        {/* Fox Routes */}
-        {showFoxes &&
-          areas
-            .filter((area) => area.locations && area.locations.length > 1)
-            .map((area) => (
-              <Polyline
-                key={`route-${area.id}`}
-                coordinates={area.locations!.map((loc) => ({
-                  latitude: loc.lat,
-                  longitude: loc.lng,
-                }))}
-                strokeColor={getTeamColor(area.name)}
-                strokeWidth={3}
-              />
-            ))}
-
-        {/* Hunter Locations */}
-        {showHunters &&
-          userLocations
-            .filter((loc) => loc.user_id !== authState.user?.id)
-            .map((location) => (
-              <Marker
-                key={`user-${location.id}`}
-                coordinate={{ latitude: location.lat, longitude: location.lng }}
-                title={`🎯 ${location.first_name || location.username}`}
-                description={`Team: ${location.team_name || 'None'} - ${location.session_status}`}
-                pinColor={location.session_status === 'active' ? '#10B981' : '#9CA3AF'}
-              />
-            ))}
-
-        {/* Current Location Marker */}
-        {currentLocation && (
-          <Marker
-            coordinate={{ latitude: currentLocation.lat, longitude: currentLocation.lng }}
-            title="You"
-            pinColor="#1E40AF"
-          />
+        onMessage={handleMapMessage}
+        javaScriptEnabled={true}
+        domStorageEnabled={true}
+        startInLoadingState={true}
+        renderLoading={() => (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#1E40AF" />
+          </View>
         )}
-      </MapView>
+      />
 
       {/* Controls Overlay */}
       <View style={styles.controlsContainer}>
@@ -249,6 +392,12 @@ const MapScreen: React.FC = () => {
             onPress={() => setShowHunters(!showHunters)}
           >
             <Text style={styles.filterEmoji}>🎯</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.filterButton, showSubscriptions && styles.filterButtonActive]}
+            onPress={() => setShowSubscriptions(!showSubscriptions)}
+          >
+            <Text style={styles.filterEmoji}>🏠</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -295,6 +444,14 @@ const MapScreen: React.FC = () => {
         <View style={styles.legendItem}>
           <Text style={styles.legendEmoji}>🦊</Text>
           <Text style={styles.legendText}>Fox Team</Text>
+        </View>
+        <View style={styles.legendItem}>
+          <Text style={styles.legendEmoji}>🏠</Text>
+          <Text style={styles.legendText}>Clubhuis</Text>
+        </View>
+        <View style={styles.legendItem}>
+          <View style={[styles.legendDot, { backgroundColor: '#EF4444', borderWidth: 1, borderColor: '#EF4444' }]} />
+          <Text style={styles.legendText}>No-Hunt Zone</Text>
         </View>
       </View>
     </View>
