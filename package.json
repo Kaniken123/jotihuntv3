@@ -11,7 +11,8 @@
     "frontend:build": "cd frontend && npm run build",
     "start": "npm run backend:start",
     "backend:start": "cd backend && npm start",
-    "install:all": "npm install && cd backend && npm install && cd ../frontend && npm install"
+    "install:all": "npm install && cd backend && npm install && cd ../frontend && npm install",
+    "kill": "powershell -ExecutionPolicy Bypass -File ./kill-processes.ps1"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"

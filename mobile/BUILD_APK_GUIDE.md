@@ -1,0 +1,180 @@
+# Jotihunt Mobile APK Build Guide
+
+This guide documents the complete process for building an Android APK for the Jotihunt mobile app.
+
+## Prerequisites
+
+Before building, ensure you have the following installed:
+
+1. **Node.js** - Required for npm commands
+2. **Android SDK** - Located at `C:\Users\xctia\AppData\Local\Android\Sdk`
+3. **Java JDK** - Required for Gradle builds
+
+## Quick Build (If Everything Is Set Up)
+
+If you've built before and everything is configured, run these commands:
+
+```powershell
+# 1. Navigate to the mobile folder
+cd C:\Users\xctia\jotihuntv3\mobile
+
+# 2. Install dependencies (if needed)
+npm install --legacy-peer-deps
+
+# 3. Navigate to android folder and build
+cd android
+$env:ANDROID_HOME = "C:\Users\xctia\AppData\Local\Android\Sdk"
+.\gradlew.bat assembleRelease
+```
+
+The APK will be generated at:
+```
+C:\Users\xctia\jotihuntv3\mobile\android\app\build\outputs\apk\release\app-release.apk
+```
+
+## Full Build Process (From Scratch)
+
+### Step 1: Install Dependencies
+
+```powershell
+cd C:\Users\xctia\jotihuntv3\mobile
+npm install --legacy-peer-deps
+```
+
+**Note:** The `--legacy-peer-deps` flag is required due to dependency conflicts between packages.
+
+### Step 2: Generate Native Android Code (Expo Prebuild)
+
+If the `android` folder doesn't exist or needs to be regenerated:
+
+```powershell
+npx expo prebuild --platform android
+```
+
+This generates the native Android project from the Expo configuration.
+
+### Step 3: Build the APK
+
+```powershell
+cd C:\Users\xctia\jotihuntv3\mobile\android
+
+# Set Android SDK path
+$env:ANDROID_HOME = "C:\Users\xctia\AppData\Local\Android\Sdk"
+
+# Build release APK
+.\gradlew.bat assembleRelease
+```
+
+**Build time:** Approximately 3-5 minutes (longer on first build, faster with cached tasks)
+
+### Step 4: Locate the APK
+
+The APK is generated at:
+```
+C:\Users\xctia\jotihuntv3\mobile\android\app\build\outputs\apk\release\app-release.apk
+```
+
+To copy it to the project root for easy access:
+```powershell
+Copy-Item "C:\Users\xctia\jotihuntv3\mobile\android\app\build\outputs\apk\release\app-release.apk" -Destination "C:\Users\xctia\jotihuntv3\jotihunt-release.apk" -Force
+```
+
+## Troubleshooting
+
+### Error: "Cannot find module 'crypt'" or "Cannot find module 'charenc'"
+
+Install the missing crypto dependencies:
+```powershell
+npm install crypt charenc --legacy-peer-deps
+```
+
+### Error: "Unable to resolve module react-native-webview"
+
+Install the missing webview package:
+```powershell
+npm install react-native-webview --legacy-peer-deps
+```
+
+### Error: expo-modules-core missing android folder
+
+Reinstall the expo-modules-core package:
+```powershell
+npm install expo-modules-core@1.11.14 --legacy-peer-deps
+```
+
+### Gradle build fails with ANDROID_HOME not set
+
+Make sure to set the environment variable before running gradle:
+```powershell
+$env:ANDROID_HOME = "C:\Users\xctia\AppData\Local\Android\Sdk"
+```
+
+### Clean Build (If Build Is Corrupted)
+
+To perform a clean build:
+```powershell
+cd C:\Users\xctia\jotihuntv3\mobile\android
+.\gradlew.bat clean
+.\gradlew.bat assembleRelease
+```
+
+### Regenerate Android Folder Completely
+
+If the android folder is corrupted:
+```powershell
+cd C:\Users\xctia\jotihuntv3\mobile
+
+# Remove existing android folder
+Remove-Item -Recurse -Force android
+
+# Regenerate
+npx expo prebuild --platform android
+```
+
+## Important Files
+
+| File | Purpose |
+|------|---------|
+| `mobile/package.json` | Dependencies and scripts |
+| `mobile/app.json` | Expo configuration (app name, version, etc.) |
+| `mobile/android/` | Generated native Android project |
+| `mobile/android/app/build.gradle` | Android build configuration |
+
+## Key Dependencies
+
+The app uses these key packages:
+- **expo** ~50.0.0 - Expo framework
+- **react-native** 0.73.6 - React Native core
+- **react-native-maps** - Map functionality
+- **react-native-webview** - WebView component
+- **expo-location** - Location services
+- **expo-camera** - Camera access
+- **expo-notifications** - Push notifications
+
+## App Configuration
+
+The app is configured in `app.json`:
+- **Package name:** `com.jotihunt.app`
+- **Version:** Check `app.json` for current version
+- **Permissions:** Location, Camera, Notifications
+
+## Build Output
+
+- **APK Size:** ~83 MB
+- **Output Path:** `android/app/build/outputs/apk/release/app-release.apk`
+
+## Version History
+
+| Date | Notes |
+|------|-------|
+| March 26, 2026 | Documented build process, fixed missing dependencies |
+
+---
+
+## One-Liner Build Command
+
+For quick reference, here's the complete build in one command block:
+
+```powershell
+cd C:\Users\xctia\jotihuntv3\mobile; npm install --legacy-peer-deps; cd android; $env:ANDROID_HOME = "C:\Users\xctia\AppData\Local\Android\Sdk"; .\gradlew.bat assembleRelease; Copy-Item "app\build\outputs\apk\release\app-release.apk" -Destination "C:\Users\xctia\jotihuntv3\jotihunt-release.apk" -Force; Write-Host "APK built and copied to C:\Users\xctia\jotihuntv3\jotihunt-release.apk"
+```

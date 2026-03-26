@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "extra": {
+      "eas": {
+        "projectId": "295db3bb-962f-439d-b3b9-b6be560d7306"
+      }
+    },
+    "android": {
+      "package": "com.kaniken.jotihuntv2"
+    }
+  }
+}

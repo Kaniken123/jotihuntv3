@@ -32,17 +32,16 @@
       },
       "package": "com.jotihunt.mobile",
       "permissions": [
-        "android.permission.ACCESS_COARSE_LOCATION",
-        "android.permission.ACCESS_FINE_LOCATION",
-        "android.permission.ACCESS_BACKGROUND_LOCATION",
-        "android.permission.CAMERA",
-        "android.permission.READ_EXTERNAL_STORAGE",
-        "android.permission.WRITE_EXTERNAL_STORAGE",
-        "android.permission.FOREGROUND_SERVICE",
-        "android.permission.FOREGROUND_SERVICE_LOCATION",
-        "android.permission.RECEIVE_BOOT_COMPLETED",
-        "android.permission.VIBRATE",
-        "android.permission.RECORD_AUDIO"
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION",
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "FOREGROUND_SERVICE",
+        "FOREGROUND_SERVICE_LOCATION",
+        "RECEIVE_BOOT_COMPLETED",
+        "VIBRATE"
       ],
       "config": {
         "googleMaps": {
@@ -78,13 +77,13 @@
       "expo-font"
     ],
     "extra": {
-      "notes": {
-        "googleMapsApiKey": "TODO: Replace YOUR_GOOGLE_MAPS_API_KEY_HERE with your actual Google Maps API key from https://console.cloud.google.com/"
-      },
       "eas": {
-        "projectId": "399ab4b4-9209-4610-b7ea-fd2cc93042a9"
+        "projectId": "your-eas-project-id-here"
+      },
+      "notes": {
+        "googleMapsApiKey": "TODO: Replace YOUR_GOOGLE_MAPS_API_KEY_HERE with your actual Google Maps API key from https://console.cloud.google.com/",
+        "easProjectId": "TODO: Replace your-eas-project-id-here with your EAS project ID after running 'eas init'"
       }
-    },
-    "owner": "kaniken"
+    }
   }
 }

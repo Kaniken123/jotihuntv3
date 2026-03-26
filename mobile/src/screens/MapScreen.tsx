@@ -118,24 +118,22 @@ const MapScreen: React.FC = () => {
     setIsTrackingEnabled(isRunning);
   };
 
-  const toggleLocationTracking = async () => {
-    if (isTrackingEnabled) {
-      await locationService.stopBackgroundTracking();
-      setIsTrackingEnabled(false);
-      Alert.alert('Tracking Stopped', 'Location tracking has been disabled.');
+  const enableLocationTracking = async () => {
+    const success = await locationService.startBackgroundTracking();
+    if (success) {
+      setIsTrackingEnabled(true);
+      console.log('Location tracking started automatically');
     } else {
-      const success = await locationService.startBackgroundTracking();
-      if (success) {
-        setIsTrackingEnabled(true);
-        Alert.alert('Tracking Started', 'Your location is now being tracked in the background.');
-      } else {
-        Alert.alert(
-          'Permission Required',
-          'Please grant location permissions to enable tracking.'
-        );
-      }
+      console.log('Failed to start location tracking');
     }
   };
+
+  // Auto-start tracking on component mount
+  useEffect(() => {
+    if (!isTrackingEnabled) {
+      enableLocationTracking();
+    }
+  }, []);
 
   const centerOnCurrentLocation = async () => {
     const location = await locationService.getCurrentLocation();
@@ -404,21 +402,6 @@ const MapScreen: React.FC = () => {
 
       {/* Bottom Controls */}
       <View style={styles.bottomControls}>
-        {/* Location Tracking Toggle */}
-        <TouchableOpacity
-          style={[styles.trackingButton, isTrackingEnabled && styles.trackingButtonActive]}
-          onPress={toggleLocationTracking}
-        >
-          <Ionicons
-            name={isTrackingEnabled ? 'location' : 'location-outline'}
-            size={24}
-            color={isTrackingEnabled ? '#FFFFFF' : '#1E40AF'}
-          />
-          <Text style={[styles.trackingText, isTrackingEnabled && styles.trackingTextActive]}>
-            {isTrackingEnabled ? 'Tracking ON' : 'Tracking OFF'}
-          </Text>
-        </TouchableOpacity>
-
         {/* Center on Location */}
         <TouchableOpacity style={styles.centerButton} onPress={centerOnCurrentLocation}>
           <Ionicons name="locate" size={24} color="#1E40AF" />
@@ -428,31 +411,6 @@ const MapScreen: React.FC = () => {
         <TouchableOpacity style={styles.refreshButton} onPress={loadData}>
           <Ionicons name="refresh" size={24} color="#1E40AF" />
         </TouchableOpacity>
-      </View>
-
-      {/* Legend */}
-      <View style={styles.legend}>
-        <Text style={styles.legendTitle}>Legend</Text>
-        <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: '#10B981' }]} />
-          <Text style={styles.legendText}>Active Hunter</Text>
-        </View>
-        <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: '#9CA3AF' }]} />
-          <Text style={styles.legendText}>Inactive Hunter</Text>
-        </View>
-        <View style={styles.legendItem}>
-          <Text style={styles.legendEmoji}>🦊</Text>
-          <Text style={styles.legendText}>Fox Team</Text>
-        </View>
-        <View style={styles.legendItem}>
-          <Text style={styles.legendEmoji}>🏠</Text>
-          <Text style={styles.legendText}>Clubhuis</Text>
-        </View>
-        <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: '#EF4444', borderWidth: 1, borderColor: '#EF4444' }]} />
-          <Text style={styles.legendText}>No-Hunt Zone</Text>
-        </View>
       </View>
     </View>
   );
@@ -551,31 +509,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
   },
-  trackingButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 24,
-    backgroundColor: '#FFFFFF',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  trackingButtonActive: {
-    backgroundColor: '#1E40AF',
-  },
-  trackingText: {
-    marginLeft: 8,
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1E40AF',
-  },
-  trackingTextActive: {
-    color: '#FFFFFF',
-  },
   centerButton: {
     width: 48,
     height: 48,
@@ -601,44 +534,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
-  },
-  legend: {
-    position: 'absolute',
-    bottom: 100,
-    right: 16,
-    backgroundColor: '#FFFFFF',
-    padding: 12,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  legendTitle: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#1F2937',
-    marginBottom: 8,
-  },
-  legendItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  legendDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    marginRight: 8,
-  },
-  legendEmoji: {
-    fontSize: 14,
-    marginRight: 4,
-  },
-  legendText: {
-    fontSize: 11,
-    color: '#6B7280',
   },
 });
 
