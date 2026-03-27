@@ -10,7 +10,6 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import Slider from '@react-native-community/slider';
 import { useAuth } from '../contexts/AuthContext';
 import { gameService } from '../services/gameService';
 import { locationService } from '../services/locationService';
@@ -62,40 +61,17 @@ const SettingsScreen: React.FC = () => {
     }
   };
 
-  const toggleLocationSharing = async (enabled: boolean) => {
-    await updateSettings({ location_sharing_enabled: enabled });
-
-    if (!enabled && isTrackingEnabled) {
-      await locationService.stopBackgroundTracking();
-      setIsTrackingEnabled(false);
-    }
-  };
-
-  const togglePrivacyMode = async (enabled: boolean) => {
-    await updateSettings({ privacy_mode: enabled });
-  };
-
   const toggleBackgroundTracking = async () => {
     if (isTrackingEnabled) {
       await locationService.stopBackgroundTracking();
       setIsTrackingEnabled(false);
       Alert.alert('Tracking Stopped', 'Background location tracking has been disabled.');
     } else {
-      if (!settings?.location_sharing_enabled) {
-        Alert.alert(
-          'Enable Location Sharing',
-          'Please enable location sharing first to use background tracking.'
-        );
-        return;
-      }
-
-      const success = await locationService.startBackgroundTracking({
-        timeInterval: (settings?.tracking_interval || 60) * 1000,
-      });
+      const success = await locationService.startBackgroundTracking();
 
       if (success) {
         setIsTrackingEnabled(true);
-        Alert.alert('Tracking Started', 'Your location is now being tracked in the background.');
+        Alert.alert('Tracking Started', 'Your location is now being tracked in the background every 30 seconds.');
       } else {
         Alert.alert(
           'Permission Required',
@@ -166,72 +142,9 @@ const SettingsScreen: React.FC = () => {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Location Settings</Text>
 
-        <View style={styles.settingItem}>
-          <View style={styles.settingInfo}>
-            <Ionicons name="location" size={24} color="#1E40AF" />
-            <View style={styles.settingText}>
-              <Text style={styles.settingLabel}>Location Sharing</Text>
-              <Text style={styles.settingDescription}>
-                Allow others to see your location on the map
-              </Text>
-            </View>
-          </View>
-          <Switch
-            value={settings?.location_sharing_enabled ?? true}
-            onValueChange={toggleLocationSharing}
-            trackColor={{ false: '#E5E7EB', true: '#93C5FD' }}
-            thumbColor={settings?.location_sharing_enabled ? '#1E40AF' : '#9CA3AF'}
-            disabled={isSaving}
-          />
-        </View>
-
-        <View style={styles.settingItem}>
-          <View style={styles.settingInfo}>
-            <Ionicons name="eye-off" size={24} color="#1E40AF" />
-            <View style={styles.settingText}>
-              <Text style={styles.settingLabel}>Privacy Mode</Text>
-              <Text style={styles.settingDescription}>
-                Hide your location from other hunters
-              </Text>
-            </View>
-          </View>
-          <Switch
-            value={settings?.privacy_mode ?? false}
-            onValueChange={togglePrivacyMode}
-            trackColor={{ false: '#E5E7EB', true: '#93C5FD' }}
-            thumbColor={settings?.privacy_mode ? '#1E40AF' : '#9CA3AF'}
-            disabled={isSaving}
-          />
-        </View>
-
-        <View style={styles.sliderItem}>
-          <View style={styles.sliderHeader}>
-            <Ionicons name="timer" size={24} color="#1E40AF" />
-            <View style={styles.settingText}>
-              <Text style={styles.settingLabel}>Tracking Interval</Text>
-              <Text style={styles.settingDescription}>
-                How often to update your location
-              </Text>
-            </View>
-          </View>
-          <View style={styles.sliderContainer}>
-            <Slider
-              style={styles.slider}
-              minimumValue={30}
-              maximumValue={300}
-              step={30}
-              value={settings?.tracking_interval ?? 60}
-              onSlidingComplete={(value) => updateSettings({ tracking_interval: value })}
-              minimumTrackTintColor="#1E40AF"
-              maximumTrackTintColor="#E5E7EB"
-              thumbTintColor="#1E40AF"
-              disabled={isSaving}
-            />
-            <Text style={styles.sliderValue}>
-              {settings?.tracking_interval ?? 60} seconds
-            </Text>
-          </View>
-        </View>
+        <Text style={styles.locationInfo}>
+          Your location is continuously tracked every 30 seconds and shared with your team.
+        </Text>
       </View>
 
       {/* Background Tracking */}
@@ -404,29 +317,12 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     marginTop: 2,
   },
-  sliderItem: {
-    backgroundColor: '#FFFFFF',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 8,
-  },
-  sliderHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  sliderContainer: {
-    paddingHorizontal: 8,
-  },
-  slider: {
-    width: '100%',
-    height: 40,
-  },
-  sliderValue: {
-    textAlign: 'center',
+  locationInfo: {
     fontSize: 14,
-    fontWeight: '500',
-    color: '#1E40AF',
+    color: '#6B7280',
+    marginBottom: 8,
+    paddingHorizontal: 4,
+    lineHeight: 20,
   },
   trackingButton: {
     flexDirection: 'row',

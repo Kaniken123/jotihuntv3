@@ -50,8 +50,8 @@ export const config = {
   WS_URL: isDevelopment ? DEV_WS_URL : PROD_WS_URL,
   
   // Location tracking settings
-  LOCATION_UPDATE_INTERVAL: 60000, // 60 seconds default
-  LOCATION_MINIMUM_DISTANCE: 10, // 10 meters minimum movement
+  LOCATION_UPDATE_INTERVAL: 30000, // 30 seconds - fires continuously
+  LOCATION_MINIMUM_DISTANCE: 0, // 0 meters - send update every 30 seconds regardless of movement
   
   // Background location task name
   BACKGROUND_LOCATION_TASK: 'background-location-task',

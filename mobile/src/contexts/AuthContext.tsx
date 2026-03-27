@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
 import { User, Team, Tenant } from '../types';
 import { authService } from '../services/authService';
+import { locationService } from '../services/locationService';
 import { getToken } from '../services/api';
 
 interface AuthState {
@@ -135,6 +136,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               token,
             },
           });
+          // Start location tracking automatically on app init with valid auth
+          console.log('[AuthContext] Starting background location tracking...');
+          await locationService.startBackgroundTracking();
+
+          // Send initial location immediately
+          console.log('[AuthContext] Sending initial location...');
+          try {
+            const currentLocation = await locationService.getCurrentLocation();
+            if (currentLocation) {
+              await locationService.updateLocationToServer(
+                currentLocation.coords.latitude,
+                currentLocation.coords.longitude,
+                currentLocation.coords.accuracy
+              );
+              console.log('[AuthContext] Initial location sent');
+            }
+          } catch (error) {
+            console.error('[AuthContext] Error sending initial location:', error);
+          }
         } catch (error: any) {
           console.error('[AuthContext] Auth init error:', error?.message || error);
           console.error('[AuthContext] Error details:', JSON.stringify(error?.response?.data));
@@ -182,6 +202,26 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           token: response.token,
         },
       });
+
+      // Start location tracking automatically on login
+      console.log('[AuthContext] Starting background location tracking...');
+      await locationService.startBackgroundTracking();
+
+      // Send initial location immediately
+      console.log('[AuthContext] Sending initial location...');
+      try {
+        const currentLocation = await locationService.getCurrentLocation();
+        if (currentLocation) {
+          await locationService.updateLocationToServer(
+            currentLocation.coords.latitude,
+            currentLocation.coords.longitude,
+            currentLocation.coords.accuracy
+          );
+          console.log('[AuthContext] Initial location sent');
+        }
+      } catch (error) {
+        console.error('[AuthContext] Error sending initial location:', error);
+      }
 
       console.log('[AuthContext] Login complete, returning');
       return {};

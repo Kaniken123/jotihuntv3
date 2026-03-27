@@ -135,6 +135,28 @@ const MapScreen: React.FC = () => {
     }
   }, []);
 
+  // Continuous foreground location tracking every 30 seconds
+  useEffect(() => {
+    const locationInterval = setInterval(async () => {
+      try {
+        const location = await locationService.getCurrentLocation();
+        if (location) {
+          const lat = location.coords.latitude;
+          const lng = location.coords.longitude;
+          const accuracy = location.coords.accuracy;
+          
+          // Send location to server
+          await locationService.updateLocationToServer(lat, lng, accuracy);
+          console.log('[MapScreen] Location update sent:', { lat, lng, accuracy });
+        }
+      } catch (error) {
+        console.error('[MapScreen] Error updating location:', error);
+      }
+    }, 30000); // 30 seconds
+
+    return () => clearInterval(locationInterval);
+  }, []);
+
   const centerOnCurrentLocation = async () => {
     const location = await locationService.getCurrentLocation();
     if (location) {

@@ -33,15 +33,15 @@ router.get('/settings', authenticateToken, enforceTenantIsolation, async (req, r
 
 router.post('/settings', authenticateToken, enforceTenantIsolation, async (req, res) => {
   try {
-    const { tracking_interval, offline_threshold, location_sharing_enabled, privacy_mode } = req.body;
+    const { tracking_interval, offline_threshold } = req.body;
 
     const settings = await db('location_settings')
       .where('user_id', req.user!.id)
       .update({
         tracking_interval,
         offline_threshold,
-        location_sharing_enabled,
-        privacy_mode,
+        location_sharing_enabled: true,
+        privacy_mode: false,
         updated_at: new Date()
       })
       .returning('*');
@@ -79,10 +79,6 @@ router.post('/update', authenticateToken, enforceTenantIsolation, async (req, re
         .returning('id');
 
       settings = await db('location_settings').where('id', id).first();
-    }
-
-    if (!settings?.location_sharing_enabled || settings?.privacy_mode) {
-      return res.json({ message: 'Location sharing disabled' });
     }
 
     await db('user_locations').insert({
@@ -162,18 +158,16 @@ router.get('/latest', authenticateToken, enforceTenantIsolation, async (req, res
       userIds = teamMembers.map(member => member.user_id);
     }
 
-    // First, get the latest location ID for each user who has sharing enabled
+    // First, get the latest location ID for each user
     const latestLocationIds = await db('user_locations')
       .select('user_locations.id')
       .join('location_settings', 'user_locations.user_id', 'location_settings.user_id')
       .where('location_settings.location_sharing_enabled', true)
-      .where('location_settings.privacy_mode', false)
       .whereIn('user_locations.id', function() {
         this.select(db.raw('MAX(ul2.id)'))
           .from('user_locations as ul2')
           .join('location_settings as ls2', 'ul2.user_id', 'ls2.user_id')
           .where('ls2.location_sharing_enabled', true)
-          .where('ls2.privacy_mode', false)
           .groupBy('ul2.user_id');
       })
       .limit(100); // Reasonable limit
@@ -273,7 +267,7 @@ router.get('/route/:user_id', authenticateToken, async (req, res) => {
       .first();
 
     // Allow access if user has location sharing enabled
-    const canViewRoute = settings?.location_sharing_enabled && !settings?.privacy_mode;
+    const canViewRoute = settings?.location_sharing_enabled;
     
     if (!canViewRoute) {
       return res.json({ 
@@ -287,7 +281,7 @@ router.get('/route/:user_id', authenticateToken, async (req, res) => {
           first_location: null,
           last_location: null
         },
-        message: 'User has location sharing disabled or privacy mode enabled' 
+        message: 'User has location sharing disabled' 
       });
     }
 
@@ -391,12 +385,10 @@ router.get('/users', authenticateToken, async (req, res) => {
         'teams.name as team_name', 
         'teams.area as team_area', 
         'team_members.role as team_role',
-        'location_settings.location_sharing_enabled',
-        'location_settings.privacy_mode'
+        'location_settings.location_sharing_enabled'
       )
       .where('users.tenant_id', req.user!.current_tenant_id || req.user!.tenant_id)
       .where('location_settings.location_sharing_enabled', true)
-      .where('location_settings.privacy_mode', false)
       .orderBy('users.username');
 
     // Get latest location for each user
@@ -411,7 +403,7 @@ router.get('/users', authenticateToken, async (req, res) => {
           ...user,
           has_locations: !!latestLocation,
           last_seen: latestLocation?.recorded_at || null,
-          can_view_route: user.location_sharing_enabled && !user.privacy_mode
+          can_view_route: user.location_sharing_enabled
         };
       })
     );

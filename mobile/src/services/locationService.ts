@@ -7,27 +7,39 @@ const BACKGROUND_LOCATION_TASK = config.BACKGROUND_LOCATION_TASK;
 
 // Define the background location task
 TaskManager.defineTask(BACKGROUND_LOCATION_TASK, async ({ data, error }) => {
+  console.log('[BackgroundLocationTask] Task triggered');
+  
   if (error) {
-    console.error('Background location task error:', error);
+    console.error('[BackgroundLocationTask] Error:', error);
     return;
   }
 
   if (data) {
     const { locations } = data as { locations: Location.LocationObject[] };
+    console.log('[BackgroundLocationTask] Received locations:', locations.length);
+    
     const location = locations[0];
 
     if (location) {
       try {
+        console.log('[BackgroundLocationTask] Sending location to server:', {
+          lat: location.coords.latitude,
+          lng: location.coords.longitude,
+          accuracy: location.coords.accuracy,
+        });
+        
         await api.post('/locations/update', {
           lat: location.coords.latitude,
           lng: location.coords.longitude,
           accuracy: location.coords.accuracy,
         });
-        console.log('Background location updated:', location.coords);
+        console.log('[BackgroundLocationTask] Location sent successfully');
       } catch (error) {
-        console.error('Failed to update background location:', error);
+        console.error('[BackgroundLocationTask] Failed to update location:', error);
       }
     }
+  } else {
+    console.log('[BackgroundLocationTask] No location data received');
   }
 });
 
@@ -103,7 +115,7 @@ export const locationService = {
       if (!permissions.foreground) {
         const granted = await this.requestPermissions();
         if (!granted) {
-          console.log('Location permissions not granted');
+          console.log('[LocationService] Location permissions not granted');
           return false;
         }
       }
@@ -111,28 +123,30 @@ export const locationService = {
       // Check if already running
       const isRunning = await Location.hasStartedLocationUpdatesAsync(BACKGROUND_LOCATION_TASK);
       if (isRunning) {
-        console.log('Background location already running');
+        console.log('[LocationService] Background location already running');
         return true;
       }
 
+      console.log('[LocationService] Starting background location tracking...');
+      
+      // Start location updates that will fire every 30 seconds regardless of movement
       await Location.startLocationUpdatesAsync(BACKGROUND_LOCATION_TASK, {
-        accuracy: options?.accuracy ?? Location.Accuracy.Balanced,
-        timeInterval: options?.timeInterval ?? config.LOCATION_UPDATE_INTERVAL,
-        distanceInterval: options?.distanceInterval ?? config.LOCATION_MINIMUM_DISTANCE,
-        deferredUpdatesInterval: 60000, // Batch updates every minute
+        accuracy: Location.Accuracy.Balanced,
+        timeInterval: 30000, // Update every 30 seconds
+        distanceInterval: 0, // Send update regardless of distance (every 30 seconds)
         showsBackgroundLocationIndicator: true,
         foregroundService: {
           notificationTitle: 'Jotihunt Location Tracking',
           notificationBody: 'Your location is being tracked for the hunt',
           notificationColor: '#1E40AF',
         },
-        pausesUpdatesAutomatically: false,
+        pausesUpdatesAutomatically: false, // Keep tracking even when stationary
       });
 
-      console.log('Background location tracking started');
+      console.log('[LocationService] Background location tracking started successfully');
       return true;
     } catch (error) {
-      console.error('Error starting background tracking:', error);
+      console.error('[LocationService] Error starting background tracking:', error);
       return false;
     }
   },
