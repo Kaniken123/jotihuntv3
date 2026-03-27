@@ -32,6 +32,24 @@ The APK will be generated at:
 C:\Users\xctia\jotihuntv3\mobile\android\app\build\outputs\apk\release\app-release.apk
 ```
 
+## APK Versioning System
+
+**Important:** Every time you build a new APK, name it with an incrementing version number:
+- `jotihunt-release-v1.apk`
+- `jotihunt-release-v2.apk`
+- `jotihunt-release-v3.apk`
+- etc.
+
+This helps track which version of the app was installed on devices.
+
+**To copy the APK with the next version:**
+```powershell
+# Replace X with the next version number
+Copy-Item "C:\Users\xctia\jotihuntv3\mobile\android\app\build\outputs\apk\release\app-release.apk" -Destination "C:\Users\xctia\jotihuntv3\jotihunt-release-vX.apk" -Force
+```
+
+**Last version built:** v6
+
 ## Full Build Process (From Scratch)
 
 ### Step 1: Install Dependencies
@@ -74,7 +92,7 @@ The APK is generated at:
 C:\Users\xctia\jotihuntv3\mobile\android\app\build\outputs\apk\release\app-release.apk
 ```
 
-To copy it to the project root for easy access:
+To copy it to the project root for easy access, but change the last part of release.apk to release(release number).apk:
 ```powershell
 Copy-Item "C:\Users\xctia\jotihuntv3\mobile\android\app\build\outputs\apk\release\app-release.apk" -Destination "C:\Users\xctia\jotihuntv3\jotihunt-release.apk" -Force
 ```
@@ -165,16 +183,27 @@ The app is configured in `app.json`:
 
 ## Version History
 
-| Date | Notes |
-|------|-------|
-| March 26, 2026 | Documented build process, fixed missing dependencies |
+| Version | Date | Notes |
+|---------|------|-------|
+| v6 | March 28, 2026 | Jotihunt logo branding (icon, adaptive-icon, splash screen) |
+| v5 | March 27, 2026 | Removed privacy mode completely |
+| v4 | March 27, 2026 | Fixed continuous location tracking (30-second polling) |
+| v3 | March 26, 2026 | Auto location tracking on login, removed location sharing toggle |
+| v1-v2 | March 26, 2026 | Initial builds, fixed missing dependencies |
 
 ---
 
-## One-Liner Build Command
+## Quick Build Command (with Versioning)
 
-For quick reference, here's the complete build in one command block:
+For quick reference, here's how to build with versioning (replace `X` with next version number):
 
 ```powershell
-cd C:\Users\xctia\jotihuntv3\mobile; npm install --legacy-peer-deps; cd android; $env:ANDROID_HOME = "C:\Users\xctia\AppData\Local\Android\Sdk"; .\gradlew.bat assembleRelease; Copy-Item "app\build\outputs\apk\release\app-release.apk" -Destination "C:\Users\xctia\jotihuntv3\jotihunt-release.apk" -Force; Write-Host "APK built and copied to C:\Users\xctia\jotihuntv3\jotihunt-release.apk"
+# Build and copy with version number
+cd C:\Users\xctia\jotihuntv3\mobile
+npm install --legacy-peer-deps
+cd android
+$env:ANDROID_HOME = "C:\Users\xctia\AppData\Local\Android\Sdk"
+.\gradlew.bat assembleRelease
+Copy-Item "app\build\outputs\apk\release\app-release.apk" -Destination "C:\Users\xctia\jotihuntv3\jotihunt-release-vX.apk" -Force
+Write-Host "APK v-X built and copied to C:\Users\xctia\jotihuntv3\jotihunt-release-vX.apk"
 ```
