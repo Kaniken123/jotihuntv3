@@ -27,22 +27,79 @@ const server = createServer(app);
 const io = new Server(server, {
   path: '/api/socket.io/',
   cors: {
-    origin: [
-      process.env.FRONTEND_URL || "http://localhost:3000",
-      "https://dfef01c8947a.ngrok-free.app"
-    ],
+    origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+      // Allow requests with no origin (mobile apps)
+      if (!origin) {
+        callback(null, true);
+        return;
+      }
+      // Allow localhost, local network, and ngrok
+      if (origin.includes('localhost') || 
+          origin.includes('127.0.0.1') ||
+          origin.includes('192.168.') ||
+          origin.includes('ngrok')) {
+        callback(null, true);
+        return;
+      }
+      callback(new Error('Not allowed by CORS'));
+    },
+    credentials: true,
     methods: ["GET", "POST"],
-    credentials: true
   }
 });
 
 const PORT = process.env.PORT || 3001;
 
+// CORS configuration that allows mobile app and web frontend
+const corsOrigins = [
+  "http://localhost:3000",
+  "http://localhost:3001",
+  "http://127.0.0.1:3000",
+  "http://127.0.0.1:3001",
+  "http://192.168.2.31:3000",
+  "http://192.168.2.31:3001",
+  "https://dfef01c8947a.ngrok-free.app",
+  process.env.FRONTEND_URL,
+];
+
+// Allow any local IP for development
+const corsOptions = {
+  origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+    // Allow requests with no origin (mobile apps, curl requests, etc)
+    if (!origin) {
+      callback(null, true);
+      return;
+    }
+    
+    // Allow if matches one of our origins
+    if (corsOrigins.includes(origin)) {
+      callback(null, true);
+      return;
+    }
+    
+    // Allow localhost variations
+    if (origin.startsWith('http://localhost:') || 
+        origin.startsWith('http://127.0.0.1:') ||
+        origin.startsWith('http://192.168.')) {
+      callback(null, true);
+      return;
+    }
+    
+    // Development: allow ngrok
+    if (origin.includes('ngrok')) {
+      callback(null, true);
+      return;
+    }
+    
+    callback(new Error('Not allowed by CORS'));
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+};
+
 app.use(helmet());
-app.use(cors({
-  origin: process.env.FRONTEND_URL || "http://localhost:3000",
-  credentials: true
-}));
+app.use(cors(corsOptions));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 

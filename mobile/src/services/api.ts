@@ -8,6 +8,10 @@ const TOKEN_KEY = 'auth_token';
 // In-memory fallback for when storage fails
 let memoryToken: string | null = null;
 
+// Log API configuration at startup
+console.log('[API] Configured with baseURL:', config.API_URL);
+console.log('[API] Timeout:', 30000);
+
 // Create axios instance
 const api: AxiosInstance = axios.create({
   baseURL: config.API_URL,
@@ -16,6 +20,37 @@ const api: AxiosInstance = axios.create({
     'Content-Type': 'application/json',
   },
 });
+
+// Add request/response interceptors for debugging
+api.interceptors.request.use(
+  (config) => {
+    console.log('[API] Request:', config.method?.toUpperCase(), config.url);
+    return config;
+  },
+  (error) => {
+    console.error('[API] Request error:', error.message);
+    return Promise.reject(error);
+  }
+);
+
+api.interceptors.response.use(
+  (response) => {
+    console.log('[API] Response:', response.status, response.config.url);
+    return response;
+  },
+  (error) => {
+    console.error('[API] Response error:', error.message);
+    console.error('[API] Error code:', error.code);
+    if (error.response) {
+      console.error('[API] Response status:', error.response.status);
+      console.error('[API] Response data:', error.response.data);
+    } else if (error.request) {
+      console.error('[API] No response received - request issue');
+      console.error('[API] Request config:', JSON.stringify(error.config, null, 2));
+    }
+    return Promise.reject(error);
+  }
+);
 
 // Token management functions with fallback chain:
 // 1. Try SecureStore (most secure)
