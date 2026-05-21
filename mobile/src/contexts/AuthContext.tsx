@@ -175,7 +175,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     selected_tenant_id?: number
   ) => {
     console.log('[AuthContext] login() called for user:', username);
-    dispatch({ type: 'AUTH_START' });
+    // NOTE: do not dispatch AUTH_START here. It sets the global isLoading flag,
+    // which makes AppNavigator swap LoginScreen for the LoadingScreen, unmounting
+    // LoginScreen mid-login. That loses the tenant-selection UI (multi-tenant
+    // accounts) and inline errors, so the form just "refreshes" and you can't log
+    // in. LoginScreen shows its own button spinner via local state instead.
     try {
       console.log('[AuthContext] Calling authService.login...');
       const response = await authService.login(username, password, selected_tenant_id);
