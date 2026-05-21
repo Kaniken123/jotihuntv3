@@ -20,8 +20,16 @@ jobs:
             set -e
             cd /var/www/jotihunt
 
+            echo "--- Backing up database ---"
+            cp backend/database/jotihunt.db /tmp/jotihunt_backup.db 2>/dev/null || true
+
             echo "--- Pulling latest code ---"
             git pull origin main
+
+            echo "--- Restoring database if git removed it ---"
+            if [ ! -f backend/database/jotihunt.db ] && [ -f /tmp/jotihunt_backup.db ]; then
+              cp /tmp/jotihunt_backup.db backend/database/jotihunt.db
+            fi
 
             echo "--- Building backend ---"
             cd backend
