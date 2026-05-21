@@ -51,10 +51,16 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Add cache headers for static content
-app.use('/uploads', (req, res, next) => {
+const uploadsCacheHeaders = (req: express.Request, res: express.Response, next: express.NextFunction) => {
   res.setHeader('Cache-Control', 'public, max-age=86400'); // 24 hours
   next();
-}, express.static(path.join(__dirname, '../uploads')));
+};
+const uploadsStatic = express.static(path.join(__dirname, '../uploads'));
+
+// Chat attachments use /uploads/... ; hunt photos are stored as
+// /api/uploads/hunts/... . Serve both prefixes from the same directory.
+app.use('/uploads', uploadsCacheHeaders, uploadsStatic);
+app.use('/api/uploads', uploadsCacheHeaders, uploadsStatic);
 
 
 app.use('/api/auth', authRoutes);
