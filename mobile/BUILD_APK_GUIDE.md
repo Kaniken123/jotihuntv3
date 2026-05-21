@@ -48,7 +48,7 @@ This helps track which version of the app was installed on devices.
 Copy-Item "C:\Users\xctia\jotihuntv3\mobile\android\app\build\outputs\apk\release\app-release.apk" -Destination "C:\Users\xctia\jotihuntv3\jotihunt-release-vX.apk" -Force
 ```
 
-**Last version built:** v6
+**Last version built:** v8
 
 ## Full Build Process (From Scratch)
 
@@ -185,6 +185,8 @@ The app is configured in `app.json`:
 
 | Version | Date | Notes |
 |---------|------|-------|
+| v8 | May 22, 2026 | Fix login refresh loop: stop dispatching AUTH_START (it unmounted LoginScreen mid-login, breaking tenant selection and error display) |
+| v7 | May 22, 2026 | Fix login network error: point app at https://jotihunt-gog.nl (was hardcoded LAN IP); add Socket.IO /api/socket.io/ path |
 | v6 | March 28, 2026 | Jotihunt logo branding (icon, adaptive-icon, splash screen) |
 | v5 | March 27, 2026 | Removed privacy mode completely |
 | v4 | March 27, 2026 | Fixed continuous location tracking (30-second polling) |
