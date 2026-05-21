@@ -33,11 +33,14 @@ const io = new Server(server, {
         callback(null, true);
         return;
       }
-      // Allow localhost, local network, and ngrok
-      if (origin.includes('localhost') || 
+      // Allow localhost, local network, ngrok, and production domain (with/without www)
+      const frontendUrl = process.env.FRONTEND_URL;
+      const frontendWww = frontendUrl?.replace('://', '://www.');
+      if (origin.includes('localhost') ||
           origin.includes('127.0.0.1') ||
           origin.includes('192.168.') ||
-          origin.includes('ngrok')) {
+          origin.includes('ngrok') ||
+          (frontendUrl && (origin === frontendUrl || origin === frontendWww))) {
         callback(null, true);
         return;
       }
@@ -60,7 +63,8 @@ const corsOrigins = [
   "http://192.168.2.31:3001",
   "https://dfef01c8947a.ngrok-free.app",
   process.env.FRONTEND_URL,
-];
+  process.env.FRONTEND_URL?.replace('://', '://www.'),
+].filter(Boolean);
 
 // Allow any local IP for development
 const corsOptions = {

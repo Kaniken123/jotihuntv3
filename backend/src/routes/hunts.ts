@@ -1,16 +1,20 @@
 import express from 'express';
 import multer from 'multer';
 import path from 'path';
+import fs from 'fs';
 import { db } from '../utils/database';
 import { authenticateToken, requireAdmin, isAdmin, enforceTenantIsolation } from '../middleware/auth';
 import { getSocketIO } from '../socketManager';
 
 const router = express.Router();
 
+const uploadsDir = path.join(__dirname, '../../uploads/hunts');
+fs.mkdirSync(uploadsDir, { recursive: true });
+
 // Configure multer for hunt photo uploads
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, path.join(__dirname, '../../uploads/hunts'));
+    cb(null, uploadsDir);
   },
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
