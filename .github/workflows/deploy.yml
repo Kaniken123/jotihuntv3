@@ -22,6 +22,7 @@ jobs:
 
             echo "--- Backing up database ---"
             cp backend/database/jotihunt.db /tmp/jotihunt_backup.db 2>/dev/null || true
+            git checkout -- backend/database/jotihunt.db 2>/dev/null || true
 
             echo "--- Pulling latest code ---"
             git pull origin main
