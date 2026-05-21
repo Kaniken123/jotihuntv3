@@ -34,18 +34,25 @@ jobs:
 
             echo "--- Building backend ---"
             cd backend
-            npm ci
+            # --include=dev forces devDependencies (typescript + @types/*) to
+            # install even when NODE_ENV=production, otherwise `npm run build`
+            # (tsc) fails to resolve types and set -e aborts the whole deploy.
+            npm ci --include=dev
             npm run build
             npm run db:migrate
             cd ..
 
             echo "--- Building frontend ---"
             cd frontend
-            npm ci
+            npm ci --include=dev
             npm run build
             cd ..
 
             echo "--- Restarting backend ---"
-            pm2 restart jotihunt-backend
+            # Restart if it already exists (fork mode, single instance); start
+            # it fresh otherwise. Never use cluster mode: multiple workers each
+            # open the SQLite file and run the sync cron, causing lock contention.
+            pm2 restart jotihunt-backend --update-env || pm2 start backend/dist/server.js --name jotihunt-backend
+            pm2 save
 
             echo "--- Deploy complete ---"
