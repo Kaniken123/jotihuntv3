@@ -33,6 +33,7 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
 
       // Create socket connection
       const newSocket = io(config.WS_URL, {
+        path: '/api/socket.io/',
         auth: {
           token: state.token,
         },
