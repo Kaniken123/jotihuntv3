@@ -34,17 +34,18 @@ jobs:
 
             echo "--- Building backend ---"
             cd backend
-            # --include=dev forces devDependencies (typescript + @types/*) to
-            # install even when NODE_ENV=production, otherwise `npm run build`
-            # (tsc) fails to resolve types and set -e aborts the whole deploy.
-            npm ci --include=dev
+            # Use `npm install` (in-place), NOT `npm ci`. npm ci deletes
+            # node_modules up front, so if any later step fails under set -e the
+            # running app is left with missing modules (MODULE_NOT_FOUND crash
+            # loop). --include=dev forces typescript + @types/* so tsc can build.
+            npm install --include=dev --no-audit --no-fund
             npm run build
             npm run db:migrate
             cd ..
 
             echo "--- Building frontend ---"
             cd frontend
-            npm ci --include=dev
+            npm install --include=dev --no-audit --no-fund
             npm run build
             cd ..
 
