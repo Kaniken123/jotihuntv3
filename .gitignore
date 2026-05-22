@@ -1,5 +1,12 @@
 node_modules
 backend/database/*.db
 backend/database/*.db-journal
+backend/database/*.db-shm
+backend/database/*.db-wal
 .claude/
 mobile/build_*.log
+
+# Build artifacts — regenerated on the server during deploy, never commit
+# (tracking these makes `git pull` fail after the server rebuilds them).
+backend/dist/
+frontend/dist/

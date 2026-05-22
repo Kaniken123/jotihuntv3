@@ -22,12 +22,18 @@ jobs:
 
             echo "--- Backing up database ---"
             cp backend/database/jotihunt.db /tmp/jotihunt_backup.db 2>/dev/null || true
-            git checkout -- backend/database/jotihunt.db 2>/dev/null || true
 
-            echo "--- Pulling latest code ---"
-            git pull origin main
+            echo "--- Syncing code to origin/main ---"
+            # Hard reset instead of `git pull`: the server rebuilds dist/ during
+            # deploy, so a merge pull always conflicts on those (now-untracked)
+            # build artifacts. fetch + reset --hard force the working tree to
+            # match origin and is never blocked by local build output or by
+            # untracked SQLite runtime files (*.db-wal/-shm). The DB is gitignored
+            # so reset does not touch it; the backup above is a safety net.
+            git fetch origin main
+            git reset --hard origin/main
 
-            echo "--- Restoring database if git removed it ---"
+            echo "--- Restoring database if missing ---"
             if [ ! -f backend/database/jotihunt.db ] && [ -f /tmp/jotihunt_backup.db ]; then
               cp /tmp/jotihunt_backup.db backend/database/jotihunt.db
             fi
