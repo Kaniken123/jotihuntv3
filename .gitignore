@@ -1,2 +1,5 @@
 node_modules
 backend/database/*.db
+backend/database/*.db-journal
+.claude/
+mobile/build_*.log
