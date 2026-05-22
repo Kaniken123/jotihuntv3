@@ -17,6 +17,7 @@ import AdminDashboard from './components/AdminDashboard';
 import AdminRouteTracking from './components/AdminRouteTracking';
 import RouteTracker from './components/RouteTracker';
 import LocationSettings from './components/LocationSettings';
+import WelcomeModal from './components/WelcomeModal';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { state } = useAuth();
@@ -45,6 +46,7 @@ const AppContent: React.FC = () => {
   return (
     <Router>
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+        {state.isAuthenticated && <WelcomeModal />}
         <Routes>
           <Route
             path="/login"

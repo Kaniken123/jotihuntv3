@@ -48,7 +48,15 @@ This helps track which version of the app was installed on devices.
 Copy-Item "C:\Users\xctia\jotihuntv3\mobile\android\app\build\outputs\apk\release\app-release.apk" -Destination "C:\Users\xctia\jotihuntv3\jotihunt-release-vX.apk" -Force
 ```
 
-**Last version built:** v8
+**Last version built:** v9
+
+**Important — app icon changes:** the launcher icon ships from the native
+resources in `android/app/src/main/res/mipmap-*`, NOT directly from
+`assets/icon.png`. After changing `assets/icon.png` or `assets/adaptive-icon.png`
+you MUST run `npx expo prebuild -p android --no-install` to regenerate those
+mipmaps before building, otherwise the APK keeps the old icon. Set the version
+in `app.json` (`version` + `android.versionCode`) before prebuild so it carries
+into the generated `build.gradle`.
 
 ## Full Build Process (From Scratch)
 
@@ -185,6 +193,7 @@ The app is configured in `app.json`:
 
 | Version | Date | Notes |
 |---------|------|-------|
+| v9 | May 22, 2026 | New GOG launcher icon: ran expo prebuild to regenerate native mipmaps (assets had changed but APK kept old icon); v1.0.9 / versionCode 9 |
 | v8 | May 22, 2026 | Fix login refresh loop: stop dispatching AUTH_START (it unmounted LoginScreen mid-login, breaking tenant selection and error display) |
 | v7 | May 22, 2026 | Fix login network error: point app at https://jotihunt-gog.nl (was hardcoded LAN IP); add Socket.IO /api/socket.io/ path |
 | v6 | March 28, 2026 | Jotihunt logo branding (icon, adaptive-icon, splash screen) |

@@ -1,4 +1,25 @@
 {
+  "welcome": {
+    "title": "Jotihunt App - v16.3 beta",
+    "intro": "Leuk dat je erbij bent! Dit is de allereerste beta:",
+    "features": [
+      "- Live kaart met vossenlocaties en voorspellingscirkels",
+      "- Hunts indienen met foto en de goedkeuring volgen",
+      "- Teamchat en algemene chat",
+      "- Updates, hints en opdrachten volgen",
+      "- Vossenlocaties melden en routes bekijken",
+      "- Realtime meldingen",
+      "- Taalondersteuning (nu Nederlands en Engels)",
+      "- Er komen nog 2 functies aan, een AI locatiecalculator en route-tracking voor hunters!"
+    ],
+    "mobileTitle": "📱 Telefoon",
+    "mobileText": "Als je inlogt op de site op je telefoon, kun je de mobiele app installeren voor de optimale ervaring!",
+    "downloadApp": "📥 Download de app (Android)",
+    "betaNote": "Dit is een beta, dus je kunt nog foutjes tegenkomen.",
+    "contactTitle": "Storingen of suggesties?",
+    "poweredBy": "Powered by Kaniken™",
+    "cta": "Aan de slag!"
+  },
   "nav": {
     "map": "Kaart",
     "chat": "Chat",

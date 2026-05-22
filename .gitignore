@@ -5,6 +5,10 @@ backend/database/*.db-shm
 backend/database/*.db-wal
 .claude/
 mobile/build_*.log
+mobile/.expo/
+
+# Runtime user uploads (hunt photos) — not source, kept on the server
+backend/uploads/
 
 # Build artifacts — regenerated on the server during deploy, never commit
 # (tracking these makes `git pull` fail after the server rebuilds them).
