@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Area } from '../types';
 import { Clock, Eye, EyeOff, Target, ChevronDown, ChevronUp } from 'lucide-react';
 
@@ -8,6 +9,7 @@ interface FoxStatusOverlayProps {
 
 const FoxStatusOverlay: React.FC<FoxStatusOverlayProps> = ({ areas }) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  const { t } = useTranslation();
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -38,19 +40,19 @@ const FoxStatusOverlay: React.FC<FoxStatusOverlayProps> = ({ areas }) => {
   const getStatusText = (status: string) => {
     switch (status) {
       case 'active':
-        return 'Active';
+        return t('fox.active');
       case 'hunted':
-        return 'Hunted';
+        return t('fox.hunted');
       case 'inactive':
-        return 'Inactive';
+        return t('fox.inactive');
       default:
-        return 'Unknown';
+        return t('fox.unknown');
     }
   };
 
   const formatTimeSince = (dateString?: string) => {
-    if (!dateString) return 'Unknown';
-    
+    if (!dateString) return t('fox.unknown');
+
     const date = new Date(dateString);
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
@@ -59,13 +61,13 @@ const FoxStatusOverlay: React.FC<FoxStatusOverlayProps> = ({ areas }) => {
     const diffDays = Math.floor(diffHours / 24);
 
     if (diffMinutes < 1) {
-      return 'Now';
+      return t('fox.now');
     } else if (diffMinutes < 60) {
-      return `${diffMinutes}m ago`;
+      return t('fox.minutesAgo', { n: diffMinutes });
     } else if (diffHours < 24) {
-      return `${diffHours}h ago`;
+      return t('fox.hoursAgo', { n: diffHours });
     } else {
-      return `${diffDays}d ago`;
+      return t('fox.daysAgo', { n: diffDays });
     }
   };
 
@@ -82,7 +84,7 @@ const FoxStatusOverlay: React.FC<FoxStatusOverlayProps> = ({ areas }) => {
         >
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <span className="text-xs font-semibold text-gray-900 dark:text-gray-100">Fox Status</span>
+              <span className="text-xs font-semibold text-gray-900 dark:text-gray-100">{t('fox.status')}</span>
               <div className="flex items-center space-x-2">
                 <div className="flex items-center space-x-1">
                   <div className="w-2 h-2 bg-green-500 rounded-full"></div>
@@ -129,26 +131,26 @@ const FoxStatusOverlay: React.FC<FoxStatusOverlayProps> = ({ areas }) => {
                       </span>
                     </div>
                     <div className="text-xs text-gray-500 dark:text-gray-400">
-                      {area.points}pts
+                      {area.points}{t('fox.points')}
                     </div>
                   </div>
                   
                   <div className="mt-1 flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
                     <div className="flex items-center space-x-1">
                       <Clock className="w-3 h-3" />
-                      <span>Status: {formatTimeSince(area.updated_at)}</span>
+                      <span>{t('fox.statusLabel')}: {formatTimeSince(area.updated_at)}</span>
                     </div>
                     {area.last_seen && (
                       <div className="flex items-center space-x-1">
                         <Eye className="w-3 h-3" />
-                        <span>Seen: {formatTimeSince(area.last_seen)}</span>
+                        <span>{t('fox.seen')}: {formatTimeSince(area.last_seen)}</span>
                       </div>
                     )}
                   </div>
                   
                   {area.lat && area.lng && (
                     <div className="mt-1 text-xs text-gray-400 dark:text-gray-500">
-                      Location: {area.lat.toFixed(4)}, {area.lng.toFixed(4)}
+                      {t('fox.location')}: {area.lat.toFixed(4)}, {area.lng.toFixed(4)}
                     </div>
                   )}
                 </div>

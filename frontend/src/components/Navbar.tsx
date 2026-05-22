@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
 import { Map, MessageSquare, Camera, FileText, Book, Shield, Route, Menu, X, Target } from 'lucide-react';
 import NotificationCenter from './NotificationCenter';
+import LanguageSwitcher from './LanguageSwitcher';
 import { isAdmin } from '../utils/roleUtils';
 
 const Navbar: React.FC = () => {
@@ -11,6 +13,7 @@ const Navbar: React.FC = () => {
   const { state, logout } = useAuth();
   const { user, team } = state;
   const location = useLocation();
+  const { t } = useTranslation();
 
   const handleLogout = () => {
     logout();
@@ -23,14 +26,14 @@ const Navbar: React.FC = () => {
   };
 
   const navigation = [
-    { name: 'Map', href: '/', icon: Map, current: location.pathname === '/' },
-    { name: 'Chat', href: '/chat', icon: MessageSquare, current: location.pathname === '/chat' },
-    { name: 'Hunt', href: '/hunt', icon: Camera, current: location.pathname === '/hunt' },
-    { name: 'Routes', href: '/routes', icon: Target, current: location.pathname === '/routes' },
-    { name: 'Updates', href: '/updates', icon: FileText, current: location.pathname === '/updates' },
-    { name: 'Regels', href: '/rules', icon: Book, current: location.pathname === '/rules' },
+    { name: t('nav.map'), href: '/', icon: Map, current: location.pathname === '/' },
+    { name: t('nav.chat'), href: '/chat', icon: MessageSquare, current: location.pathname === '/chat' },
+    { name: t('nav.hunt'), href: '/hunt', icon: Camera, current: location.pathname === '/hunt' },
+    { name: t('nav.routes'), href: '/routes', icon: Target, current: location.pathname === '/routes' },
+    { name: t('nav.updates'), href: '/updates', icon: FileText, current: location.pathname === '/updates' },
+    { name: t('nav.rules'), href: '/rules', icon: Book, current: location.pathname === '/rules' },
     ...(isAdmin(user) ? [
-      { name: 'Admin', href: '/admin', icon: Shield, current: location.pathname === '/admin' }
+      { name: t('nav.admin'), href: '/admin', icon: Shield, current: location.pathname === '/admin' }
     ] : []),
   ];
 
@@ -41,7 +44,7 @@ const Navbar: React.FC = () => {
           <div className="flex items-center">
             <div className="flex-shrink-0">
               <Link to="/" className="text-xl font-bold text-gray-900 dark:text-gray-100 hover:text-primary-600 dark:hover:text-primary-400">
-                Jotihunt V2
+                Jotihunt | GOG
               </Link>
             </div>
             
@@ -51,7 +54,7 @@ const Navbar: React.FC = () => {
                 const Icon = item.icon;
                 return (
                   <Link
-                    key={item.name}
+                    key={item.href}
                     to={item.href}
                     className={`inline-flex items-center space-x-2 px-1 pt-1 text-sm font-medium transition-colors duration-200 ${
                       item.current
@@ -69,7 +72,7 @@ const Navbar: React.FC = () => {
             {team && (
               <div className="ml-6 flex items-center">
                 <span className="text-sm text-gray-500 dark:text-gray-400">
-                  Team: <span className="font-medium text-gray-900 dark:text-gray-100">{team.name}</span>
+                  {t('navbar.team')}: <span className="font-medium text-gray-900 dark:text-gray-100">{team.name}</span>
                 </span>
                 {team.area && (
                   <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary-100 text-primary-800 dark:bg-primary-900 dark:text-primary-200">
@@ -89,13 +92,18 @@ const Navbar: React.FC = () => {
                 className="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary-500"
                 aria-expanded="false"
               >
-                <span className="sr-only">Open main menu</span>
+                <span className="sr-only">{t('navbar.openMenu')}</span>
                 {isMobileMenuOpen ? (
                   <X className="block h-6 w-6" aria-hidden="true" />
                 ) : (
                   <Menu className="block h-6 w-6" aria-hidden="true" />
                 )}
               </button>
+            </div>
+
+            {/* Language switcher */}
+            <div className="hidden sm:block">
+              <LanguageSwitcher />
             </div>
 
             {/* Notification Center */}
@@ -123,7 +131,7 @@ const Navbar: React.FC = () => {
                         : user?.username}
                     </div>
                     <div className="text-xs text-gray-500 dark:text-gray-400">
-                      {isAdmin(user) ? 'Administrator' : 'Hunter'}
+                      {isAdmin(user) ? t('roles.administrator') : t('roles.hunter')}
                     </div>
                   </div>
                   <svg
@@ -156,7 +164,7 @@ const Navbar: React.FC = () => {
                       onClick={() => setIsProfileOpen(false)}
                       className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                     >
-                      Location Settings
+                      {t('navbar.locationSettings')}
                     </Link>
                     
                     {isAdmin(user) && (
@@ -166,7 +174,7 @@ const Navbar: React.FC = () => {
                           onClick={() => setIsProfileOpen(false)}
                           className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                         >
-                          Admin Panel
+                          {t('navbar.adminPanel')}
                         </Link>
                         <Link
                           to="/admin/routes"
@@ -174,7 +182,7 @@ const Navbar: React.FC = () => {
                           className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center space-x-2"
                         >
                           <Route className="w-4 h-4" />
-                          <span>Route Tracking</span>
+                          <span>{t('navbar.routeTracking')}</span>
                         </Link>
                       </>
                     )}
@@ -183,7 +191,7 @@ const Navbar: React.FC = () => {
                       onClick={handleLogout}
                       className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                     >
-                      Sign out
+                      {t('navbar.signOut')}
                     </button>
                   </div>
                 </div>
@@ -200,7 +208,7 @@ const Navbar: React.FC = () => {
                 const Icon = item.icon;
                 return (
                   <Link
-                    key={item.name}
+                    key={item.href}
                     to={item.href}
                     onClick={closeMobileMenu}
                     className={`flex items-center space-x-3 px-3 py-2 rounded-md text-base font-medium transition-colors duration-200 ${
@@ -232,7 +240,7 @@ const Navbar: React.FC = () => {
                         : user?.username}
                     </p>
                     <p className="text-xs text-gray-600 dark:text-gray-400">
-                      {isAdmin(user) ? 'Administrator' : 'Hunter'}
+                      {isAdmin(user) ? t('roles.administrator') : t('roles.hunter')}
                     </p>
                   </div>
                 </div>
@@ -241,7 +249,11 @@ const Navbar: React.FC = () => {
                 <div className="mb-3 sm:hidden">
                   <div className="flex items-center space-x-3 px-3 py-2">
                     <NotificationCenter />
-                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Notifications</span>
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{t('navbar.notifications')}</span>
+                  </div>
+                  <div className="flex items-center justify-between px-3 py-2">
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{t('navbar.language')}</span>
+                    <LanguageSwitcher />
                   </div>
                 </div>
 
@@ -252,7 +264,7 @@ const Navbar: React.FC = () => {
                     onClick={closeMobileMenu}
                     className="flex items-center space-x-3 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md"
                   >
-                    <span>Location Settings</span>
+                    <span>{t('navbar.locationSettings')}</span>
                   </Link>
                   
 
@@ -264,7 +276,7 @@ const Navbar: React.FC = () => {
                         className="flex items-center space-x-3 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md"
                       >
                         <Shield className="w-4 h-4" />
-                        <span>Admin Panel</span>
+                        <span>{t('navbar.adminPanel')}</span>
                       </Link>
                       <Link
                         to="/admin/routes"
@@ -272,7 +284,7 @@ const Navbar: React.FC = () => {
                         className="flex items-center space-x-3 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md"
                       >
                         <Route className="w-4 h-4" />
-                        <span>Route Tracking</span>
+                        <span>{t('navbar.routeTracking')}</span>
                       </Link>
                     </>
                   )}
@@ -281,7 +293,7 @@ const Navbar: React.FC = () => {
                     onClick={handleLogout}
                     className="flex items-center space-x-3 w-full px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md text-left"
                   >
-                    <span>Sign out</span>
+                    <span>{t('navbar.signOut')}</span>
                   </button>
                 </div>
               </div>

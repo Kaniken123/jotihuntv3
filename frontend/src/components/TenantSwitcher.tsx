@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
 import { Tenant } from '../types';
 
@@ -9,6 +10,7 @@ interface TenantSwitcherProps {
 const TenantSwitcher: React.FC<TenantSwitcherProps> = ({ className = '' }) => {
   const { state, switchTenant } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
+  const { t } = useTranslation();
 
   if (!state.isSuperAdmin || !state.availableTenants?.length) {
     return null;
@@ -31,7 +33,7 @@ const TenantSwitcher: React.FC<TenantSwitcherProps> = ({ className = '' }) => {
   return (
     <div className={`tenant-switcher ${className}`}>
       <label className="text-sm font-medium text-gray-700">
-        Current Tenant:
+        {t('tenant.current')}
       </label>
       <select
         value={state.currentTenant?.id || ''}
@@ -47,7 +49,7 @@ const TenantSwitcher: React.FC<TenantSwitcherProps> = ({ className = '' }) => {
       </select>
       {isLoading && (
         <div className="text-xs text-gray-500 mt-1">
-          Switching tenant...
+          {t('tenant.switching')}
         </div>
       )}
     </div>

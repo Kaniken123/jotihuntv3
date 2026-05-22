@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { api } from '../services/authService';
 import { Area, Hunt } from '../types';
 import LoadingSpinner from './LoadingSpinner';
 import { Camera, MapPin, Clock, Trophy } from 'lucide-react';
 
 const HuntRegistration: React.FC = () => {
+  const { t } = useTranslation();
   const [areas, setAreas] = useState<Area[]>([]);
   const [selectedArea, setSelectedArea] = useState('');
   const [photo, setPhoto] = useState<File | null>(null);
@@ -58,12 +60,12 @@ const HuntRegistration: React.FC = () => {
         },
         (error) => {
           console.error('Error getting location:', error);
-          setError('Unable to get current location. Please enable location services.');
+          setError(t('hunt.locationError'));
         },
         { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }
       );
     } else {
-      setError('Geolocation is not supported by this browser.');
+      setError(t('hunt.geoUnsupported'));
     }
   };
 
@@ -71,12 +73,12 @@ const HuntRegistration: React.FC = () => {
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 10 * 1024 * 1024) { // 10MB limit
-        setError('Photo must be smaller than 10MB');
+        setError(t('hunt.photoTooLarge'));
         return;
       }
-      
+
       if (!file.type.startsWith('image/')) {
-        setError('Please select an image file');
+        setError(t('hunt.selectImage'));
         return;
       }
 
@@ -100,7 +102,7 @@ const HuntRegistration: React.FC = () => {
     setSuccess('');
 
     if (!selectedArea || !photo) {
-      setError('Please select an area and take a photo');
+      setError(t('hunt.selectAreaPhoto'));
       return;
     }
 
@@ -124,7 +126,7 @@ const HuntRegistration: React.FC = () => {
         },
       });
 
-      setSuccess('Hunt submitted successfully! It will be reviewed by administrators.');
+      setSuccess(t('hunt.submitSuccess'));
       setSelectedArea('');
       setPhoto(null);
       setPhotoPreview(null);
@@ -132,7 +134,7 @@ const HuntRegistration: React.FC = () => {
       // Reload data
       loadRecentHunts();
     } catch (error: any) {
-      setError(error.response?.data?.error || 'Failed to submit hunt');
+      setError(error.response?.data?.error || t('hunt.submitFailed'));
     } finally {
       setIsSubmitting(false);
     }
@@ -163,7 +165,7 @@ const HuntRegistration: React.FC = () => {
       {/* Hunt Submission Form */}
       <div className="card p-6">
         <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-4">
-          Submit Fox Hunt
+          {t('hunt.title')}
         </h2>
 
         {error && (
@@ -182,7 +184,7 @@ const HuntRegistration: React.FC = () => {
           {/* Fox Area Selection */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Fox Area
+              {t('hunt.foxArea')}
             </label>
             <select
               value={selectedArea}
@@ -190,30 +192,30 @@ const HuntRegistration: React.FC = () => {
               className="input"
               required
             >
-              <option value="">Select a fox area to hunt</option>
+              <option value="">{t('hunt.selectFoxArea')}</option>
               {areas.length === 0 ? (
-                <option value="" disabled>Loading fox areas...</option>
+                <option value="" disabled>{t('hunt.loadingAreas')}</option>
               ) : (
                 areas.map((area) => (
-                  <option 
-                    key={area.id} 
+                  <option
+                    key={area.id}
                     value={area.name}
                   >
-                    🦊 {area.name} {area.fox_team_name ? `- ${area.fox_team_name}` : ''} 
-                    {area.status === 'hunted' ? ' ✅ (Hunted)' : area.status === 'active' ? ' 🎯 (Active)' : ' ⏳ (Ready to hunt)'}
-                    {area.last_seen ? ` - Last seen: ${new Date(area.last_seen).toLocaleDateString()}` : ''}
+                    🦊 {area.name} {area.fox_team_name ? `- ${area.fox_team_name}` : ''}
+                    {area.status === 'hunted' ? t('hunt.optHunted') : area.status === 'active' ? t('hunt.optActive') : t('hunt.optReady')}
+                    {area.last_seen ? ` - ${t('hunt.lastSeen')}: ${new Date(area.last_seen).toLocaleDateString()}` : ''}
                   </option>
                 ))
               )}
             </select>
             {areas.length === 0 && (
               <p className="text-sm text-yellow-600 dark:text-yellow-400 mt-1">
-                ⚠️ No fox areas found. Contact admin to set up fox teams.
+                {t('hunt.noAreas')}
               </p>
             )}
             {areas.length > 0 && (
               <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                🎯 Found {areas.length} fox area{areas.length !== 1 ? 's' : ''} available for hunting
+                {t('hunt.areasFound', { count: areas.length })}
               </p>
             )}
           </div>
@@ -221,7 +223,7 @@ const HuntRegistration: React.FC = () => {
           {/* Photo Upload */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Hunt Photo
+              {t('hunt.huntPhoto')}
             </label>
             <div className="space-y-2">
               <input
@@ -232,7 +234,7 @@ const HuntRegistration: React.FC = () => {
                 required
               />
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                Take a photo as proof of your hunt. Max 10MB.
+                {t('hunt.photoHelp')}
               </p>
             </div>
             
@@ -252,11 +254,11 @@ const HuntRegistration: React.FC = () => {
             <MapPin size={16} className="text-gray-500" />
             {currentLocation ? (
               <span className="text-green-600 dark:text-green-400">
-                Location acquired ({currentLocation.lat.toFixed(6)}, {currentLocation.lng.toFixed(6)})
+                {t('hunt.locationAcquired', { coords: `${currentLocation.lat.toFixed(6)}, ${currentLocation.lng.toFixed(6)}` })}
               </span>
             ) : (
               <span className="text-yellow-600 dark:text-yellow-400">
-                Location optional - will use default if not available
+                {t('hunt.locationOptional')}
               </span>
             )}
           </div>
@@ -270,12 +272,12 @@ const HuntRegistration: React.FC = () => {
             {isSubmitting ? (
               <>
                 <LoadingSpinner size="sm" />
-                <span>Submitting Hunt...</span>
+                <span>{t('hunt.submitting')}</span>
               </>
             ) : (
               <>
                 <Camera size={16} />
-                <span>Submit Hunt</span>
+                <span>{t('hunt.submit')}</span>
               </>
             )}
           </button>
@@ -288,7 +290,7 @@ const HuntRegistration: React.FC = () => {
       {recentHunts.length > 0 && (
         <div className="card p-6">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-            Recent Hunts
+            {t('hunt.recentHunts')}
           </h3>
           <div className="space-y-3">
             {recentHunts.map((hunt) => (
@@ -306,11 +308,11 @@ const HuntRegistration: React.FC = () => {
                 </div>
                 <div className="text-right">
                   <p className={`text-sm font-medium ${getStatusColor(hunt.status)}`}>
-                    {hunt.status.charAt(0).toUpperCase() + hunt.status.slice(1)}
+                    {t(`hunt.status.${hunt.status}`, hunt.status)}
                   </p>
                   {hunt.status === 'approved' && (
                     <p className="text-sm text-gray-600 dark:text-gray-400">
-                      +{hunt.points_awarded} points
+                      {t('hunt.pointsAwarded', { n: hunt.points_awarded })}
                     </p>
                   )}
                   {hunt.status === 'rejected' && hunt.rejection_reason && (

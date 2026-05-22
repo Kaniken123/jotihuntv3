@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../services/authService';
 import { LocationSettings as LocationSettingsType } from '../types';
@@ -27,6 +28,7 @@ const LocationSettings: React.FC = () => {
   const [locationHistory, setLocationHistory] = useState<any[]>([]);
 
   const { state } = useAuth();
+  const { t } = useTranslation();
 
   useEffect(() => {
     loadSettings();
@@ -40,7 +42,7 @@ const LocationSettings: React.FC = () => {
       setSettings(response.data);
     } catch (error) {
       console.error('Failed to load location settings:', error);
-      setError('Failed to load location settings');
+      setError(t('locationSettings.loadFailed'));
     } finally {
       setIsLoading(false);
     }
@@ -90,25 +92,25 @@ const LocationSettings: React.FC = () => {
       });
 
       setSettings(response.data);
-      setSuccess('Location settings saved successfully!');
+      setSuccess(t('locationSettings.saveSuccess'));
     } catch (error: any) {
-      setError(error.response?.data?.error || 'Failed to save settings');
+      setError(error.response?.data?.error || t('locationSettings.saveFailed'));
     } finally {
       setIsSaving(false);
     }
   };
 
   const handleDeleteLocationHistory = async () => {
-    if (!state.user || !confirm('Are you sure you want to delete all your location history? This cannot be undone.')) {
+    if (!state.user || !confirm(t('locationSettings.deleteConfirm'))) {
       return;
     }
 
     try {
       await api.delete(`/locations/history/${state.user.id}`);
       setLocationHistory([]);
-      setSuccess('Location history deleted successfully');
+      setSuccess(t('locationSettings.historyDeleted'));
     } catch (error: any) {
-      setError(error.response?.data?.error || 'Failed to delete location history');
+      setError(error.response?.data?.error || t('locationSettings.deleteFailed'));
     }
   };
 
@@ -122,9 +124,9 @@ const LocationSettings: React.FC = () => {
   };
 
   const formatTime = (seconds: number): string => {
-    if (seconds < 60) return `${seconds} seconds`;
-    if (seconds < 3600) return `${Math.floor(seconds / 60)} minutes`;
-    return `${Math.floor(seconds / 3600)} hours`;
+    if (seconds < 60) return t('locationSettings.seconds', { n: seconds });
+    if (seconds < 3600) return t('locationSettings.minutes', { n: Math.floor(seconds / 60) });
+    return t('locationSettings.hours', { n: Math.floor(seconds / 3600) });
   };
 
   if (isLoading) {
@@ -141,10 +143,10 @@ const LocationSettings: React.FC = () => {
         <div className="card p-6 text-center">
           <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-4" />
           <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
-            Unable to Load Settings
+            {t('locationSettings.unableLoadTitle')}
           </h2>
           <p className="text-gray-600 dark:text-gray-400">
-            There was an error loading your location settings.
+            {t('locationSettings.unableLoadDesc')}
           </p>
         </div>
       </div>
@@ -155,10 +157,10 @@ const LocationSettings: React.FC = () => {
     <div className="max-w-4xl mx-auto p-6 space-y-6">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
-          Location Settings
+          {t('locationSettings.pageTitle')}
         </h1>
         <p className="text-gray-600 dark:text-gray-400">
-          Manage your location tracking preferences and privacy settings
+          {t('locationSettings.pageSubtitle')}
         </p>
       </div>
 
@@ -178,40 +180,40 @@ const LocationSettings: React.FC = () => {
       <div className="card p-6">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center space-x-2">
           <MapPin className="w-5 h-5" />
-          <span>Current Location Status</span>
+          <span>{t('locationSettings.currentStatus')}</span>
         </h2>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Location Sharing</span>
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{t('locationSettings.locationSharing')}</span>
               <div className="flex items-center space-x-2">
                 {settings.location_sharing_enabled ? (
                   <>
                     <Wifi className="w-4 h-4 text-green-500" />
-                    <span className="text-sm text-green-600 dark:text-green-400">Enabled</span>
+                    <span className="text-sm text-green-600 dark:text-green-400">{t('locationSettings.enabled')}</span>
                   </>
                 ) : (
                   <>
                     <WifiOff className="w-4 h-4 text-red-500" />
-                    <span className="text-sm text-red-600 dark:text-red-400">Disabled</span>
+                    <span className="text-sm text-red-600 dark:text-red-400">{t('locationSettings.disabled')}</span>
                   </>
                 )}
               </div>
             </div>
 
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Privacy Mode</span>
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{t('locationSettings.privacyMode')}</span>
               <div className="flex items-center space-x-2">
                 {settings.privacy_mode ? (
                   <>
                     <EyeOff className="w-4 h-4 text-orange-500" />
-                    <span className="text-sm text-orange-600 dark:text-orange-400">Active</span>
+                    <span className="text-sm text-orange-600 dark:text-orange-400">{t('locationSettings.active')}</span>
                   </>
                 ) : (
                   <>
                     <Eye className="w-4 h-4 text-blue-500" />
-                    <span className="text-sm text-blue-600 dark:text-blue-400">Inactive</span>
+                    <span className="text-sm text-blue-600 dark:text-blue-400">{t('locationSettings.inactive')}</span>
                   </>
                 )}
               </div>
@@ -220,14 +222,14 @@ const LocationSettings: React.FC = () => {
 
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Tracking Interval</span>
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{t('locationSettings.trackingInterval')}</span>
               <span className="text-sm text-gray-900 dark:text-gray-100">
                 {formatTime(settings.tracking_interval)}
               </span>
             </div>
 
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Offline Threshold</span>
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{t('locationSettings.offlineThreshold')}</span>
               <span className="text-sm text-gray-900 dark:text-gray-100">
                 {formatTime(settings.offline_threshold)}
               </span>
@@ -238,7 +240,7 @@ const LocationSettings: React.FC = () => {
         {currentLocation && (
           <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
             <p className="text-sm text-blue-800 dark:text-blue-200">
-              <strong>Current coordinates:</strong> {currentLocation.lat.toFixed(6)}, {currentLocation.lng.toFixed(6)}
+              <strong>{t('locationSettings.currentCoords')}</strong> {currentLocation.lat.toFixed(6)}, {currentLocation.lng.toFixed(6)}
             </p>
           </div>
         )}
@@ -248,7 +250,7 @@ const LocationSettings: React.FC = () => {
       <div className="card p-6">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center space-x-2">
           <Settings className="w-5 h-5" />
-          <span>Location Preferences</span>
+          <span>{t('locationSettings.preferences')}</span>
         </h2>
 
         <div className="space-y-6">
@@ -256,10 +258,10 @@ const LocationSettings: React.FC = () => {
           <div className="flex items-center justify-between">
             <div className="flex-1">
               <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                Enable Location Sharing
+                {t('locationSettings.enableSharing')}
               </h3>
               <p className="text-sm text-gray-500 dark:text-gray-400">
-                Allow your team members to see your location on the map
+                {t('locationSettings.enableSharingDesc')}
               </p>
             </div>
             <button
@@ -280,10 +282,10 @@ const LocationSettings: React.FC = () => {
           <div className="flex items-center justify-between">
             <div className="flex-1">
               <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                Privacy Mode
+                {t('locationSettings.privacyMode')}
               </h3>
               <p className="text-sm text-gray-500 dark:text-gray-400">
-                Hide your location from all users (including team members)
+                {t('locationSettings.privacyModeDesc')}
               </p>
             </div>
             <button
@@ -303,7 +305,7 @@ const LocationSettings: React.FC = () => {
           {/* Tracking Interval */}
           <div>
             <label className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
-              Location Update Interval
+              {t('locationSettings.updateInterval')}
             </label>
             <div className="flex items-center space-x-4">
               <input
@@ -320,14 +322,14 @@ const LocationSettings: React.FC = () => {
               </span>
             </div>
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              How often your location is updated (lower values use more battery)
+              {t('locationSettings.updateIntervalHelp')}
             </p>
           </div>
 
           {/* Offline Threshold */}
           <div>
             <label className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
-              Offline Threshold
+              {t('locationSettings.offlineThreshold')}
             </label>
             <div className="flex items-center space-x-4">
               <input
@@ -344,7 +346,7 @@ const LocationSettings: React.FC = () => {
               </span>
             </div>
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              How long before you're considered offline
+              {t('locationSettings.offlineThresholdHelp')}
             </p>
           </div>
         </div>
@@ -358,12 +360,12 @@ const LocationSettings: React.FC = () => {
             {isSaving ? (
               <>
                 <LoadingSpinner size="sm" />
-                <span>Saving...</span>
+                <span>{t('locationSettings.saving')}</span>
               </>
             ) : (
               <>
                 <Save size={16} />
-                <span>Save Settings</span>
+                <span>{t('locationSettings.saveSettings')}</span>
               </>
             )}
           </button>
@@ -374,32 +376,32 @@ const LocationSettings: React.FC = () => {
       <div className="card p-6">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center space-x-2">
           <Info className="w-5 h-5" />
-          <span>Privacy Information</span>
+          <span>{t('locationSettings.privacyInfo')}</span>
         </h2>
 
         <div className="space-y-4 text-sm text-gray-600 dark:text-gray-400">
           <div className="flex items-start space-x-3">
             <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
             <p>
-              Your location data is automatically deleted after 7 days to protect your privacy.
+              {t('locationSettings.privacyInfo1')}
             </p>
           </div>
           <div className="flex items-start space-x-3">
             <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
             <p>
-              When privacy mode is enabled, your location is not visible to anyone, including team members.
+              {t('locationSettings.privacyInfo2')}
             </p>
           </div>
           <div className="flex items-start space-x-3">
             <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
             <p>
-              Location sharing can be disabled while still allowing hunt submissions with manual coordinates.
+              {t('locationSettings.privacyInfo3')}
             </p>
           </div>
           <div className="flex items-start space-x-3">
             <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
             <p>
-              Administrators may still see your location during hunt submissions for verification purposes.
+              {t('locationSettings.privacyInfo4')}
             </p>
           </div>
         </div>
@@ -410,23 +412,23 @@ const LocationSettings: React.FC = () => {
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center space-x-2">
             <Clock className="w-5 h-5" />
-            <span>Recent Location History</span>
+            <span>{t('locationSettings.recentHistory')}</span>
           </h2>
-          
+
           {locationHistory.length > 0 && (
             <button
               onClick={handleDeleteLocationHistory}
               className="btn btn-danger btn-sm flex items-center space-x-2"
             >
               <Trash2 size={14} />
-              <span>Clear History</span>
+              <span>{t('locationSettings.clearHistory')}</span>
             </button>
           )}
         </div>
 
         {locationHistory.length === 0 ? (
           <p className="text-gray-500 dark:text-gray-400 text-center py-4">
-            No location history available
+            {t('locationSettings.noHistory')}
           </p>
         ) : (
           <div className="space-y-2">
@@ -438,7 +440,7 @@ const LocationSettings: React.FC = () => {
                   </p>
                   <p className="text-xs text-gray-500 dark:text-gray-400">
                     {new Date(location.recorded_at).toLocaleString()}
-                    {location.accuracy && ` • Accuracy: ${Math.round(location.accuracy)}m`}
+                    {location.accuracy && ` • ${t('locationSettings.accuracy')}: ${Math.round(location.accuracy)}m`}
                   </p>
                 </div>
                 <a
@@ -447,7 +449,7 @@ const LocationSettings: React.FC = () => {
                   rel="noopener noreferrer"
                   className="text-primary-600 hover:text-primary-700 dark:text-primary-400 text-sm"
                 >
-                  View on Map
+                  {t('locationSettings.viewOnMap')}
                 </a>
               </div>
             ))}

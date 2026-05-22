@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
 import { useWebSocket } from '../contexts/WebSocketContext';
 import { api } from '../services/authService';
@@ -51,6 +52,7 @@ const ModernChat: React.FC = () => {
   
   const { state } = useAuth();
   const { socket } = useWebSocket();
+  const { t } = useTranslation();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -244,10 +246,10 @@ const ModernChat: React.FC = () => {
         {/* Header */}
         <div className="p-4 border-b border-gray-200 dark:border-gray-700">
           <h1 className="text-lg font-semibold text-gray-900 dark:text-white">
-            Jotihunt Chat
+            {t('chat.appTitle')}
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            Stay connected with your team
+            {t('chat.appSubtitle')}
           </p>
         </div>
 
@@ -339,7 +341,7 @@ const ModernChat: React.FC = () => {
                   type="text"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Search messages..."
+                  placeholder={t('chat.searchMessages')}
                   className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
@@ -352,10 +354,10 @@ const ModernChat: React.FC = () => {
               <div className="text-center py-12">
                 <div className="text-6xl mb-4">💬</div>
                 <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-                  No messages yet
+                  {t('chat.noMessagesTitle')}
                 </h3>
                 <p className="text-gray-500 dark:text-gray-400">
-                  Be the first to start the conversation in {activeChannel.name}!
+                  {t('chat.beFirst', { channel: activeChannel.name })}
                 </p>
               </div>
             ) : (
@@ -392,7 +394,7 @@ const ModernChat: React.FC = () => {
                             </span>
                             <span className="text-xs text-gray-500 dark:text-gray-400">
                               {formatTime(message.created_at)}
-                              {message.is_edited && <span className="ml-1 italic">(edited)</span>}
+                              {message.is_edited && <span className="ml-1 italic">{t('chat.edited')}</span>}
                             </span>
                           </div>
                         )}
@@ -425,7 +427,7 @@ const ModernChat: React.FC = () => {
                                   className="flex items-center space-x-2 text-blue-300 hover:text-blue-100 transition-colors"
                                 >
                                   <Paperclip size={16} />
-                                  <span className="text-sm">View attachment</span>
+                                  <span className="text-sm">{t('chat.viewAttachment')}</span>
                                 </a>
                               )}
                             </div>
@@ -506,7 +508,7 @@ const ModernChat: React.FC = () => {
                         handleSendMessage(e);
                       }
                     }}
-                    placeholder={`Message ${activeChannel.name}...`}
+                    placeholder={t('chat.messagePlaceholder', { channel: activeChannel.name })}
                     className="w-full px-4 py-3 bg-transparent border-0 focus:outline-none resize-none max-h-32 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
                     rows={1}
                     disabled={isSending}
@@ -563,7 +565,7 @@ const ModernChat: React.FC = () => {
                       ) : (
                         <Send size={16} />
                       )}
-                      <span>Send</span>
+                      <span>{t('chat.send')}</span>
                     </button>
                   </div>
                 </div>
@@ -576,10 +578,10 @@ const ModernChat: React.FC = () => {
           <div className="text-center">
             <div className="text-6xl mb-4">💭</div>
             <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-              No channels available
+              {t('chat.noChannelsTitle')}
             </h3>
             <p className="text-gray-500 dark:text-gray-400">
-              Join a team to start chatting!
+              {t('chat.joinTeam')}
             </p>
           </div>
         </div>

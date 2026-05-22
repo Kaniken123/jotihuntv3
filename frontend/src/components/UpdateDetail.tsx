@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
 import { gameService } from '../services/gameService';
 import { Article } from '../types';
@@ -29,6 +30,7 @@ const UpdateDetail: React.FC = () => {
   const [isSubmittingSolution, setIsSubmittingSolution] = useState(false);
 
   const { state } = useAuth();
+  const { t } = useTranslation();
 
   useEffect(() => {
     if (id) {
@@ -50,7 +52,7 @@ const UpdateDetail: React.FC = () => {
       }
     } catch (error: any) {
       console.error('Failed to load article:', error);
-      setError(error.response?.data?.message || 'Failed to load article');
+      setError(error.response?.data?.message || t('updateDetail.loadFailed'));
     } finally {
       setIsLoading(false);
     }
@@ -175,11 +177,11 @@ const UpdateDetail: React.FC = () => {
 
     if (diffHours < 1) {
       const diffMinutes = Math.floor(diffMs / (1000 * 60));
-      return `${diffMinutes} minute${diffMinutes !== 1 ? 's' : ''} ago`;
+      return t('time.minutesAgo', { count: diffMinutes });
     } else if (diffHours < 24) {
-      return `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`;
+      return t('time.hoursAgo', { count: diffHours });
     } else if (diffDays < 7) {
-      return `${diffDays} day${diffDays !== 1 ? 's' : ''} ago`;
+      return t('time.daysAgo', { count: diffDays });
     } else {
       return date.toLocaleDateString();
     }
@@ -200,13 +202,13 @@ const UpdateDetail: React.FC = () => {
       <div className="max-w-4xl mx-auto p-6">
         <div className="card p-8 text-center">
           <p className="text-red-600 dark:text-red-400 mb-4">
-            {error || 'Article not found'}
+            {error || t('updateDetail.notFound')}
           </p>
           <button
             onClick={() => navigate('/updates')}
             className="btn btn-primary"
           >
-            Back to Updates
+            {t('updateDetail.backToUpdates')}
           </button>
         </div>
       </div>
@@ -224,7 +226,7 @@ const UpdateDetail: React.FC = () => {
           className="flex items-center space-x-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
         >
           <ArrowLeft className="w-5 h-5" />
-          <span>Back to Updates</span>
+          <span>{t('updateDetail.backToUpdates')}</span>
         </button>
       </div>
 
@@ -250,7 +252,7 @@ const UpdateDetail: React.FC = () => {
         <div className="flex items-center space-x-3 mb-4">
           <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getTypeColor(article.type)}`}>
             <Tag className="w-4 h-4 mr-1" />
-            {article.type.charAt(0).toUpperCase() + article.type.slice(1)}
+            {t(`updateDetail.types.${article.type}`, article.type)}
           </span>
           
           {article.area && (
@@ -265,7 +267,7 @@ const UpdateDetail: React.FC = () => {
         <div className="flex items-center space-x-4 text-sm text-gray-600 dark:text-gray-400">
           <div className="flex items-center space-x-1">
             <Calendar className="w-4 h-4" />
-            <span>Published {dateInfo.relative}</span>
+            <span>{t('updateDetail.published')} {dateInfo.relative}</span>
           </div>
           <span className="text-gray-400">•</span>
           <span>{dateInfo.full}</span>
@@ -273,7 +275,7 @@ const UpdateDetail: React.FC = () => {
             <>
               <span className="text-gray-400">•</span>
               <span className="text-green-600 dark:text-green-400">
-                Read {getRelativeTime(new Date(article.read_at))}
+                {t('updateDetail.read')} {getRelativeTime(new Date(article.read_at))}
               </span>
             </>
           )}
@@ -285,7 +287,7 @@ const UpdateDetail: React.FC = () => {
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2 text-orange-700 dark:text-orange-300">
                 <AlertTriangle className="w-5 h-5" />
-                <span className="font-medium">Assignment Status</span>
+                <span className="font-medium">{t('updateDetail.assignmentStatus')}</span>
               </div>
               <button
                 onClick={() => handleToggleAssignmentCompletion(!!article.is_completed)}
@@ -298,18 +300,18 @@ const UpdateDetail: React.FC = () => {
                 {article.is_completed ? (
                   <>
                     <Check className="w-4 h-4" />
-                    <span>Completed</span>
+                    <span>{t('updateDetail.completed')}</span>
                   </>
                 ) : (
                   <>
-                    <span>Mark as Done</span>
+                    <span>{t('updateDetail.markAsDone')}</span>
                   </>
                 )}
               </button>
             </div>
             {article.is_completed && article.completed_at && (
               <p className="text-sm text-orange-600 dark:text-orange-400 mt-2">
-                Completed {getRelativeTime(new Date(article.completed_at))}
+                {t('updateDetail.completed')} {getRelativeTime(new Date(article.completed_at))}
               </p>
             )}
           </div>
@@ -321,18 +323,18 @@ const UpdateDetail: React.FC = () => {
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2 text-blue-700 dark:text-blue-300">
                 <MessageCircle className="w-5 h-5" />
-                <span className="font-medium">Hint Solution</span>
+                <span className="font-medium">{t('updateDetail.hintSolution')}</span>
               </div>
               <button
                 onClick={openSolutionModal}
                 className="flex items-center space-x-2 px-4 py-2 rounded-md text-sm font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors"
               >
                 <MapPin className="w-4 h-4" />
-                <span>Submit Solution</span>
+                <span>{t('updateDetail.submitSolution')}</span>
               </button>
             </div>
             <p className="text-sm text-blue-600 dark:text-blue-400 mt-2">
-              Submit your answer along with any fox location coordinates this hint might reveal
+              {t('updateDetail.hintSolutionDesc')}
             </p>
           </div>
         )}
@@ -341,7 +343,7 @@ const UpdateDetail: React.FC = () => {
         {state.team?.area && article.area === state.team.area && (
           <div className="mt-4 p-3 bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800 rounded-lg">
             <p className="text-primary-700 dark:text-primary-300 font-medium">
-              📍 This update is relevant to your team's area ({state.team.area})
+              {t('updateDetail.teamAreaRelevant', { area: state.team.area })}
             </p>
           </div>
         )}
@@ -363,17 +365,17 @@ const UpdateDetail: React.FC = () => {
           onClick={() => navigate('/updates')}
           className="btn btn-secondary"
         >
-          ← Back to All Updates
+          {t('updateDetail.backToAll')}
         </button>
 
         {article.type === 'assignment' && (
           <div className="text-sm text-gray-600 dark:text-gray-400">
-            <span className="font-medium">Need help?</span> Contact your team leader or check the{' '}
+            <span className="font-medium">{t('updateDetail.needHelp')}</span> {t('updateDetail.contactLeader')}{' '}
             <button
               onClick={() => navigate('/chat')}
               className="text-primary-600 dark:text-primary-400 hover:underline"
             >
-              team chat
+              {t('updateDetail.teamChat')}
             </button>
           </div>
         )}
@@ -385,7 +387,7 @@ const UpdateDetail: React.FC = () => {
           <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
-                Submit Solution
+                {t('updateDetail.submitSolution')}
               </h2>
               <button
                 onClick={() => setShowSolutionModal(false)}
@@ -407,12 +409,12 @@ const UpdateDetail: React.FC = () => {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Solution *
+                  {t('updateDetail.solutionLabel')}
                 </label>
                 <textarea
                   value={solutionForm.solution}
                   onChange={(e) => setSolutionForm(prev => ({ ...prev, solution: e.target.value }))}
-                  placeholder="Enter your solution to the hint..."
+                  placeholder={t('updateDetail.solutionPlaceholder')}
                   className="input min-h-[80px]"
                   rows={3}
                   required
@@ -421,10 +423,10 @@ const UpdateDetail: React.FC = () => {
               
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Fox Locations (Rijksdriehoek Coordinates)
+                  {t('updateDetail.foxLocations')}
                 </label>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
-                  Optional: Enter coordinates for any fox areas this hint reveals
+                  {t('updateDetail.foxLocationsHelp')}
                 </p>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -433,12 +435,12 @@ const UpdateDetail: React.FC = () => {
                     return (
                       <div key={area} className="border border-gray-200 dark:border-gray-600 rounded-lg p-3">
                         <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                          {area} Team
+                          {area} {t('updateDetail.teamSuffix')}
                         </h4>
                         <div className="grid grid-cols-2 gap-2">
                           <div>
                             <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
-                              X Coordinate
+                              {t('updateDetail.xCoord')}
                             </label>
                             <input
                               type="number"
@@ -461,7 +463,7 @@ const UpdateDetail: React.FC = () => {
                           </div>
                           <div>
                             <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
-                              Y Coordinate
+                              {t('updateDetail.yCoord')}
                             </label>
                             <input
                               type="number"
@@ -495,7 +497,7 @@ const UpdateDetail: React.FC = () => {
                 onClick={() => setShowSolutionModal(false)}
                 className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-md transition-colors"
               >
-                Cancel
+                {t('common.cancel')}
               </button>
               <button
                 onClick={handleSubmitSolution}
@@ -505,12 +507,12 @@ const UpdateDetail: React.FC = () => {
                 {isSubmittingSolution ? (
                   <>
                     <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
-                    <span>Submitting...</span>
+                    <span>{t('updateDetail.submitting')}</span>
                   </>
                 ) : (
                   <>
                     <Send className="w-4 h-4" />
-                    <span>Submit Solution</span>
+                    <span>{t('updateDetail.submitSolution')}</span>
                   </>
                 )}
               </button>

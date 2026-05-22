@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
 import { gameService } from '../services/gameService';
 import { Article } from '../types';
@@ -43,6 +44,7 @@ const HintsList: React.FC = () => {
 
   const { state } = useAuth();
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   useEffect(() => {
     loadArticles();
@@ -243,11 +245,11 @@ const HintsList: React.FC = () => {
 
     if (diffHours < 1) {
       const diffMinutes = Math.floor(diffMs / (1000 * 60));
-      return `${diffMinutes} minute${diffMinutes !== 1 ? 's' : ''} ago`;
+      return t('time.minutesAgo', { count: diffMinutes });
     } else if (diffHours < 24) {
-      return `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`;
+      return t('time.hoursAgo', { count: diffHours });
     } else if (diffDays < 7) {
-      return `${diffDays} day${diffDays !== 1 ? 's' : ''} ago`;
+      return t('time.daysAgo', { count: diffDays });
     } else {
       return date.toLocaleDateString();
     }
@@ -267,27 +269,27 @@ const HintsList: React.FC = () => {
     <div className="max-w-4xl mx-auto p-6">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">
-          Game Updates
+          {t('hints.title')}
         </h1>
 
         {/* Filters */}
         <div className="card p-4 mb-6">
           <div className="flex items-center space-x-2 mb-4">
             <Filter className="w-5 h-5 text-gray-500" />
-            <span className="font-medium text-gray-700 dark:text-gray-300">Filters</span>
+            <span className="font-medium text-gray-700 dark:text-gray-300">{t('hints.filters')}</span>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Search */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Search
+                {t('hints.search')}
               </label>
               <input
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search hints, assignments, news..."
+                placeholder={t('hints.searchPlaceholder')}
                 className="input"
               />
             </div>
@@ -295,32 +297,32 @@ const HintsList: React.FC = () => {
             {/* Type Filter */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Type
+                {t('hints.type')}
               </label>
               <select
                 value={selectedType}
                 onChange={(e) => setSelectedType(e.target.value)}
                 className="input"
               >
-                <option value="all">All Types</option>
-                <option value="hint">Hints</option>
-                <option value="assignment">Assignments</option>
-                <option value="news">News</option>
+                <option value="all">{t('hints.allTypes')}</option>
+                <option value="hint">{t('hints.hints')}</option>
+                <option value="assignment">{t('hints.assignments')}</option>
+                <option value="news">{t('hints.news')}</option>
               </select>
             </div>
 
             {/* Area Filter */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Area
+                {t('hints.area')}
               </label>
               <select
                 value={selectedArea}
                 onChange={(e) => setSelectedArea(e.target.value)}
                 className="input"
               >
-                <option value="all">All Areas</option>
-                <option value="general">General</option>
+                <option value="all">{t('hints.allAreas')}</option>
+                <option value="general">{t('hints.general')}</option>
                 {uniqueAreas.map(area => (
                   <option key={area} value={area}>{area}</option>
                 ))}
@@ -331,7 +333,7 @@ const HintsList: React.FC = () => {
 
         {/* Results Count */}
         <div className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-          Showing {filteredArticles.length} of {articles.length} updates
+          {t('hints.showing', { shown: filteredArticles.length, total: articles.length })}
         </div>
       </div>
 
@@ -340,7 +342,7 @@ const HintsList: React.FC = () => {
         {filteredArticles.length === 0 ? (
           <div className="card p-8 text-center">
             <p className="text-gray-500 dark:text-gray-400">
-              {articles.length === 0 ? 'No updates available yet.' : 'No updates match your filters.'}
+              {articles.length === 0 ? t('hints.noneAvailable') : t('hints.noneMatch')}
             </p>
           </div>
         ) : (
@@ -400,7 +402,7 @@ const HintsList: React.FC = () => {
                     <div className="flex items-center space-x-2">
                       <AlertTriangle className="w-4 h-4 text-orange-600 dark:text-orange-400" />
                       <span className="text-sm font-medium text-orange-800 dark:text-orange-200">
-                        Assignment Status
+                        {t('updateDetail.assignmentStatus')}
                       </span>
                     </div>
                     <button
@@ -414,18 +416,18 @@ const HintsList: React.FC = () => {
                       {article.is_completed ? (
                         <>
                           <Check className="w-4 h-4" />
-                          <span>Completed</span>
+                          <span>{t('updateDetail.completed')}</span>
                         </>
                       ) : (
                         <>
-                          <span>Mark as Done</span>
+                          <span>{t('updateDetail.markAsDone')}</span>
                         </>
                       )}
                     </button>
                   </div>
                   {article.is_completed && article.completed_at && (
                     <p className="text-xs text-orange-600 dark:text-orange-400 mt-2">
-                      Completed {formatDate(article.completed_at)}
+                      {t('updateDetail.completed')} {formatDate(article.completed_at)}
                     </p>
                   )}
                 </div>
@@ -433,10 +435,10 @@ const HintsList: React.FC = () => {
 
               <div className="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400 mb-3">
                 <div className="flex items-center space-x-4">
-                  <span>Published {formatDate(article.published_at)}</span>
+                  <span>{t('updateDetail.published')} {formatDate(article.published_at)}</span>
                   {article.is_read && article.read_at && (
                     <span className="text-green-600 dark:text-green-400">
-                      Read {formatDate(article.read_at)}
+                      {t('updateDetail.read')} {formatDate(article.read_at)}
                     </span>
                   )}
                 </div>
@@ -451,10 +453,10 @@ const HintsList: React.FC = () => {
                       className="flex items-center space-x-1 px-3 py-1.5 text-sm text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-md transition-colors"
                     >
                       <Check className="w-4 h-4" />
-                      <span>Mark as Read</span>
+                      <span>{t('hints.markAsRead')}</span>
                     </button>
                   )}
-                  
+
                   {/* Hint solution button */}
                   {article.type === 'hint' && (
                     <button
@@ -462,16 +464,16 @@ const HintsList: React.FC = () => {
                       className="flex items-center space-x-1 px-3 py-1.5 text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-md transition-colors"
                     >
                       <MapPin className="w-4 h-4" />
-                      <span>Submit Solution</span>
+                      <span>{t('updateDetail.submitSolution')}</span>
                     </button>
                   )}
                 </div>
-                
+
                 <button
                   onClick={() => navigate(`/updates/${article.id}`)}
                   className="flex items-center space-x-1 px-3 py-1.5 text-sm text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-md transition-colors"
                 >
-                  <span>View Details</span>
+                  <span>{t('hints.viewDetails')}</span>
                   <ExternalLink className="w-4 h-4" />
                 </button>
               </div>
@@ -480,7 +482,7 @@ const HintsList: React.FC = () => {
               {state.team?.area && article.area === state.team.area && (
                 <div className="mt-3 p-2 bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800 rounded-lg">
                   <p className="text-sm text-primary-700 dark:text-primary-300 font-medium">
-                    📍 This update is relevant to your team's area ({state.team.area})
+                    {t('updateDetail.teamAreaRelevant', { area: state.team.area })}
                   </p>
                 </div>
               )}
@@ -495,21 +497,21 @@ const HintsList: React.FC = () => {
           <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
             {articles.filter(a => a.type === 'hint').length}
           </div>
-          <div className="text-sm text-gray-600 dark:text-gray-400">Hints</div>
+          <div className="text-sm text-gray-600 dark:text-gray-400">{t('hints.hints')}</div>
         </div>
         
         <div className="card p-4 text-center">
           <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">
             {articles.filter(a => a.type === 'assignment').length}
           </div>
-          <div className="text-sm text-gray-600 dark:text-gray-400">Assignments</div>
+          <div className="text-sm text-gray-600 dark:text-gray-400">{t('hints.assignments')}</div>
         </div>
         
         <div className="card p-4 text-center">
           <div className="text-2xl font-bold text-green-600 dark:text-green-400">
             {articles.filter(a => a.type === 'news').length}
           </div>
-          <div className="text-sm text-gray-600 dark:text-gray-400">News</div>
+          <div className="text-sm text-gray-600 dark:text-gray-400">{t('hints.news')}</div>
         </div>
       </div>
 
@@ -519,7 +521,7 @@ const HintsList: React.FC = () => {
           <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
-                Submit Solution
+                {t('updateDetail.submitSolution')}
               </h2>
               <button
                 onClick={() => setShowSolutionModal(false)}
@@ -541,12 +543,12 @@ const HintsList: React.FC = () => {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Solution *
+                  {t('updateDetail.solutionLabel')}
                 </label>
                 <textarea
                   value={solutionForm.solution}
                   onChange={(e) => setSolutionForm(prev => ({ ...prev, solution: e.target.value }))}
-                  placeholder="Enter your solution to the hint..."
+                  placeholder={t('updateDetail.solutionPlaceholder')}
                   className="input min-h-[80px]"
                   rows={3}
                   required
@@ -555,10 +557,10 @@ const HintsList: React.FC = () => {
               
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Fox Locations (Rijksdriehoek Coordinates)
+                  {t('updateDetail.foxLocations')}
                 </label>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
-                  Optional: Enter coordinates for any fox areas this hint reveals
+                  {t('updateDetail.foxLocationsHelp')}
                 </p>
                 
                 <div className="space-y-3">
@@ -567,12 +569,12 @@ const HintsList: React.FC = () => {
                     return (
                       <div key={area} className="border border-gray-200 dark:border-gray-600 rounded-lg p-3">
                         <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                          {area} Team
+                          {area} {t('updateDetail.teamSuffix')}
                         </h4>
                         <div className="grid grid-cols-2 gap-2">
                           <div>
                             <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
-                              X Coordinate
+                              {t('updateDetail.xCoord')}
                             </label>
                             <input
                               type="number"
@@ -595,7 +597,7 @@ const HintsList: React.FC = () => {
                           </div>
                           <div>
                             <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
-                              Y Coordinate
+                              {t('updateDetail.yCoord')}
                             </label>
                             <input
                               type="number"
@@ -629,7 +631,7 @@ const HintsList: React.FC = () => {
                 onClick={() => setShowSolutionModal(false)}
                 className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-md transition-colors"
               >
-                Cancel
+                {t('common.cancel')}
               </button>
               <button
                 onClick={handleSubmitSolution}
@@ -639,12 +641,12 @@ const HintsList: React.FC = () => {
                 {isSubmittingSolution ? (
                   <>
                     <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
-                    <span>Submitting...</span>
+                    <span>{t('updateDetail.submitting')}</span>
                   </>
                 ) : (
                   <>
                     <Send className="w-4 h-4" />
-                    <span>Submit Solution</span>
+                    <span>{t('updateDetail.submitSolution')}</span>
                   </>
                 )}
               </button>

@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
 import { api, authService } from '../services/authService';
 import LoadingSpinner from './LoadingSpinner';
+import LanguageSwitcher from './LanguageSwitcher';
 
 const Login: React.FC = () => {
   const [isLoginMode, setIsLoginMode] = useState(true);
@@ -21,6 +23,7 @@ const Login: React.FC = () => {
   const [pendingPassword, setPendingPassword] = useState('');
   
   const { login } = useAuth();
+  const { t } = useTranslation();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,7 +54,7 @@ const Login: React.FC = () => {
           first_name: firstName,
           last_name: lastName
         });
-        setSuccess('Registration successful! You can now log in.');
+        setSuccess(t('login.registerSuccess'));
         setIsLoginMode(true);
         // Clear form
         setUsername('');
@@ -61,7 +64,7 @@ const Login: React.FC = () => {
         setLastName('');
       }
     } catch (err: any) {
-      setError(err.response?.data?.error || (isLoginMode ? 'Login failed' : 'Registration failed'));
+      setError(err.response?.data?.error || (isLoginMode ? t('login.loginFailed') : t('login.registerFailed')));
     } finally {
       setIsLoading(false);
     }
@@ -74,7 +77,7 @@ const Login: React.FC = () => {
       // Login successful, modal will close and user will be redirected
       setShowTenantModal(false);
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Login failed');
+      setError(err.response?.data?.error || t('login.loginFailed'));
       setShowTenantModal(false);
     } finally {
       setIsLoading(false);
@@ -83,13 +86,16 @@ const Login: React.FC = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+      <div className="absolute top-4 right-4">
+        <LanguageSwitcher />
+      </div>
       <div className="max-w-md w-full space-y-8">
         <div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900 dark:text-gray-100">
-            {isLoginMode ? 'Sign in to Jotihunt' : 'Create your account'}
+            {isLoginMode ? t('login.signInTitle') : t('login.createTitle')}
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600 dark:text-gray-400">
-            {isLoginMode ? 'Enter your credentials to access the game' : 'Join the hunt by creating a new account'}
+            {isLoginMode ? t('login.signInSubtitle') : t('login.createSubtitle')}
           </p>
         </div>
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
@@ -112,7 +118,7 @@ const Login: React.FC = () => {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        First Name
+                        {t('login.firstName')}
                       </label>
                       <input
                         id="firstName"
@@ -120,7 +126,7 @@ const Login: React.FC = () => {
                         type="text"
                         required
                         className="input"
-                        placeholder="Your first name"
+                        placeholder={t('login.firstNamePlaceholder')}
                         value={firstName}
                         onChange={(e) => setFirstName(e.target.value)}
                         disabled={isLoading}
@@ -128,7 +134,7 @@ const Login: React.FC = () => {
                     </div>
                     <div>
                       <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Last Name
+                        {t('login.lastName')}
                       </label>
                       <input
                         id="lastName"
@@ -136,7 +142,7 @@ const Login: React.FC = () => {
                         type="text"
                         required
                         className="input"
-                        placeholder="Your last name"
+                        placeholder={t('login.lastNamePlaceholder')}
                         value={lastName}
                         onChange={(e) => setLastName(e.target.value)}
                         disabled={isLoading}
@@ -146,7 +152,7 @@ const Login: React.FC = () => {
                   
                   <div>
                     <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Email
+                      {t('login.email')}
                     </label>
                     <input
                       id="email"
@@ -154,7 +160,7 @@ const Login: React.FC = () => {
                       type="email"
                       required
                       className="input"
-                      placeholder="your.email@example.com"
+                      placeholder={t('login.emailPlaceholder')}
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       disabled={isLoading}
@@ -165,7 +171,7 @@ const Login: React.FC = () => {
               
               <div>
                 <label htmlFor="username" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Username
+                  {t('login.username')}
                 </label>
                 <input
                   id="username"
@@ -173,7 +179,7 @@ const Login: React.FC = () => {
                   type="text"
                   required
                   className="input"
-                  placeholder="Choose a username"
+                  placeholder={t('login.usernamePlaceholder')}
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   disabled={isLoading}
@@ -182,7 +188,7 @@ const Login: React.FC = () => {
               
               <div>
                 <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Password
+                  {t('login.password')}
                 </label>
                 <input
                   id="password"
@@ -190,7 +196,7 @@ const Login: React.FC = () => {
                   type="password"
                   required
                   className="input"
-                  placeholder={isLoginMode ? "Enter your password" : "Choose a secure password"}
+                  placeholder={isLoginMode ? t('login.passwordPlaceholder') : t('login.passwordCreatePlaceholder')}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   disabled={isLoading}
@@ -198,7 +204,7 @@ const Login: React.FC = () => {
                 />
                 {!isLoginMode && (
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    Password must be at least 6 characters long
+                    {t('login.passwordHint')}
                   </p>
                 )}
               </div>
@@ -213,10 +219,10 @@ const Login: React.FC = () => {
                 {isLoading ? (
                   <>
                     <LoadingSpinner size="sm" className="mr-2" />
-                    {isLoginMode ? 'Signing in...' : 'Creating account...'}
+                    {isLoginMode ? t('login.signingIn') : t('login.creatingAccount')}
                   </>
                 ) : (
-                  isLoginMode ? 'Sign in' : 'Create account'
+                  isLoginMode ? t('login.signIn') : t('login.createAccount')
                 )}
               </button>
             </div>
@@ -231,7 +237,7 @@ const Login: React.FC = () => {
                 }}
                 className="text-sm text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300"
               >
-                {isLoginMode ? "Don't have an account? Create one" : "Already have an account? Sign in"}
+                {isLoginMode ? t('login.toggleToRegister') : t('login.toggleToLogin')}
               </button>
             </div>
             
@@ -244,10 +250,10 @@ const Login: React.FC = () => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-              Select Organization
+              {t('login.selectOrg')}
             </h3>
             <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
-              You have access to multiple organizations. Please select which one you'd like to access:
+              {t('login.selectOrgDesc')}
             </p>
             
             <div className="space-y-3">
@@ -279,14 +285,14 @@ const Login: React.FC = () => {
                 disabled={isLoading}
                 className="btn btn-secondary"
               >
-                Cancel
+                {t('common.cancel')}
               </button>
             </div>
 
             {isLoading && (
               <div className="mt-4 flex items-center justify-center">
                 <LoadingSpinner size="sm" />
-                <span className="ml-2 text-gray-500">Signing in...</span>
+                <span className="ml-2 text-gray-500">{t('login.signingIn')}</span>
               </div>
             )}
           </div>

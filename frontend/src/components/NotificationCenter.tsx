@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNotifications } from '../contexts/NotificationContext';
 import { NotificationData } from '../types';
 import { 
@@ -17,6 +18,7 @@ import {
 
 const NotificationCenter: React.FC = () => {
   const { state, markAsRead, markAllAsRead, removeNotification, clearAll, toggleVisibility } = useNotifications();
+  const { t } = useTranslation();
 
   const getNotificationIcon = (type: string) => {
     switch (type) {
@@ -48,10 +50,10 @@ const NotificationCenter: React.FC = () => {
     const diffHours = Math.floor(diffMinutes / 60);
     const diffDays = Math.floor(diffHours / 24);
 
-    if (diffMinutes < 1) return 'Just now';
-    if (diffMinutes < 60) return `${diffMinutes}m ago`;
-    if (diffHours < 24) return `${diffHours}h ago`;
-    if (diffDays < 7) return `${diffDays}d ago`;
+    if (diffMinutes < 1) return t('notifications.justNow');
+    if (diffMinutes < 60) return t('fox.minutesAgo', { n: diffMinutes });
+    if (diffHours < 24) return t('fox.hoursAgo', { n: diffHours });
+    if (diffDays < 7) return t('fox.daysAgo', { n: diffDays });
     return time.toLocaleDateString();
   };
 
@@ -107,7 +109,7 @@ const NotificationCenter: React.FC = () => {
           {/* Header */}
           <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-              Notifications
+              {t('notifications.title')}
             </h3>
             <div className="flex items-center space-x-2">
               {state.unreadCount > 0 && (
@@ -115,14 +117,14 @@ const NotificationCenter: React.FC = () => {
                   onClick={markAllAsRead}
                   className="text-sm text-primary-600 hover:text-primary-700 dark:text-primary-400"
                 >
-                  Mark all read
+                  {t('notifications.markAllRead')}
                 </button>
               )}
               {state.notifications.length > 0 && (
                 <button
                   onClick={clearAll}
                   className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                  title="Clear all notifications"
+                  title={t('notifications.clearAll')}
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
@@ -142,7 +144,7 @@ const NotificationCenter: React.FC = () => {
               <div className="p-8 text-center">
                 <BellOff className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                 <p className="text-gray-500 dark:text-gray-400 text-sm">
-                  No notifications yet
+                  {t('notifications.empty')}
                 </p>
               </div>
             ) : (
@@ -198,14 +200,14 @@ const NotificationCenter: React.FC = () => {
                           {notification.type === 'assignment' && (
                             <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200">
                               <Clock className="w-3 h-3 mr-1" />
-                              Action Required
+                              {t('notifications.actionRequired')}
                             </span>
                           )}
                           
                           {notification.type === 'hunt' && notification.data?.status === 'approved' && (
                             <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
                               <CheckCircle className="w-3 h-3 mr-1" />
-                              Approved
+                              {t('notifications.approved')}
                             </span>
                           )}
                         </div>
@@ -221,7 +223,7 @@ const NotificationCenter: React.FC = () => {
           {state.notifications.length > 0 && (
             <div className="p-3 border-t border-gray-200 dark:border-gray-700 text-center">
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                Showing {Math.min(state.notifications.length, 50)} most recent notifications
+                {t('notifications.showingRecent', { count: Math.min(state.notifications.length, 50) })}
               </p>
             </div>
           )}

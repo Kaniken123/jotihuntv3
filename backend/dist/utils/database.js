@@ -17,15 +17,22 @@ const knexConfig = {
     seeds: {
         directory: path_1.default.join(__dirname, '../../database/seeds')
     },
+    // SQLite is single-writer: more than one connection to the same file causes
+    // SQLITE_BUSY under concurrent writes. Use a single connection and let queries
+    // serialize through it. busy_timeout makes any remaining lock wait instead of
+    // failing instantly; WAL mode allows reads to proceed during a write.
     pool: {
-        min: 2,
-        max: 10,
-        acquireTimeoutMillis: 30000,
-        createTimeoutMillis: 30000,
-        destroyTimeoutMillis: 5000,
-        idleTimeoutMillis: 30000,
-        reapIntervalMillis: 1000,
-        createRetryIntervalMillis: 200
+        min: 1,
+        max: 1,
+        afterCreate: (conn, done) => {
+            conn.run('PRAGMA busy_timeout = 10000', (err) => {
+                if (err)
+                    return done(err, conn);
+                conn.run('PRAGMA journal_mode = WAL', (err2) => {
+                    done(err2, conn);
+                });
+            });
+        }
     },
     acquireConnectionTimeout: 30000,
     useNullAsDefault: true

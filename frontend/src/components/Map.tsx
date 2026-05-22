@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { MapContainer, TileLayer, Marker, Popup, useMapEvents, Polyline, Circle } from 'react-leaflet';
 import { Icon, LatLng } from 'leaflet';
 import { Area, UserLocation, FoxRoute, Subscription, Article } from '../types/index';
@@ -14,6 +15,7 @@ interface SubscriptionPopupProps {
 }
 
 const SubscriptionPopupContent: React.FC<SubscriptionPopupProps> = ({ subscription, onUpdate }) => {
+  const { t } = useTranslation();
   const [selectedArea, setSelectedArea] = useState(subscription.area || '');
   const [isUpdating, setIsUpdating] = useState(false);
   const areas = ['Alpha', 'Bravo', 'Charlie', 'Delta', 'Echo', 'Foxtrot', 'Golf', 'Hotel'];
@@ -26,7 +28,7 @@ const SubscriptionPopupContent: React.FC<SubscriptionPopupProps> = ({ subscripti
       onUpdate(); // Refresh subscriptions
     } catch (error) {
       console.error('Failed to update area:', error);
-      alert('Fout bij het updaten van deelgebied');
+      alert(t('map.updateAreaError'));
     } finally {
       setIsUpdating(false);
     }
@@ -39,28 +41,28 @@ const SubscriptionPopupContent: React.FC<SubscriptionPopupProps> = ({ subscripti
       {/* Area Display (read-only, synced from API) */}
       <div className="mb-3">
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-          📍 Deelgebied
+          📍 {t('map.subareaLabel')}
         </label>
         <div className="w-full px-3 py-2 border border-gray-200 bg-gray-50 rounded-md text-sm text-gray-700">
-          {subscription.area || 'Geen deelgebied'}
+          {subscription.area || t('map.noSubareaValue')}
         </div>
         <p className="text-xs text-gray-500 mt-1">
-          ℹ️ Dit wordt automatisch gesynchroniseerd vanuit de Jotihunt API
+          {t('map.autoSyncNote')}
         </p>
       </div>
 
       {/* Visit Count and Status */}
       <div className="mb-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Bezoek Status</span>
+          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{t('map.visitStatus')}</span>
           <span className="text-lg font-bold text-blue-600 dark:text-blue-400">
-            {subscription.visit_count || 0} bezoek{(subscription.visit_count || 0) !== 1 ? 'en' : ''}
+            {t('map.visitCount', { count: subscription.visit_count || 0 })}
           </span>
         </div>
 
         {subscription.visited_by_foxes && subscription.visited_by_foxes.length > 0 ? (
           <div>
-            <p className="text-xs font-medium text-green-800 dark:text-green-300 mb-1">✅ Bezocht door:</p>
+            <p className="text-xs font-medium text-green-800 dark:text-green-300 mb-1">{t('map.visitedBy')}</p>
             <div className="flex flex-wrap gap-1">
               {subscription.visited_by_foxes.map((foxTeam, index) => (
                 <span
@@ -73,7 +75,7 @@ const SubscriptionPopupContent: React.FC<SubscriptionPopupProps> = ({ subscripti
             </div>
           </div>
         ) : (
-          <p className="text-xs text-blue-700 dark:text-blue-300">⏳ Nog niet bezocht</p>
+          <p className="text-xs text-blue-700 dark:text-blue-300">{t('map.notVisitedYet')}</p>
         )}
       </div>
 
@@ -81,20 +83,20 @@ const SubscriptionPopupContent: React.FC<SubscriptionPopupProps> = ({ subscripti
       <div className="space-y-2 mb-3 text-sm">
         {subscription.accomodation && (
           <p className="text-gray-600 dark:text-gray-400">
-            <span className="font-medium">🏠 Type:</span> {subscription.accomodation}
+            <span className="font-medium">{t('map.typeLabel')}</span> {subscription.accomodation}
           </p>
         )}
 
         {subscription.street && subscription.housenumber && (
           <p className="text-gray-600 dark:text-gray-400">
-            <span className="font-medium">📍 Adres:</span> {subscription.street} {subscription.housenumber}
+            <span className="font-medium">{t('map.addressLabel')}</span> {subscription.street} {subscription.housenumber}
             {subscription.housenumber_addition && subscription.housenumber_addition}
           </p>
         )}
 
         {subscription.postcode && subscription.city && (
           <p className="text-gray-600 dark:text-gray-400">
-            <span className="font-medium">🏙️ Plaats:</span> {subscription.postcode} {subscription.city}
+            <span className="font-medium">{t('map.cityLabel')}</span> {subscription.postcode} {subscription.city}
           </p>
         )}
       </div>
@@ -427,6 +429,7 @@ const Map: React.FC = () => {
   
   const { socket, isConnected } = useWebSocket();
   const { state } = useAuth();
+  const { t } = useTranslation();
 
   // Separate function to fetch subscriptions (for refresh after update)
   const fetchSubscriptions = useCallback(async () => {
@@ -545,7 +548,7 @@ const Map: React.FC = () => {
         setAreas(areasData);
 
         // Show success notification
-        alert(`🎯 Hint solved! Revealed ${update.revealed_areas.join(', ')} fox locations on the map!`);
+        alert(t('map.hintSolved', { areas: update.revealed_areas.join(', ') }));
       }).catch(error => {
         console.error('Failed to reload areas after hint solution:', error);
       });
@@ -618,7 +621,7 @@ const Map: React.FC = () => {
     try {
       const area = areas.find(a => a.name === selectedFoxTeam);
       if (!area) {
-        alert('Fox team not found');
+        alert(t('map.foxNotFound'));
         return;
       }
 
@@ -638,10 +641,10 @@ const Map: React.FC = () => {
       setSelectedFoxTeam('');
       setIsAddMode(false);
       
-      alert('Fox location updated successfully!');
+      alert(t('map.foxUpdated'));
     } catch (error) {
       console.error('Error updating fox location:', error);
-      alert('Failed to update fox location');
+      alert(t('map.foxUpdateFailed'));
     } finally {
       setIsSubmittingLocation(false);
     }
@@ -655,7 +658,7 @@ const Map: React.FC = () => {
     try {
       const area = areas.find(a => a.name === selectedReportFoxTeam);
       if (!area) {
-        alert('Fox team not found');
+        alert(t('map.foxNotFound'));
         return;
       }
 
@@ -675,10 +678,10 @@ const Map: React.FC = () => {
       setSelectedReportFoxTeam('');
       setIsReportFoxMode(false);
       
-      alert('🦊 Fox location reported successfully! Thank you for helping track the foxes!');
+      alert(t('map.foxReported'));
     } catch (error) {
       console.error('Error reporting fox location:', error);
-      alert('Failed to report fox location');
+      alert(t('map.foxReportFailed'));
     } finally {
       setIsSubmittingFoxReport(false);
     }
@@ -697,14 +700,14 @@ const Map: React.FC = () => {
         console.log('🛣️ Setting selected fox route - should show on map');
       } else {
         console.log('🛣️ No route points found for this fox');
-        alert('No route data found for this fox in the selected time period. Try a longer time span or the fox may not have any recorded locations yet.');
+        alert(t('map.noRouteData'));
       }
       
       setSelectedFoxRoute(routeData);
     } catch (error: any) {
       console.error('❌ Error loading fox route:', error);
       const errorMessage = error.response?.data?.error || error.message || 'Unknown error occurred';
-      alert(`Failed to load fox route: ${errorMessage}`);
+      alert(t('map.routeLoadFailed', { error: errorMessage }));
     } finally {
       setIsLoadingRoute(false);
     }
@@ -804,7 +807,7 @@ const Map: React.FC = () => {
       setSelectedHint(null);
       
       // Show success message
-      alert(result.message || 'Solution submitted successfully!');
+      alert(result.message || t('map.solutionSubmitted'));
       
       // If correct and reveals fox locations, reload areas to show new fox positions
       if (result.solution?.is_correct && result.solution?.reveals_fox_location) {
@@ -814,7 +817,7 @@ const Map: React.FC = () => {
       
     } catch (error: any) {
       console.error('Failed to submit solution:', error);
-      alert(error.response?.data?.error || 'Failed to submit solution');
+      alert(error.response?.data?.error || t('map.solutionFailed'));
     } finally {
       setIsSubmittingSolution(false);
     }
@@ -990,15 +993,15 @@ const Map: React.FC = () => {
         >
           <Popup>
             <div className="p-2">
-              <h4 className="font-semibold text-red-600">🚫 No-Hunt Zone</h4>
+              <h4 className="font-semibold text-red-600">{t('map.noHuntZoneTitle')}</h4>
               <p className="text-sm text-gray-600 mb-1">
-                <strong>Clubhuis:</strong> {subscription.team_name}
+                <strong>{t('map.clubhouse')}</strong> {subscription.team_name}
               </p>
               <p className="text-xs text-gray-500">
-                500m radius - Geen vossenjacht toegestaan
+                {t('map.noHuntRadius')}
               </p>
               <p className="text-xs text-gray-500">
-                Tegenhunt moet binnen deze zone geplaatst worden
+                {t('map.counterHuntZone')}
               </p>
             </div>
           </Popup>
@@ -1011,7 +1014,7 @@ const Map: React.FC = () => {
       <div className="map-container flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600 dark:text-gray-400">Loading map...</p>
+          <p className="mt-4 text-gray-600 dark:text-gray-400">{t('map.loading')}</p>
         </div>
       </div>
     );
@@ -1026,7 +1029,7 @@ const Map: React.FC = () => {
         <div className="absolute top-4 left-4 z-10 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg p-4 max-w-xs">
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200">
-              {selectedFoxRoute.area.fox_team_name || selectedFoxRoute.area.name} Route
+              {t('map.routeTitle', { name: selectedFoxRoute.area.fox_team_name || selectedFoxRoute.area.name })}
             </h3>
             <button
               onClick={clearFoxRoute}
@@ -1036,43 +1039,43 @@ const Map: React.FC = () => {
             </button>
           </div>
           <div className="space-y-1 text-xs text-gray-600 dark:text-gray-400">
-            <p>Points: {selectedFoxRoute.route_stats.total_points}</p>
-            <p>Time span: {selectedFoxRoute.route_stats.time_span_hours}h</p>
+            <p>{t('map.points')}: {selectedFoxRoute.route_stats.total_points}</p>
+            <p>{t('map.timeSpan')}: {selectedFoxRoute.route_stats.time_span_hours}h</p>
             {selectedFoxRoute.route_stats.first_point && (
-              <p>From: {new Date(selectedFoxRoute.route_stats.first_point).toLocaleString()}</p>
+              <p>{t('map.from')}: {new Date(selectedFoxRoute.route_stats.first_point).toLocaleString()}</p>
             )}
             {selectedFoxRoute.route_stats.last_point && (
-              <p>To: {new Date(selectedFoxRoute.route_stats.last_point).toLocaleString()}</p>
+              <p>{t('map.to')}: {new Date(selectedFoxRoute.route_stats.last_point).toLocaleString()}</p>
             )}
           </div>
           <div className="mt-3">
             <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Time span (hours):
+              {t('map.timeSpanHours')}
             </label>
             <select
               value={routeTimeSpan}
               onChange={(e) => setRouteTimeSpan(Number(e.target.value))}
               className="w-full px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700 dark:text-gray-200"
             >
-              <option value={1}>1 hour</option>
-              <option value={6}>6 hours</option>
-              <option value={12}>12 hours</option>
-              <option value={24}>24 hours</option>
-              <option value={48}>48 hours</option>
+              <option value={1}>{t('map.opt1h')}</option>
+              <option value={6}>{t('map.opt6h')}</option>
+              <option value={12}>{t('map.opt12h')}</option>
+              <option value={24}>{t('map.opt24h')}</option>
+              <option value={48}>{t('map.opt48h')}</option>
             </select>
             <button
               onClick={() => loadFoxRoute(selectedFoxRoute.area.id)}
               disabled={isLoadingRoute}
               className="w-full mt-2 px-2 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 disabled:opacity-50"
             >
-              {isLoadingRoute ? 'Loading...' : 'Reload Route'}
+              {isLoadingRoute ? t('map.loadingShort') : t('map.reloadRoute')}
             </button>
           </div>
           
           {/* Fox Speed Configuration */}
           <div className="mt-3 border-t pt-3">
             <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-              🎯 Fox walking speed (km/h):
+              {t('map.foxSpeed')}
             </label>
             <div className="flex items-center space-x-2">
               <input
@@ -1087,11 +1090,11 @@ const Map: React.FC = () => {
               <span className="text-xs font-mono w-8">{foxWalkingSpeed}</span>
             </div>
             <div className="flex justify-between text-xs text-gray-500 mt-1">
-              <span>Slow</span>
-              <span>Fast</span>
+              <span>{t('map.slow')}</span>
+              <span>{t('map.fast')}</span>
             </div>
             <p className="text-xs text-gray-500 mt-1">
-              Adjusts prediction circle size based on assumed fox movement speed
+              {t('map.speedHelp')}
             </p>
           </div>
         </div>
@@ -1106,13 +1109,13 @@ const Map: React.FC = () => {
               setSelectedHint(hints.find(h => !h.is_read) || hints[0]);
               setShowHintSolutionModal(true);
             } else {
-              alert('No hints available. Load hints from the Updates page first.');
+              alert(t('map.noHints'));
             }
           }}
           className="flex items-center space-x-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white border border-blue-700 rounded-md shadow-lg transition-all"
         >
           <span className="text-sm">💡</span>
-          <span className="text-xs font-medium">Quick Hint</span>
+          <span className="text-xs font-medium">{t('map.quickHint')}</span>
           {hints.filter(h => !h.is_read).length > 0 && (
             <span className="bg-yellow-400 text-blue-900 text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
               {hints.filter(h => !h.is_read).length}
@@ -1126,25 +1129,25 @@ const Map: React.FC = () => {
           className="flex items-center space-x-2 px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-all"
         >
           <span className="text-sm">🦊</span>
-          <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Filter</span>
+          <span className="text-xs font-medium text-gray-700 dark:text-gray-300">{t('map.filter')}</span>
         </button>
         
         {showFoxFilter && (
           <div className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg p-4 min-w-[200px]">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Fox Teams</h3>
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">{t('map.foxTeams')}</h3>
               <div className="flex space-x-1">
                 <button
                   onClick={showAllFoxTeams}
                   className="text-xs px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded hover:bg-blue-200 dark:hover:bg-blue-800"
                 >
-                  All
+                  {t('map.all')}
                 </button>
                 <button
                   onClick={hideAllFoxTeams}
                   className="text-xs px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
                 >
-                  None
+                  {t('map.none')}
                 </button>
               </div>
             </div>
@@ -1173,7 +1176,7 @@ const Map: React.FC = () => {
             </div>
             
             <div className="border-t border-gray-200 dark:border-gray-600 mt-3 pt-3">
-              <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">Other Markers</h4>
+              <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">{t('map.otherMarkers')}</h4>
               <div className="space-y-2">
                 <label className="flex items-center space-x-2 cursor-pointer">
                   <input
@@ -1183,7 +1186,7 @@ const Map: React.FC = () => {
                     className="rounded border-gray-300 dark:border-gray-600"
                   />
                   <div className="w-3 h-3 rounded-full border" style={{ backgroundColor: '#10B981' }}></div>
-                  <span className="text-sm text-gray-700 dark:text-gray-300">Users</span>
+                  <span className="text-sm text-gray-700 dark:text-gray-300">{t('map.users')}</span>
                 </label>
                 <label className="flex items-center space-x-2 cursor-pointer">
                   <input
@@ -1198,7 +1201,7 @@ const Map: React.FC = () => {
                     alignItems: 'center', 
                     justifyContent: 'center'
                   }}>🏠</div>
-                  <span className="text-sm text-gray-700 dark:text-gray-300">Groups</span>
+                  <span className="text-sm text-gray-700 dark:text-gray-300">{t('map.groups')}</span>
                 </label>
                 <label className="flex items-center space-x-2 cursor-pointer">
                   <input
@@ -1208,7 +1211,7 @@ const Map: React.FC = () => {
                     className="rounded border-gray-300 dark:border-gray-600"
                   />
                   <div className="w-3 h-3 rounded-full border-2 border-red-500" style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)' }}></div>
-                  <span className="text-sm text-gray-700 dark:text-gray-300">No-Hunt Zones</span>
+                  <span className="text-sm text-gray-700 dark:text-gray-300">{t('map.noHuntZones')}</span>
                 </label>
               </div>
             </div>
@@ -1231,7 +1234,7 @@ const Map: React.FC = () => {
             {isReportFoxMode ? '✕' : '🦊'}
           </span>
           <span className="text-sm font-medium">
-            {isReportFoxMode ? 'Cancel' : 'Report Fox Location'}
+            {isReportFoxMode ? t('common.cancel') : t('map.reportFoxLocation')}
           </span>
         </button>
         
@@ -1249,7 +1252,7 @@ const Map: React.FC = () => {
               {isAddMode ? '✕' : '👑'}
             </span>
             <span className="text-sm font-medium">
-              {isAddMode ? 'Cancel' : 'Admin Add Fox'}
+              {isAddMode ? t('common.cancel') : t('map.adminAddFox')}
             </span>
           </button>
         )}
@@ -1259,7 +1262,7 @@ const Map: React.FC = () => {
             <div className="flex items-center space-x-2">
               <div className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></div>
               <span className="text-sm font-medium">
-                {isReportFoxMode ? 'Click on map to report fox location' : 'Click on map to place fox marker'}
+                {isReportFoxMode ? t('map.clickReport') : t('map.clickPlace')}
               </span>
             </div>
           </div>
@@ -1456,7 +1459,7 @@ const Map: React.FC = () => {
           <Marker position={userPosition} icon={createUserIcon(true)}>
             <Popup>
               <div className="p-2">
-                <h3 className="font-semibold">Your Location</h3>
+                <h3 className="font-semibold">{t('map.yourLocation')}</h3>
                 <p className="text-sm text-gray-600">
                   {userPosition.lat.toFixed(6)}, {userPosition.lng.toFixed(6)}
                 </p>
@@ -1471,22 +1474,22 @@ const Map: React.FC = () => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-              Place Fox Team Location
+              {t('map.placeFoxTitle')}
             </h3>
-            
+
             <div className="space-y-4">
               <div>
                 <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                  <strong>Location:</strong> {selectedPosition.lat.toFixed(6)}, {selectedPosition.lng.toFixed(6)}
+                  <strong>{t('map.locationLabel')}</strong> {selectedPosition.lat.toFixed(6)}, {selectedPosition.lng.toFixed(6)}
                 </p>
                 <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                  <strong>Timestamp:</strong> {new Date().toLocaleString()}
+                  <strong>{t('map.timestampLabel')}</strong> {new Date().toLocaleString()}
                 </p>
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Select Fox Team
+                  {t('map.selectFoxTeam')}
                 </label>
                 <select
                   value={selectedFoxTeam}
@@ -1494,10 +1497,10 @@ const Map: React.FC = () => {
                   className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                   required
                 >
-                  <option value="">Choose a fox team...</option>
+                  <option value="">{t('map.chooseFoxTeam')}</option>
                   {areas.map((area) => (
                     <option key={area.id} value={area.name}>
-                      {area.name} ({area.fox_team_name || 'Unknown Team'})
+                      {area.name} ({area.fox_team_name || t('map.unknownTeam')})
                     </option>
                   ))}
                 </select>
@@ -1510,9 +1513,9 @@ const Map: React.FC = () => {
                 disabled={!selectedFoxTeam || isSubmittingLocation}
                 className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
               >
-                {isSubmittingLocation ? 'Placing...' : 'Place Marker'}
+                {isSubmittingLocation ? t('map.placing') : t('map.placeMarker')}
               </button>
-              
+
               <button
                 onClick={() => {
                   setShowFoxLocationModal(false);
@@ -1522,7 +1525,7 @@ const Map: React.FC = () => {
                 }}
                 className="flex-1 bg-gray-500 text-white py-2 px-4 rounded-md hover:bg-gray-600"
               >
-                Cancel
+                {t('common.cancel')}
               </button>
             </div>
           </div>
@@ -1534,22 +1537,22 @@ const Map: React.FC = () => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-              🦊 Report Fox Location
+              {t('map.reportFoxTitle')}
             </h3>
-            
+
             <div className="space-y-4">
               <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg">
                 <p className="text-sm text-blue-800 dark:text-blue-200 mb-2">
-                  📍 <strong>Spotted Location:</strong> {reportFoxPosition.lat.toFixed(6)}, {reportFoxPosition.lng.toFixed(6)}
+                  📍 <strong>{t('map.spottedLocation')}</strong> {reportFoxPosition.lat.toFixed(6)}, {reportFoxPosition.lng.toFixed(6)}
                 </p>
                 <p className="text-sm text-blue-800 dark:text-blue-200">
-                  🕒 <strong>Report Time:</strong> {new Date().toLocaleString()}
+                  🕒 <strong>{t('map.reportTime')}</strong> {new Date().toLocaleString()}
                 </p>
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  🦊 Which Fox Team Did You Spot?
+                  {t('map.whichFoxTeam')}
                 </label>
                 <select
                   value={selectedReportFoxTeam}
@@ -1557,21 +1560,21 @@ const Map: React.FC = () => {
                   className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                   required
                 >
-                  <option value="">Choose the fox team you spotted...</option>
+                  <option value="">{t('map.chooseSpotted')}</option>
                   {areas.map((area) => (
                     <option key={area.id} value={area.name}>
-                      🦊 {area.name} ({area.fox_team_name || 'Unknown Team'})
+                      🦊 {area.name} ({area.fox_team_name || t('map.unknownTeam')})
                     </option>
                   ))}
                 </select>
                 <p className="text-xs text-gray-500 mt-1">
-                  💡 Help other hunters by reporting fox sightings!
+                  {t('map.helpReport')}
                 </p>
               </div>
               
               <div className="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded-lg">
                 <p className="text-sm text-green-800 dark:text-green-200">
-                  🎯 <strong>Your fox report helps everyone!</strong> Other hunters can see the latest fox locations and plan their hunts accordingly.
+                  {t('map.reportHelpsAll')}
                 </p>
               </div>
             </div>
@@ -1585,16 +1588,16 @@ const Map: React.FC = () => {
                 {isSubmittingFoxReport ? (
                   <>
                     <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
-                    <span>Reporting...</span>
+                    <span>{t('map.reporting')}</span>
                   </>
                 ) : (
                   <>
                     <span>🦊</span>
-                    <span>Report Fox</span>
+                    <span>{t('map.reportFox')}</span>
                   </>
                 )}
               </button>
-              
+
               <button
                 onClick={() => {
                   setShowReportFoxModal(false);
@@ -1604,7 +1607,7 @@ const Map: React.FC = () => {
                 }}
                 className="flex-1 bg-gray-500 text-white py-2 px-4 rounded-md hover:bg-gray-600"
               >
-                Cancel
+                {t('common.cancel')}
               </button>
             </div>
           </div>
@@ -1617,7 +1620,7 @@ const Map: React.FC = () => {
           <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
-                🎯 Quick Hint Solution - Fox Locations
+                {t('map.quickHintTitle')}
               </h2>
               <button
                 onClick={() => {
@@ -1650,7 +1653,7 @@ const Map: React.FC = () => {
               </h3>
               {selectedHint.area && (
                 <span className="inline-block px-2 py-1 text-xs bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200 rounded-full mb-2">
-                  Area: {selectedHint.area}
+                  {t('map.areaLabel')} {selectedHint.area}
                 </span>
               )}
               <div 
@@ -1658,7 +1661,7 @@ const Map: React.FC = () => {
                 dangerouslySetInnerHTML={{ __html: selectedHint.content }}
               />
               <div className="mt-2 text-xs text-gray-500">
-                📅 Published: {new Date(selectedHint.published_at).toLocaleString()}
+                {t('map.publishedLabel')} {new Date(selectedHint.published_at).toLocaleString()}
               </div>
             </div>
             
@@ -1667,18 +1670,18 @@ const Map: React.FC = () => {
               {/* Text Solution */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  🎯 Solution Text (Required)
+                  {t('map.solutionTextReq')}
                 </label>
                 <textarea
                   value={solutionForm.solution}
                   onChange={(e) => setSolutionForm(prev => ({ ...prev, solution: e.target.value }))}
-                  placeholder="Enter the solution text (codeword, postcode, etc.)"
+                  placeholder={t('map.solutionPlaceholder')}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-200"
                   rows={2}
                   required
                 />
                 <p className="text-xs text-gray-500 mt-1">
-                  💡 Enter exactly as described in the hint rules
+                  {t('map.solutionHint')}
                 </p>
               </div>
               
@@ -1686,14 +1689,14 @@ const Map: React.FC = () => {
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    🦊 Fox Locations (Optional - Rijksdriehoek Coordinates)
+                    {t('map.foxLocationsOptional')}
                   </label>
                   <span className="text-xs text-yellow-600 dark:text-yellow-400 font-medium">
-                    ⏱️ 20 min deadline - 1 point per correct area!
+                    {t('map.deadlineNote')}
                   </span>
                 </div>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
-                  Fill in only the fox areas revealed by this hint. You can leave most fields empty - only enter coordinates for the areas you discovered.
+                  {t('map.fillRevealed')}
                 </p>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1716,12 +1719,12 @@ const Map: React.FC = () => {
                         className={`p-3 rounded-lg border ${teamColors[area]}`}
                       >
                         <h4 className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-2 flex items-center">
-                          🦊 {area} Team
+                          🦊 {area} {t('updateDetail.teamSuffix')}
                         </h4>
                         <div className="grid grid-cols-2 gap-2">
                           <div>
                             <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
-                              RD X-coördinaat
+                              {t('map.rdX')}
                             </label>
                             <input
                               type="number"
@@ -1744,7 +1747,7 @@ const Map: React.FC = () => {
                           </div>
                           <div>
                             <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
-                              RD Y-coördinaat
+                              {t('map.rdY')}
                             </label>
                             <input
                               type="number"
@@ -1776,9 +1779,9 @@ const Map: React.FC = () => {
             {/* Action Buttons */}
             <div className="flex items-center justify-between mt-8 pt-4 border-t border-gray-200 dark:border-gray-600">
               <div className="text-xs text-gray-500 dark:text-gray-400">
-                <p>✅ Only solution text is required - coordinates are optional</p>
-                <p>🎯 Correct coordinates reveal fox locations on the map</p>
-                <p>⚡ Submit within 20 minutes for maximum points (1 point per correct area)</p>
+                <p>{t('map.note1')}</p>
+                <p>{t('map.note2')}</p>
+                <p>{t('map.note3')}</p>
               </div>
               
               <div className="flex space-x-3">
@@ -1802,9 +1805,9 @@ const Map: React.FC = () => {
                   }}
                   className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-md transition-colors"
                 >
-                  Cancel
+                  {t('common.cancel')}
                 </button>
-                
+
                 <button
                   onClick={handleSubmitHintSolution}
                   disabled={!solutionForm.solution.trim() || isSubmittingSolution}
@@ -1813,12 +1816,12 @@ const Map: React.FC = () => {
                   {isSubmittingSolution ? (
                     <>
                       <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
-                      <span>Submitting...</span>
+                      <span>{t('updateDetail.submitting')}</span>
                     </>
                   ) : (
                     <>
                       <span>🎯</span>
-                      <span>Submit Solution</span>
+                      <span>{t('updateDetail.submitSolution')}</span>
                     </>
                   )}
                 </button>

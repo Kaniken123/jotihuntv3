@@ -62,27 +62,35 @@ const server = (0, http_1.createServer)(app);
 const io = new socket_io_1.Server(server, {
     path: '/api/socket.io/',
     cors: {
-        origin: [
-            process.env.FRONTEND_URL || "http://localhost:3000",
-            "https://dfef01c8947a.ngrok-free.app"
-        ],
+        // Reflect the request origin. nginx restricts which hostnames reach the
+        // app and JWT guards authenticated routes, so a strict allowlist here only
+        // breaks production whenever FRONTEND_URL is misconfigured.
+        origin: true,
+        credentials: true,
         methods: ["GET", "POST"],
-        credentials: true
     }
 });
 const PORT = process.env.PORT || 3001;
+const corsOptions = {
+    origin: true,
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+};
 app.use((0, helmet_1.default)());
-app.use((0, cors_1.default)({
-    origin: process.env.FRONTEND_URL || "http://localhost:3000",
-    credentials: true
-}));
+app.use((0, cors_1.default)(corsOptions));
 app.use(express_1.default.json({ limit: '10mb' }));
 app.use(express_1.default.urlencoded({ extended: true, limit: '10mb' }));
 // Add cache headers for static content
-app.use('/uploads', (req, res, next) => {
+const uploadsCacheHeaders = (req, res, next) => {
     res.setHeader('Cache-Control', 'public, max-age=86400'); // 24 hours
     next();
-}, express_1.default.static(path_1.default.join(__dirname, '../uploads')));
+};
+const uploadsStatic = express_1.default.static(path_1.default.join(__dirname, '../uploads'));
+// Chat attachments use /uploads/... ; hunt photos are stored as
+// /api/uploads/hunts/... . Serve both prefixes from the same directory.
+app.use('/uploads', uploadsCacheHeaders, uploadsStatic);
+app.use('/api/uploads', uploadsCacheHeaders, uploadsStatic);
 app.use('/api/auth', auth_1.default);
 app.use('/api/jotihunt', jotihunt_1.default);
 app.use('/api/locations', locations_1.default);

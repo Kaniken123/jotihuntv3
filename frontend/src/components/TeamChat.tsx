@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
 import { useWebSocket } from '../contexts/WebSocketContext';
 import { api } from '../services/authService';
@@ -17,6 +18,7 @@ const TeamChat: React.FC = () => {
   
   const { state } = useAuth();
   const { socket } = useWebSocket();
+  const { t } = useTranslation();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -193,7 +195,7 @@ const TeamChat: React.FC = () => {
       setNewMessage(messageText);
       setSelectedFile(fileToSend);
       
-      alert('Failed to send message. Please try again.');
+      alert(t('chat.sendFailed'));
     } finally {
       setIsSending(false);
     }
@@ -212,7 +214,7 @@ const TeamChat: React.FC = () => {
   };
 
   const handleDeleteMessage = async (messageId: number) => {
-    if (!confirm('Are you sure you want to delete this message?')) return;
+    if (!confirm(t('chat.deleteConfirm'))) return;
 
     try {
       await api.delete(`/chat/messages/${messageId}`);
@@ -238,13 +240,13 @@ const TeamChat: React.FC = () => {
         // ISO string or other string format
         date = new Date(timestamp);
       } else {
-        return 'Now';
+        return t('chat.now');
       }
       
       // Check if the date is valid
       if (isNaN(date.getTime())) {
         console.warn('Invalid timestamp:', timestamp);
-        return 'Now';
+        return t('chat.now');
       }
       
       // Format the time
@@ -272,7 +274,7 @@ const TeamChat: React.FC = () => {
       <div className="flex-1 flex items-center justify-center">
         <div className="text-center">
           <p className="text-gray-500 dark:text-gray-400">
-            You need to be part of a team to access chat
+            {t('chat.needTeam')}
           </p>
         </div>
       </div>
@@ -292,10 +294,10 @@ const TeamChat: React.FC = () => {
       {/* Header */}
       <div className="border-b border-gray-200 dark:border-gray-700 p-4">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-          Team Chat - {state.team.name}
+          {t('chat.teamChatTitle')} - {state.team.name}
         </h2>
         <p className="text-sm text-gray-500 dark:text-gray-400">
-          {state.team.area} Area
+          {state.team.area} {t('chat.areaSuffix')}
         </p>
       </div>
 
@@ -304,7 +306,7 @@ const TeamChat: React.FC = () => {
         {messages.length === 0 ? (
           <div className="text-center text-gray-500 dark:text-gray-400 py-8">
             <div className="text-4xl mb-2">💬</div>
-            <p>No messages yet. Start the conversation!</p>
+            <p>{t('chat.noMessages')}</p>
           </div>
         ) : (
           messages.map((message, index) => (
@@ -341,9 +343,9 @@ const TeamChat: React.FC = () => {
                           : message.user?.username}
                       </p>
                       <p className="text-xs text-gray-500 dark:text-gray-400">
-                        {message.created_at ? formatTime(message.created_at) : 'Now'}
+                        {message.created_at ? formatTime(message.created_at) : t('chat.now')}
                         {message.is_edited && (
-                          <span className="ml-1 italic">(edited)</span>
+                          <span className="ml-1 italic">{t('chat.edited')}</span>
                         )}
                       </p>
                     </div>
@@ -352,9 +354,9 @@ const TeamChat: React.FC = () => {
                   {message.user_id === state.user?.id && (
                     <div className="flex items-center justify-between mb-1">
                       <p className="text-xs text-primary-100">
-                        {message.created_at ? formatTime(message.created_at) : 'Now'}
+                        {message.created_at ? formatTime(message.created_at) : t('chat.now')}
                         {message.is_edited && (
-                          <span className="ml-1 italic">(edited)</span>
+                          <span className="ml-1 italic">{t('chat.edited')}</span>
                         )}
                       </p>
                       <div className="flex space-x-1">
@@ -389,13 +391,13 @@ const TeamChat: React.FC = () => {
                           onClick={() => handleEditMessage(message.id)}
                           className="px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
                         >
-                          Save
+                          {t('common.save')}
                         </button>
                         <button
                           onClick={() => setEditingMessage(null)}
                           className="px-2 py-1 text-xs bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors"
                         >
-                          Cancel
+                          {t('common.cancel')}
                         </button>
                       </div>
                     </div>
@@ -431,7 +433,7 @@ const TeamChat: React.FC = () => {
                               } transition-colors`}
                             >
                               <Paperclip size={16} />
-                              <span className="text-sm">View attachment</span>
+                              <span className="text-sm">{t('chat.viewAttachment')}</span>
                             </a>
                           )}
                         </div>
@@ -461,7 +463,7 @@ const TeamChat: React.FC = () => {
                     handleSendMessage(e);
                   }
                 }}
-                placeholder="Type a message..."
+                placeholder={t('chat.typeMessage')}
                 className="flex-1 bg-transparent border-0 focus:outline-none focus:ring-0 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400"
                 disabled={isSending}
               />
@@ -479,7 +481,7 @@ const TeamChat: React.FC = () => {
                 onClick={() => fileInputRef.current?.click()}
                 className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
                 disabled={isSending}
-                title="Attach file"
+                title={t('chat.attachFile')}
               >
                 <Paperclip size={18} />
               </button>
@@ -517,7 +519,7 @@ const TeamChat: React.FC = () => {
             ) : (
               <Send size={16} />
             )}
-            <span className="hidden sm:inline">Send</span>
+            <span className="hidden sm:inline">{t('chat.send')}</span>
           </button>
         </form>
       </div>
