@@ -4,7 +4,7 @@ import { X } from 'lucide-react';
 
 // Bump this key to re-show the popup for a future release/beta.
 const SEEN_KEY = 'jh_welcome_beta_v1';
-const CONTACT_EMAIL = 'chris @ kaniken.nl';
+const CONTACT_EMAIL = 'contact @ kaniken.nl';
 const CONTACT_PHONE_DISPLAY = '+31 6 33013211';
 const CONTACT_PHONE_TEL = '+31633013211';
 
