@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
 import { api, authService } from '../services/authService';
 import { gameService } from '../services/gameService';
@@ -100,6 +101,7 @@ const AdminDashboard: React.FC = () => {
   const [savingTenant, setSavingTenant] = useState(false);
 
   const { state } = useAuth();
+  const { t } = useTranslation();
 
   useEffect(() => {
     if (isAdmin(state.user)) {
@@ -506,10 +508,10 @@ const AdminDashboard: React.FC = () => {
         <div className="card p-6 text-center">
           <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-4" />
           <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
-            Access Denied
+            {t('routeTracker.accessDenied')}
           </h2>
           <p className="text-gray-600 dark:text-gray-400">
-            You need administrator privileges to access this page.
+            {t('admin.accessDeniedDesc')}
           </p>
         </div>
       </div>
@@ -525,14 +527,14 @@ const AdminDashboard: React.FC = () => {
   }
 
   const tabs = [
-    { id: 'overview', label: 'Overview', icon: BarChart3 },
-    { id: 'hunts', label: 'Hunt Review', icon: Camera },
-    { id: 'users', label: 'User Management', icon: Users },
-    { id: 'areas', label: 'Game Areas', icon: MapPin },
-    { id: 'subscriptions', label: 'Group Management', icon: Home },
-    { id: 'notifications', label: 'Notifications', icon: Bell },
-    { id: 'api', label: 'API Sync', icon: Database },
-    { id: 'settings', label: 'Settings', icon: Settings },
+    { id: 'overview', label: t('admin.tabOverview'), icon: BarChart3 },
+    { id: 'hunts', label: t('admin.tabHunts'), icon: Camera },
+    { id: 'users', label: t('admin.tabUsers'), icon: Users },
+    { id: 'areas', label: t('admin.tabAreas'), icon: MapPin },
+    { id: 'subscriptions', label: t('admin.tabSubscriptions'), icon: Home },
+    { id: 'notifications', label: t('admin.tabNotifications'), icon: Bell },
+    { id: 'api', label: t('admin.tabApi'), icon: Database },
+    { id: 'settings', label: t('admin.tabSettings'), icon: Settings },
   ];
 
   const renderOverview = () => (
@@ -542,7 +544,7 @@ const AdminDashboard: React.FC = () => {
         <div className="card p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Users</p>
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">{t('admin.totalUsers')}</p>
               <p className="text-2xl font-semibold text-gray-900 dark:text-gray-100">
                 {stats?.total_users || 0}
               </p>
@@ -554,7 +556,7 @@ const AdminDashboard: React.FC = () => {
         <div className="card p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Pending Hunts</p>
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">{t('admin.pendingHunts')}</p>
               <p className="text-2xl font-semibold text-gray-900 dark:text-gray-100">
                 {stats?.pending_hunts || 0}
               </p>
@@ -566,7 +568,7 @@ const AdminDashboard: React.FC = () => {
         <div className="card p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Hunts</p>
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">{t('admin.totalHunts')}</p>
               <p className="text-2xl font-semibold text-gray-900 dark:text-gray-100">
                 {stats?.total_hunts || 0}
               </p>
@@ -578,7 +580,7 @@ const AdminDashboard: React.FC = () => {
         <div className="card p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Active Areas</p>
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">{t('admin.activeAreas')}</p>
               <p className="text-2xl font-semibold text-gray-900 dark:text-gray-100">
                 {stats?.active_areas || 0}
               </p>
@@ -590,7 +592,7 @@ const AdminDashboard: React.FC = () => {
         <div className="card p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Teams</p>
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">{t('admin.totalTeams')}</p>
               <p className="text-2xl font-semibold text-gray-900 dark:text-gray-100">
                 {stats?.total_teams || 0}
               </p>
@@ -602,7 +604,7 @@ const AdminDashboard: React.FC = () => {
         <div className="card p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Messages</p>
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">{t('admin.totalMessages')}</p>
               <p className="text-2xl font-semibold text-gray-900 dark:text-gray-100">
                 {stats?.total_messages || 0}
               </p>
@@ -616,14 +618,14 @@ const AdminDashboard: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="card p-6">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-            Recent Hunts Requiring Review
+            {t('admin.recentHuntsReview')}
           </h3>
           <div className="space-y-3">
             {pendingHunts.slice(0, 5).map((hunt) => (
               <div key={hunt.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
                 <div>
                   <p className="font-medium text-gray-900 dark:text-gray-100">
-                    {hunt.fox_area} Hunt
+                    {t('admin.huntSuffix', { area: hunt.fox_area })}
                   </p>
                   <p className="text-sm text-gray-600 dark:text-gray-400">
                     {new Date(hunt.hunt_time).toLocaleString()}
@@ -633,13 +635,13 @@ const AdminDashboard: React.FC = () => {
                   onClick={() => setActiveTab('hunts')}
                   className="btn btn-primary btn-sm"
                 >
-                  Review
+                  {t('admin.review')}
                 </button>
               </div>
             ))}
             {pendingHunts.length === 0 && (
               <p className="text-gray-500 dark:text-gray-400 text-center py-4">
-                No pending hunts to review
+                {t('admin.noPendingHunts')}
               </p>
             )}
           </div>
@@ -647,7 +649,7 @@ const AdminDashboard: React.FC = () => {
 
         <div className="card p-6">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-            Active Users
+            {t('admin.activeUsers')}
           </h3>
           <div className="space-y-3">
             {users.slice(0, 5).map((user) => (
@@ -659,7 +661,7 @@ const AdminDashboard: React.FC = () => {
                       : user.username}
                   </p>
                   <p className="text-sm text-gray-600 dark:text-gray-400">
-                    {isAdmin(user) ? 'Administrator' : 'Hunter'}
+                    {isAdmin(user) ? t('roles.administrator') : t('roles.hunter')}
                   </p>
                 </div>
                 <div className={`w-3 h-3 rounded-full ${user.is_active ? 'bg-green-500' : 'bg-red-500'}`} />
@@ -1889,10 +1891,10 @@ const AdminDashboard: React.FC = () => {
     <div className="max-w-7xl mx-auto p-6">
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">
-          Admin Dashboard
+          {t('admin.dashboardTitle')}
         </h1>
         <p className="text-gray-600 dark:text-gray-400">
-          Manage users, review hunts, and monitor game activity
+          {t('admin.dashboardSubtitle')}
         </p>
       </div>
 

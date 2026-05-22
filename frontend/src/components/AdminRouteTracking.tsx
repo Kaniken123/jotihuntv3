@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet';
 import { Icon, LatLng } from 'leaflet';
 import { gameService } from '../services/gameService';
@@ -102,6 +103,7 @@ const AdminRouteTracking: React.FC = () => {
   const [error, setError] = useState('');
   const [timePeriod, setTimePeriod] = useState(24); // hours
   const { state } = useAuth();
+  const { t } = useTranslation();
 
   // Check if user is admin
   if (state.user?.role !== 'admin') {
@@ -112,10 +114,10 @@ const AdminRouteTracking: React.FC = () => {
             <EyeOff className="w-full h-full" />
           </div>
           <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
-            Access Denied
+            {t('routeTracker.accessDenied')}
           </h2>
           <p className="text-gray-600 dark:text-gray-400">
-            Admin privileges required to access route tracking.
+            {t('routeTracker.adminRequired')}
           </p>
         </div>
       </div>
@@ -189,10 +191,10 @@ const AdminRouteTracking: React.FC = () => {
       <div className="mb-4 sm:mb-6">
         <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2 flex items-center space-x-2">
           <Route className="w-5 h-5 sm:w-6 sm:h-6" />
-          <span>Admin Route Tracking</span>
+          <span>{t('routeTracker.adminTitle')}</span>
         </h1>
         <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
-          View user movement routes and statistics (respects privacy settings)
+          {t('routeTracker.adminSubtitle')}
         </p>
       </div>
 
@@ -209,7 +211,7 @@ const AdminRouteTracking: React.FC = () => {
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center space-x-2">
                 <Users className="w-5 h-5" />
-                <span>Users</span>
+                <span>{t('routeTracker.usersHeading')}</span>
               </h2>
               <button
                 onClick={loadUsers}
@@ -217,14 +219,14 @@ const AdminRouteTracking: React.FC = () => {
                 className="btn btn-sm btn-outline flex items-center space-x-1"
               >
                 <RefreshCw className={`w-4 h-4 ${isLoadingUsers ? 'animate-spin' : ''}`} />
-                <span>Refresh</span>
+                <span>{t('routeTracker.refresh')}</span>
               </button>
             </div>
 
             {/* Time Period Selector */}
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center space-x-2">
-                <span>Time Period</span>
+                <span>{t('routeTracker.timePeriod')}</span>
                 {isLoadingRoute && selectedUser && (
                   <LoadingSpinner size="sm" />
                 )}
@@ -235,15 +237,15 @@ const AdminRouteTracking: React.FC = () => {
                 disabled={isLoadingRoute}
                 className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 disabled:opacity-50"
               >
-                <option value={1}>Last 1 hour</option>
-                <option value={6}>Last 6 hours</option>
-                <option value={24}>Last 24 hours</option>
-                <option value={72}>Last 3 days</option>
-                <option value={168}>Last 7 days</option>
+                <option value={1}>{t('routeTracker.last1h')}</option>
+                <option value={6}>{t('routeTracker.last6h')}</option>
+                <option value={24}>{t('routeTracker.last24h')}</option>
+                <option value={72}>{t('routeTracker.last3d')}</option>
+                <option value={168}>{t('routeTracker.last7d')}</option>
               </select>
               {selectedUser && (
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  Currently showing {timePeriod} hours for {getUserDisplayName(selectedUser)}
+                  {t('routeTracker.showingHours', { hours: timePeriod, name: getUserDisplayName(selectedUser) })}
                 </p>
               )}
             </div>
@@ -276,7 +278,7 @@ const AdminRouteTracking: React.FC = () => {
                         )}
                         {user.last_seen && (
                           <p className="text-xs text-gray-500 dark:text-gray-500">
-                            Last seen: {new Date(user.last_seen).toLocaleString()}
+                            {t('hunt.lastSeen')}: {new Date(user.last_seen).toLocaleString()}
                           </p>
                         )}
                       </div>
@@ -305,7 +307,7 @@ const AdminRouteTracking: React.FC = () => {
             <div className="card p-4">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center space-x-2">
                 <TrendingUp className="w-5 h-5" />
-                <span>Route Statistics for {getUserDisplayName(routeData.user)}</span>
+                <span>{t('routeTracker.routeStatsFor', { name: getUserDisplayName(routeData.user) })}</span>
               </h2>
               
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -313,42 +315,42 @@ const AdminRouteTracking: React.FC = () => {
                   <div className="text-xl lg:text-2xl font-bold text-blue-600 dark:text-blue-400">
                     {routeData.statistics.total_points}
                   </div>
-                  <div className="text-xs lg:text-sm text-gray-600 dark:text-gray-400">Tracking Points</div>
+                  <div className="text-xs lg:text-sm text-gray-600 dark:text-gray-400">{t('routeTracker.trackingPoints')}</div>
                 </div>
                 
                 <div className="text-center">
                   <div className="text-xl lg:text-2xl font-bold text-green-600 dark:text-green-400">
                     {routeData.statistics.total_distance_km} km
                   </div>
-                  <div className="text-xs lg:text-sm text-gray-600 dark:text-gray-400">Distance Traveled</div>
+                  <div className="text-xs lg:text-sm text-gray-600 dark:text-gray-400">{t('routeTracker.distanceTraveled')}</div>
                 </div>
                 
                 <div className="text-center">
                   <div className="text-xl lg:text-2xl font-bold text-orange-600 dark:text-orange-400">
                     {routeData.statistics.max_speed_kmh} km/h
                   </div>
-                  <div className="text-xs lg:text-sm text-gray-600 dark:text-gray-400">Max Speed</div>
+                  <div className="text-xs lg:text-sm text-gray-600 dark:text-gray-400">{t('routeTracker.maxSpeed')}</div>
                 </div>
                 
                 <div className="text-center">
                   <div className="text-xl lg:text-2xl font-bold text-purple-600 dark:text-purple-400">
                     {routeData.statistics.time_period_hours}h
                   </div>
-                  <div className="text-xs lg:text-sm text-gray-600 dark:text-gray-400">Time Period</div>
+                  <div className="text-xs lg:text-sm text-gray-600 dark:text-gray-400">{t('routeTracker.timePeriod')}</div>
                 </div>
               </div>
 
               {routeData.statistics.first_location && routeData.statistics.last_location && (
                 <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                   <div>
-                    <span className="font-medium text-gray-700 dark:text-gray-300">First Location:</span>
+                    <span className="font-medium text-gray-700 dark:text-gray-300">{t('routeTracker.firstLocation')}</span>
                     <br />
                     <span className="text-gray-600 dark:text-gray-400">
                       {formatTime(routeData.statistics.first_location)}
                     </span>
                   </div>
                   <div>
-                    <span className="font-medium text-gray-700 dark:text-gray-300">Last Location:</span>
+                    <span className="font-medium text-gray-700 dark:text-gray-300">{t('routeTracker.lastLocation')}</span>
                     <br />
                     <span className="text-gray-600 dark:text-gray-400">
                       {formatTime(routeData.statistics.last_location)}
@@ -363,7 +365,7 @@ const AdminRouteTracking: React.FC = () => {
           <div className="card p-4 relative">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center space-x-2">
               <MapPin className="w-5 h-5" />
-              <span>Route Visualization</span>
+              <span>{t('routeTracker.routeVisualization')}</span>
               {isLoadingRoute && <LoadingSpinner size="sm" />}
             </h2>
 
@@ -373,7 +375,7 @@ const AdminRouteTracking: React.FC = () => {
                   <div className="text-center">
                     <Navigation className="w-12 h-12 text-gray-400 mx-auto mb-2" />
                     <p className="text-gray-600 dark:text-gray-400">
-                      Select a user to view their route
+                      {t('routeTracker.selectUser')}
                     </p>
                   </div>
                 </div>
@@ -406,13 +408,13 @@ const AdminRouteTracking: React.FC = () => {
                     >
                       <Popup>
                         <div className="p-2">
-                          <h3 className="font-semibold text-green-600">Start</h3>
+                          <h3 className="font-semibold text-green-600">{t('routeTracker.start')}</h3>
                           <p className="text-sm">
                             {formatTime(routeData.locations[0].recorded_at)}
                           </p>
                           {routeData.locations[0].accuracy && (
                             <p className="text-xs text-gray-500">
-                              Accuracy: {Math.round(routeData.locations[0].accuracy)}m
+                              {t('locationSettings.accuracy')}: {Math.round(routeData.locations[0].accuracy)}m
                             </p>
                           )}
                         </div>
@@ -431,13 +433,13 @@ const AdminRouteTracking: React.FC = () => {
                     >
                       <Popup>
                         <div className="p-2">
-                          <h3 className="font-semibold text-red-600">End</h3>
+                          <h3 className="font-semibold text-red-600">{t('routeTracker.end')}</h3>
                           <p className="text-sm">
                             {formatTime(routeData.locations[routeData.locations.length - 1].recorded_at)}
                           </p>
                           {routeData.locations[routeData.locations.length - 1].accuracy && (
                             <p className="text-xs text-gray-500">
-                              Accuracy: {Math.round(routeData.locations[routeData.locations.length - 1].accuracy)}m
+                              {t('locationSettings.accuracy')}: {Math.round(routeData.locations[routeData.locations.length - 1].accuracy)}m
                             </p>
                           )}
                         </div>

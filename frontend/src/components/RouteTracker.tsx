@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet';
 import { Icon, LatLng } from 'leaflet';
 import { gameService } from '../services/gameService';
@@ -146,6 +147,7 @@ const RouteTracker: React.FC = () => {
   const [timePeriod, setTimePeriod] = useState(24); // hours
   const [showFoxOnly, setShowFoxOnly] = useState(false);
   const { state } = useAuth();
+  const { t } = useTranslation();
 
   useEffect(() => {
     loadUsers();
@@ -170,7 +172,7 @@ const RouteTracker: React.FC = () => {
     } catch (error: any) {
       console.error('Error loading users:', error);
       const errorMessage = error.response?.data?.error || error.message || 'Failed to load users';
-      setError(`Error loading users: ${errorMessage}`);
+      setError(t('routeTracker.errorLoadingUsers', { error: errorMessage }));
     } finally {
       setIsLoadingUsers(false);
     }
@@ -188,7 +190,7 @@ const RouteTracker: React.FC = () => {
     } catch (error: any) {
       console.error('Error loading route:', error);
       const errorMessage = error.response?.data?.error || error.message || 'Failed to load route';
-      setError(`Error loading route: ${errorMessage}`);
+      setError(t('routeTracker.errorLoadingRoute', { error: errorMessage }));
     } finally {
       setIsLoadingRoute(false);
     }
@@ -236,11 +238,11 @@ const RouteTracker: React.FC = () => {
       <div className="mb-4 sm:mb-6">
         <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2 flex items-center space-x-2">
           <Route className="w-5 h-5 sm:w-6 sm:h-6" />
-          <span>Route Tracker</span>
+          <span>{t('routeTracker.title')}</span>
           <Target className="w-5 h-5 text-orange-500" />
         </h1>
         <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
-          🦊 Track fox teams and other players' routes (respects privacy settings)
+          {t('routeTracker.subtitle')}
         </p>
       </div>
 
@@ -257,7 +259,7 @@ const RouteTracker: React.FC = () => {
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center space-x-2">
                 <Users className="w-5 h-5" />
-                <span>Players</span>
+                <span>{t('routeTracker.players')}</span>
               </h2>
               <button
                 onClick={loadUsers}
@@ -265,7 +267,7 @@ const RouteTracker: React.FC = () => {
                 className="btn btn-sm btn-outline flex items-center space-x-1"
               >
                 <RefreshCw className={`w-4 h-4 ${isLoadingUsers ? 'animate-spin' : ''}`} />
-                <span>Refresh</span>
+                <span>{t('routeTracker.refresh')}</span>
               </button>
             </div>
 
@@ -280,11 +282,11 @@ const RouteTracker: React.FC = () => {
                 />
                 <Target className="w-4 h-4 text-orange-600" />
                 <span className="text-sm font-medium text-orange-800 dark:text-orange-200">
-                  🦊 Show Fox Teams Only
+                  {t('routeTracker.showFoxOnly')}
                 </span>
               </label>
               <p className="text-xs text-orange-600 dark:text-orange-400 mt-1">
-                Focus on tracking fox teams for strategic hunting
+                {t('routeTracker.showFoxOnlyHelp')}
               </p>
             </div>
 
@@ -292,7 +294,7 @@ const RouteTracker: React.FC = () => {
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center space-x-2">
                 <Clock className="w-4 h-4" />
-                <span>Time Period</span>
+                <span>{t('routeTracker.timePeriod')}</span>
                 {isLoadingRoute && selectedUser && (
                   <LoadingSpinner size="sm" />
                 )}
@@ -303,15 +305,15 @@ const RouteTracker: React.FC = () => {
                 disabled={isLoadingRoute}
                 className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 disabled:opacity-50"
               >
-                <option value={1}>Last 1 hour</option>
-                <option value={6}>Last 6 hours</option>
-                <option value={24}>Last 24 hours</option>
-                <option value={72}>Last 3 days</option>
-                <option value={168}>Last 7 days</option>
+                <option value={1}>{t('routeTracker.last1h')}</option>
+                <option value={6}>{t('routeTracker.last6h')}</option>
+                <option value={24}>{t('routeTracker.last24h')}</option>
+                <option value={72}>{t('routeTracker.last3d')}</option>
+                <option value={168}>{t('routeTracker.last7d')}</option>
               </select>
               {selectedUser && (
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  Currently showing {timePeriod} hours for {getUserDisplayName(selectedUser)}
+                  {t('routeTracker.showingHours', { hours: timePeriod, name: getUserDisplayName(selectedUser) })}
                 </p>
               )}
             </div>
@@ -347,12 +349,12 @@ const RouteTracker: React.FC = () => {
                         {user.team_name && (
                           <p className="text-xs text-gray-600 dark:text-gray-400">
                             {user.team_name} {user.team_area ? `(${user.team_area})` : ''}
-                            {isFoxTeamMember(user) && ' - Fox Team'}
+                            {isFoxTeamMember(user) && ` ${t('routeTracker.foxTeamSuffix')}`}
                           </p>
                         )}
                         {user.last_seen && (
                           <p className="text-xs text-gray-500 dark:text-gray-500">
-                            Last seen: {new Date(user.last_seen).toLocaleString()}
+                            {t('hunt.lastSeen')}: {new Date(user.last_seen).toLocaleString()}
                           </p>
                         )}
                       </div>
@@ -381,15 +383,15 @@ const RouteTracker: React.FC = () => {
             <div className="card p-4">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center space-x-2">
                 <TrendingUp className="w-5 h-5" />
-                <span>Route Statistics for {getUserDisplayName({ 
-                  first_name: routeData.user.first_name, 
-                  last_name: routeData.user.last_name, 
-                  username: routeData.user.username 
-                } as User)}</span>
+                <span>{t('routeTracker.routeStatsFor', { name: getUserDisplayName({
+                  first_name: routeData.user.first_name,
+                  last_name: routeData.user.last_name,
+                  username: routeData.user.username
+                } as User) })}</span>
                 {selectedUser && isFoxTeamMember(selectedUser) && (
                   <div className="flex items-center space-x-1">
                     <Target className="w-4 h-4 text-orange-600" />
-                    <span className="text-sm text-orange-600 dark:text-orange-400 font-medium">Fox Team</span>
+                    <span className="text-sm text-orange-600 dark:text-orange-400 font-medium">{t('routeTracker.foxTeam')}</span>
                   </div>
                 )}
               </h2>
@@ -399,42 +401,42 @@ const RouteTracker: React.FC = () => {
                   <div className="text-xl lg:text-2xl font-bold text-blue-600 dark:text-blue-400">
                     {routeData.statistics.total_points}
                   </div>
-                  <div className="text-xs lg:text-sm text-gray-600 dark:text-gray-400">Tracking Points</div>
+                  <div className="text-xs lg:text-sm text-gray-600 dark:text-gray-400">{t('routeTracker.trackingPoints')}</div>
                 </div>
                 
                 <div className="text-center">
                   <div className="text-xl lg:text-2xl font-bold text-green-600 dark:text-green-400">
                     {routeData.statistics.total_distance_km} km
                   </div>
-                  <div className="text-xs lg:text-sm text-gray-600 dark:text-gray-400">Distance Traveled</div>
+                  <div className="text-xs lg:text-sm text-gray-600 dark:text-gray-400">{t('routeTracker.distanceTraveled')}</div>
                 </div>
                 
                 <div className="text-center">
                   <div className="text-xl lg:text-2xl font-bold text-orange-600 dark:text-orange-400">
                     {routeData.statistics.max_speed_kmh} km/h
                   </div>
-                  <div className="text-xs lg:text-sm text-gray-600 dark:text-gray-400">Max Speed</div>
+                  <div className="text-xs lg:text-sm text-gray-600 dark:text-gray-400">{t('routeTracker.maxSpeed')}</div>
                 </div>
                 
                 <div className="text-center">
                   <div className="text-xl lg:text-2xl font-bold text-purple-600 dark:text-purple-400">
                     {routeData.statistics.time_period_hours}h
                   </div>
-                  <div className="text-xs lg:text-sm text-gray-600 dark:text-gray-400">Time Period</div>
+                  <div className="text-xs lg:text-sm text-gray-600 dark:text-gray-400">{t('routeTracker.timePeriod')}</div>
                 </div>
               </div>
 
               {routeData.statistics.first_location && routeData.statistics.last_location && (
                 <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                   <div>
-                    <span className="font-medium text-gray-700 dark:text-gray-300">First Location:</span>
+                    <span className="font-medium text-gray-700 dark:text-gray-300">{t('routeTracker.firstLocation')}</span>
                     <br />
                     <span className="text-gray-600 dark:text-gray-400">
                       {formatTime(routeData.statistics.first_location)}
                     </span>
                   </div>
                   <div>
-                    <span className="font-medium text-gray-700 dark:text-gray-300">Last Location:</span>
+                    <span className="font-medium text-gray-700 dark:text-gray-300">{t('routeTracker.lastLocation')}</span>
                     <br />
                     <span className="text-gray-600 dark:text-gray-400">
                       {formatTime(routeData.statistics.last_location)}
@@ -459,12 +461,12 @@ const RouteTracker: React.FC = () => {
           <div className="card p-4 relative">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center space-x-2">
               <MapPin className="w-5 h-5" />
-              <span>Route Visualization</span>
+              <span>{t('routeTracker.routeVisualization')}</span>
               {isLoadingRoute && <LoadingSpinner size="sm" />}
               {selectedUser && isFoxTeamMember(selectedUser) && (
                 <div className="flex items-center space-x-1 px-2 py-1 bg-orange-100 dark:bg-orange-900/30 rounded-full">
                   <Target className="w-3 h-3 text-orange-600" />
-                  <span className="text-xs font-medium text-orange-700 dark:text-orange-300">Fox Route</span>
+                  <span className="text-xs font-medium text-orange-700 dark:text-orange-300">{t('routeTracker.foxRoute')}</span>
                 </div>
               )}
             </h2>
@@ -475,11 +477,11 @@ const RouteTracker: React.FC = () => {
                   <div className="text-center">
                     <Navigation className="w-12 h-12 text-gray-400 mx-auto mb-2" />
                     <p className="text-gray-600 dark:text-gray-400 mb-2">
-                      Select a player to view their route
+                      {t('routeTracker.selectPlayer')}
                     </p>
                     <div className="flex items-center justify-center space-x-2 text-sm text-gray-500">
                       <Target className="w-4 h-4 text-orange-500" />
-                      <span>Fox teams are highlighted</span>
+                      <span>{t('routeTracker.foxHighlighted')}</span>
                     </div>
                   </div>
                 </div>
@@ -514,7 +516,7 @@ const RouteTracker: React.FC = () => {
                       <Popup>
                         <div className="p-2">
                           <h3 className="font-semibold text-green-600 flex items-center space-x-1">
-                            <span>Start</span>
+                            <span>{t('routeTracker.start')}</span>
                             {isFoxTeamMember(selectedUser) && <Target className="w-4 h-4 text-orange-600" />}
                           </h3>
                           <p className="text-sm">
@@ -522,12 +524,12 @@ const RouteTracker: React.FC = () => {
                           </p>
                           {routeData.locations[0].accuracy && (
                             <p className="text-xs text-gray-500">
-                              Accuracy: {Math.round(routeData.locations[0].accuracy)}m
+                              {t('locationSettings.accuracy')}: {Math.round(routeData.locations[0].accuracy)}m
                             </p>
                           )}
                           {isFoxTeamMember(selectedUser) && (
                             <p className="text-xs text-orange-600 mt-1 font-medium">
-                              🦊 Fox Team: {selectedUser.team_area}
+                              {t('routeTracker.foxTeamArea', { area: selectedUser.team_area })}
                             </p>
                           )}
                         </div>
@@ -547,7 +549,7 @@ const RouteTracker: React.FC = () => {
                       <Popup>
                         <div className="p-2">
                           <h3 className="font-semibold text-red-600 flex items-center space-x-1">
-                            <span>Latest Position</span>
+                            <span>{t('routeTracker.latestPosition')}</span>
                             {isFoxTeamMember(selectedUser) && <Target className="w-4 h-4 text-orange-600" />}
                           </h3>
                           <p className="text-sm">
@@ -555,12 +557,12 @@ const RouteTracker: React.FC = () => {
                           </p>
                           {routeData.locations[routeData.locations.length - 1].accuracy && (
                             <p className="text-xs text-gray-500">
-                              Accuracy: {Math.round(routeData.locations[routeData.locations.length - 1].accuracy)}m
+                              {t('locationSettings.accuracy')}: {Math.round(routeData.locations[routeData.locations.length - 1].accuracy)}m
                             </p>
                           )}
                           {isFoxTeamMember(selectedUser) && (
                             <p className="text-xs text-orange-600 mt-1 font-medium">
-                              🦊 Current fox position
+                              {t('routeTracker.currentFoxPosition')}
                             </p>
                           )}
                         </div>
