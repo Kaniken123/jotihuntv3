@@ -93,7 +93,7 @@ const WelcomeModal: React.FC = () => {
             </p>
             <a
               href="/jotihunt-app.apk"
-              download="jotihunt-gog.apk"
+              download="jotihunt-release-v9.apk"
               className="mt-3 inline-flex items-center justify-center w-full rounded-lg bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold px-4 py-2 transition-colors"
             >
               {t('welcome.downloadApp')}
