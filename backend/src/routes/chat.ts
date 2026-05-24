@@ -1,16 +1,22 @@
 import express from 'express';
 import multer from 'multer';
 import path from 'path';
-import { db } from '../utils/database';
+import fs from 'fs';
+import { db, extractInsertId } from '../utils/database';
 import { authenticateToken, isAdmin, enforceTenantIsolation } from '../middleware/auth';
 import { getSocketIO } from '../socketManager';
 
 const router = express.Router();
 
+// Ensure the chat upload dir exists at startup — multer's diskStorage throws
+// ENOENT on first use otherwise (which was silently breaking attachment sends).
+const chatUploadsDir = path.join(__dirname, '../../uploads/chat');
+fs.mkdirSync(chatUploadsDir, { recursive: true });
+
 // Configure multer for file uploads
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, path.join(__dirname, '../../uploads/chat'));
+    cb(null, chatUploadsDir);
   },
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
@@ -99,9 +105,9 @@ router.post('/messages/:team_id', authenticateToken, upload.single('attachment')
       messageData.attachment_type = req.file.mimetype.split('/')[0]; // image, application, etc.
     }
 
-    const [messageId] = await db('team_messages')
-      .insert(messageData)
-      .returning('id');
+    const messageId = extractInsertId(
+      await db('team_messages').insert(messageData).returning('id')
+    );
 
     // Get the full message with user info
     const fullMessage = await db('team_messages')
@@ -351,9 +357,9 @@ router.post('/channels/:channel_id/messages', authenticateToken, enforceTenantIs
       messageData.attachment_type = req.file.mimetype.split('/')[0];
     }
 
-    const [messageId] = await db('team_messages')
-      .insert(messageData)
-      .returning('id');
+    const messageId = extractInsertId(
+      await db('team_messages').insert(messageData).returning('id')
+    );
 
     // Get the full message with user info
     const fullMessage = await db('team_messages')

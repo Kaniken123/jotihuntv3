@@ -183,6 +183,7 @@
     "dashboardSubtitle": "Manage users, review hunts, and monitor game activity",
     "tabOverview": "Overview",
     "tabHunts": "Hunt Review",
+    "tabHints": "Hint Solutions",
     "tabUsers": "User Management",
     "tabAreas": "Game Areas",
     "tabSubscriptions": "Group Management",
@@ -331,6 +332,8 @@
     "optHunted": " ✅ (Hunted)",
     "optActive": " 🎯 (Active)",
     "optReady": " ⏳ (Ready to hunt)",
+    "waitMinutes": "🔒 wait {{count}} min",
+    "cooldownActive": "{{area}} is in cooldown — wait {{count}} min before re-hunting",
     "lastSeen": "Last seen",
     "huntPhoto": "Hunt Photo",
     "photoHelp": "Take a photo as proof of your hunt. Max 10MB.",
@@ -435,5 +438,22 @@
     "seen": "Seen",
     "location": "Location",
     "points": "pts"
+  },
+  "prediction": {
+    "toggle": "Prediction",
+    "confidence": "Confidence",
+    "confHigh": "high",
+    "confMedium": "medium",
+    "confLow": "low",
+    "basedOn": "Based on",
+    "lastSignal": "Last signal",
+    "generated": "Updated",
+    "source": {
+      "hunt": "hunt photo",
+      "hint": "hint solution",
+      "manual": "reported sighting",
+      "api": "official feed",
+      "none": "no recent data"
+    }
   }
 }

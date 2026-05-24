@@ -204,6 +204,7 @@
     "dashboardSubtitle": "Beheer gebruikers, beoordeel hunts en volg spelactiviteit",
     "tabOverview": "Overzicht",
     "tabHunts": "Hunts beoordelen",
+    "tabHints": "Hintoplossingen",
     "tabUsers": "Gebruikersbeheer",
     "tabAreas": "Spelgebieden",
     "tabSubscriptions": "Groepsbeheer",
@@ -352,6 +353,8 @@
     "optHunted": " ✅ (Gevangen)",
     "optActive": " 🎯 (Actief)",
     "optReady": " ⏳ (Klaar om te jagen)",
+    "waitMinutes": "🔒 nog {{count}} min wachten",
+    "cooldownActive": "{{area}} zit in cooldown — wacht nog {{count}} min voor opnieuw hunten",
     "lastSeen": "Laatst gezien",
     "huntPhoto": "Hunt-foto",
     "photoHelp": "Maak een foto als bewijs van je hunt. Max 10MB.",
@@ -456,5 +459,22 @@
     "seen": "Gezien",
     "location": "Locatie",
     "points": "ptn"
+  },
+  "prediction": {
+    "toggle": "Voorspelling",
+    "confidence": "Betrouwbaarheid",
+    "confHigh": "hoog",
+    "confMedium": "gemiddeld",
+    "confLow": "laag",
+    "basedOn": "Gebaseerd op",
+    "lastSignal": "Laatste signaal",
+    "generated": "Bijgewerkt",
+    "source": {
+      "hunt": "huntfoto",
+      "hint": "hintoplossing",
+      "manual": "gemelde spotting",
+      "api": "officiële feed",
+      "none": "geen recente data"
+    }
   }
 }

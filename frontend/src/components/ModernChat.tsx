@@ -150,9 +150,17 @@ const ModernChat: React.FC = () => {
         formData.append('attachment', selectedFile);
       }
 
-      await api.post(`/chat/channels/${activeChannel.id}/messages`, formData, {
+      const response = await api.post(`/chat/channels/${activeChannel.id}/messages`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
+
+      // Optimistically add the message locally — without this, the sender only
+      // sees their own message when the socket broadcast loops back, which fails
+      // silently if the socket isn't in the right room.
+      const sent = response.data;
+      if (sent && sent.id) {
+        setMessages(prev => (prev.some(m => m.id === sent.id) ? prev : [...prev, { ...sent, reactions: [] }]));
+      }
 
       setNewMessage('');
       setSelectedFile(null);

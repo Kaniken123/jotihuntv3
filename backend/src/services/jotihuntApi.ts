@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { db } from '../utils/database';
+import { db, extractInsertId } from '../utils/database';
 
 const JOTIHUNT_API_BASE = 'https://jotihunt.nl/api/2.0';
 
@@ -298,7 +298,7 @@ export class JotihuntApiService {
               }
             } else {
               // Create new area for this tenant
-              const [newAreaId] = await db('areas').insert({
+              const newAreaId = extractInsertId(await db('areas').insert({
                 external_id: area.id,
                 name: area.name,
                 fox_team_name: area.fox_team_name,
@@ -311,7 +311,7 @@ export class JotihuntApiService {
                 synced_at: new Date(),
                 created_at: new Date(),
                 updated_at: new Date()
-              }).returning('id');
+              }).returning('id'));
 
               // Create initial status history record for new area
               await db('fox_status_history').insert({

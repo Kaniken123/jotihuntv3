@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useReducer, useEffect, useRef } from 'react';
 import { useAuth } from './AuthContext';
+import { isAdmin } from '../utils/roleUtils';
 import { useWebSocket } from './WebSocketContext';
 import { NotificationData } from '../types';
 
@@ -142,6 +143,22 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       });
     };
 
+    // Admin-only: a new hunt photo was submitted and is waiting for review.
+    // The backend broadcasts this on every submit; non-admins ignore it.
+    const handleHuntPendingReview = (data: any) => {
+      if (!isAdmin(authState.user)) return;
+      const hunter = data?.first_name
+        ? `${data.first_name} ${data.last_name || ''}`.trim()
+        : data?.username || 'a hunter';
+      addNotification({
+        type: 'hunt',
+        title: 'New hunt to review',
+        message: `${hunter} submitted a hunt for ${data?.fox_area || 'a fox'}`,
+        read: false,
+        data,
+      });
+    };
+
     const handleHuntReviewed = (data: any) => {
       const isApproved = data.status === 'approved';
       addNotification({
@@ -206,6 +223,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     };
 
     socket.on('new-message', handleNewMessage);
+    socket.on('hunt-pending-review', handleHuntPendingReview);
     socket.on('hunt-reviewed', handleHuntReviewed);
     socket.on('new-assignment', handleNewAssignment);
     socket.on('location-alert', handleLocationAlert);
@@ -215,6 +233,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
     return () => {
       socket.off('new-message', handleNewMessage);
+      socket.off('hunt-pending-review', handleHuntPendingReview);
       socket.off('hunt-reviewed', handleHuntReviewed);
       socket.off('new-assignment', handleNewAssignment);
       socket.off('location-alert', handleLocationAlert);

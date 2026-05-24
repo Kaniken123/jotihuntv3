@@ -7,6 +7,7 @@ import { gameService } from '../services/gameService';
 import { useWebSocket } from '../contexts/WebSocketContext';
 import { useAuth } from '../contexts/AuthContext';
 import FoxStatusOverlay from './FoxStatusOverlay';
+import FoxPredictionLayer from './FoxPredictionLayer';
 
 // Subscription Popup Content Component
 interface SubscriptionPopupProps {
@@ -388,6 +389,7 @@ const Map: React.FC = () => {
   const [isAddMode, setIsAddMode] = useState(false);
   const [visibleFoxTeams, setVisibleFoxTeams] = useState<Set<string>>(new Set(['Alpha', 'Bravo', 'Charlie', 'Delta', 'Echo', 'Foxtrot', 'Golf', 'Hotel']));
   const [showFoxFilter, setShowFoxFilter] = useState(false);
+  const [showPredictions, setShowPredictions] = useState(false);
   const [showUserMarkers, setShowUserMarkers] = useState(true);
   const [showSubscriptions, setShowSubscriptions] = useState(true);
   const [showNoHuntZones, setShowNoHuntZones] = useState(true);
@@ -403,7 +405,6 @@ const Map: React.FC = () => {
   const [isSubmittingFoxReport, setIsSubmittingFoxReport] = useState(false);
   
   // Fox prediction settings
-  const [foxWalkingSpeed, setFoxWalkingSpeed] = useState<number>(5); // km/h
   
   // Real-time circle growth - updates every 5 seconds to make circles grow autonomously
   const [currentTime, setCurrentTime] = useState<Date>(new Date());
@@ -768,7 +769,7 @@ const Map: React.FC = () => {
 
   // Handle hint solution submission
   const handleSubmitHintSolution = useCallback(async () => {
-    if (!selectedHint || !solutionForm.solution.trim()) return;
+    if (!solutionForm.solution.trim()) return; // article is optional; solution text is not
     
     setIsSubmittingSolution(true);
     try {
@@ -784,7 +785,7 @@ const Map: React.FC = () => {
       });
 
       const result = await gameService.submitHintSolution(
-        selectedHint.id,
+        selectedHint?.id ?? null,
         solutionForm.solution,
         Object.keys(filteredCoordinates).length > 0 ? filteredCoordinates : undefined
       );
@@ -1072,31 +1073,6 @@ const Map: React.FC = () => {
             </button>
           </div>
           
-          {/* Fox Speed Configuration */}
-          <div className="mt-3 border-t pt-3">
-            <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-              {t('map.foxSpeed')}
-            </label>
-            <div className="flex items-center space-x-2">
-              <input
-                type="range"
-                min="2"
-                max="12"
-                step="0.5"
-                value={foxWalkingSpeed}
-                onChange={(e) => setFoxWalkingSpeed(Number(e.target.value))}
-                className="flex-1 h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
-              />
-              <span className="text-xs font-mono w-8">{foxWalkingSpeed}</span>
-            </div>
-            <div className="flex justify-between text-xs text-gray-500 mt-1">
-              <span>{t('map.slow')}</span>
-              <span>{t('map.fast')}</span>
-            </div>
-            <p className="text-xs text-gray-500 mt-1">
-              {t('map.speedHelp')}
-            </p>
-          </div>
         </div>
       )}
       
@@ -1105,12 +1081,10 @@ const Map: React.FC = () => {
         {/* Quick Hint Solution Button */}
         <button
           onClick={() => {
-            if (hints.length > 0) {
-              setSelectedHint(hints.find(h => !h.is_read) || hints[0]);
-              setShowHintSolutionModal(true);
-            } else {
-              alert(t('map.noHints'));
-            }
+            // Standalone entry: open even with no synced article (selectedHint = null),
+            // so a solved hint location can be logged immediately.
+            setSelectedHint(hints.length > 0 ? (hints.find(h => !h.is_read) || hints[0]) : null);
+            setShowHintSolutionModal(true);
           }}
           className="flex items-center space-x-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white border border-blue-700 rounded-md shadow-lg transition-all"
         >
@@ -1221,6 +1195,19 @@ const Map: React.FC = () => {
 
       {/* Fox Location Buttons */}
       <div className="absolute bottom-4 right-4 z-10 space-y-2">
+        {/* Prediction toggle */}
+        <button
+          onClick={() => setShowPredictions(!showPredictions)}
+          className={`flex items-center space-x-2 px-4 py-2 rounded-md shadow-lg transition-all ${
+            showPredictions
+              ? 'bg-purple-600 hover:bg-purple-700 text-white'
+              : 'bg-white hover:bg-gray-100 text-gray-700 border border-gray-300'
+          }`}
+        >
+          <span className="text-lg">🎯</span>
+          <span className="text-sm font-medium">{t('prediction.toggle')}</span>
+        </button>
+
         {/* Public Fox Report Button */}
         <button
           onClick={() => setIsReportFoxMode(!isReportFoxMode)}
@@ -1289,6 +1276,9 @@ const Map: React.FC = () => {
         {foxMarkers}
         {userMarkers}
         {subscriptionMarkers}
+
+        {/* Fox location predictions (heatmap + top zones) */}
+        <FoxPredictionLayer areas={areas} visible={showPredictions} />
         
         {/* Fox Route Polyline */}
         {selectedFoxRoute && selectedFoxRoute.route.length > 1 && (
@@ -1318,141 +1308,11 @@ const Map: React.FC = () => {
                 </Popup>
               </Marker>
             ))}
-            {/* Fox Prediction Circle - shows where fox could be now based on walking speed */}
-            {(() => {
-              const lastPoint = selectedFoxRoute.route[selectedFoxRoute.route.length - 1];
-              const lastSeenTime = new Date(lastPoint.recorded_at);
-              const minutesSinceLastSeen = (currentTime.getTime() - lastSeenTime.getTime()) / (1000 * 60);
-              
-              // Use configurable fox walking speed
-              const maxDistanceKm = (minutesSinceLastSeen / 60) * foxWalkingSpeed;
-              const maxDistanceMeters = maxDistanceKm * 1000;
-              
-              console.log(`🎯 Fox prediction: ${minutesSinceLastSeen.toFixed(1)} min ago, could be ${maxDistanceKm.toFixed(2)}km away`);
-              
-              // Only show prediction circle if last seen was within last 4 hours and at least 1 minute ago
-              if (minutesSinceLastSeen >= 1 && minutesSinceLastSeen <= 240) {
-                return (
-                  <Circle
-                    center={[lastPoint.lat, lastPoint.lng]}
-                    radius={maxDistanceMeters}
-                    pathOptions={{
-                      fillColor: getTeamColors(selectedFoxRoute.area.name).primary,
-                      fillOpacity: 0.1,
-                      color: getTeamColors(selectedFoxRoute.area.name).primary,
-                      weight: 2,
-                      opacity: 0.6,
-                      dashArray: '10, 10'
-                    }}
-                  >
-                    <Popup>
-                      <div className="p-2 text-sm">
-                        <h4 className="font-semibold text-green-600">🎯 Fox Prediction Zone</h4>
-                        <p className="text-gray-700 mb-1">
-                          <strong>Fox Team:</strong> {selectedFoxRoute.area.fox_team_name || selectedFoxRoute.area.name}
-                        </p>
-                        <p className="text-gray-600 text-xs mb-1">
-                          Last seen: {minutesSinceLastSeen < 60 
-                            ? `${Math.round(minutesSinceLastSeen)} min ago` 
-                            : `${(minutesSinceLastSeen/60).toFixed(1)} hours ago`}
-                        </p>
-                        <p className="text-gray-600 text-xs mb-1">
-                          Max distance: {maxDistanceKm.toFixed(2)} km radius
-                        </p>
-                        <p className="text-gray-600 text-xs">
-                          Assumes avg. walking speed: {foxWalkingSpeed} km/h
-                        </p>
-                        <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded text-xs">
-                          <p className="text-green-800 font-medium">
-                            💡 The fox could be anywhere within this circle based on walking speed since last sighting
-                          </p>
-                        </div>
-                      </div>
-                    </Popup>
-                  </Circle>
-                );
-              }
-              return null;
-            })()}
+            {/* Removed: walking-speed prediction circle. Replaced by FoxPredictionLayer (🎯 toggle). */}
           </>
         )}
         
-        {/* Fox Prediction Circles for All Foxes with Recent Sightings - shows independently of route selection */}
-        {areas.filter(area => 
-          area.lat && 
-          area.lng && 
-          area.last_seen && 
-          visibleFoxTeams.has(area.name) &&
-          // Skip if this fox already has a route showing (to avoid duplicate circles)
-          (!selectedFoxRoute || selectedFoxRoute.area.id !== area.id)
-        ).map((area) => {
-          const lastSeenTime = new Date(area.last_seen!);
-          const minutesSinceLastSeen = (currentTime.getTime() - lastSeenTime.getTime()) / (1000 * 60);
-          
-          // Use configurable fox walking speed
-          const maxDistanceKm = (minutesSinceLastSeen / 60) * foxWalkingSpeed;
-          const maxDistanceMeters = maxDistanceKm * 1000;
-          
-          console.log(`🎯 Fox ${area.name} (${area.status}) prediction: ${minutesSinceLastSeen.toFixed(1)} min ago, could be ${maxDistanceKm.toFixed(2)}km away`);
-          
-          // Only show prediction circle if last seen was within last 4 hours and at least 1 minute ago
-          if (minutesSinceLastSeen >= 1 && minutesSinceLastSeen <= 240) {
-            // Determine status-based styling and messaging
-            const isHunted = area.status === 'hunted';
-            const isActive = area.status === 'active';
-            const statusColor = isHunted ? 'red' : isActive ? 'green' : 'gray';
-            const statusColorCode = isHunted ? 'text-red-600' : isActive ? 'text-green-600' : 'text-gray-600';
-            const bgColorCode = isHunted ? 'bg-red-50 border-red-200' : isActive ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200';
-            const textColorCode = isHunted ? 'text-red-800' : isActive ? 'text-green-800' : 'text-gray-800';
-            
-            return (
-              <Circle
-                key={`fox-prediction-${area.id}`}
-                center={[area.lat!, area.lng!]}
-                radius={maxDistanceMeters}
-                pathOptions={{
-                  fillColor: getTeamColors(area.name).primary,
-                  fillOpacity: isHunted ? 0.15 : 0.12, // Slightly more visible for hunted foxes
-                  color: getTeamColors(area.name).primary,
-                  weight: isHunted ? 3 : 2,
-                  opacity: 0.8,
-                  dashArray: isHunted ? '10, 5' : '8, 8' // Different dash pattern for hunted foxes
-                }}
-              >
-                <Popup>
-                  <div className="p-2 text-sm">
-                    <h4 className={`font-semibold ${statusColorCode}`}>🎯 Fox Prediction Zone</h4>
-                    <p className="text-gray-700 mb-1">
-                      <strong>Fox Team:</strong> {area.fox_team_name || area.name}
-                    </p>
-                    <p className="text-gray-600 text-xs mb-1">
-                      <strong>Status:</strong> <span className={`${statusColorCode} font-medium`}>{area.status.toUpperCase()}</span>
-                    </p>
-                    <p className="text-gray-600 text-xs mb-1">
-                      Last seen: {minutesSinceLastSeen < 60 
-                        ? `${Math.round(minutesSinceLastSeen)} min ago` 
-                        : `${(minutesSinceLastSeen/60).toFixed(1)} hours ago`}
-                    </p>
-                    <p className="text-gray-600 text-xs mb-1">
-                      Max distance: {maxDistanceKm.toFixed(2)} km radius
-                    </p>
-                    <p className="text-gray-600 text-xs">
-                      Assumes avg. walking speed: {foxWalkingSpeed} km/h
-                    </p>
-                    <div className={`mt-2 p-2 ${bgColorCode} border rounded text-xs`}>
-                      <p className={`${textColorCode} font-medium`}>
-                        {isHunted ? '🚨 This fox has been HUNTED! The prediction circle shows where they could have moved since being hunted.' :
-                         isActive ? '📍 This fox is ACTIVE! The prediction circle shows their possible location based on the last sighting.' :
-                         '💤 This fox is INACTIVE. The prediction circle shows where they could have moved from their last known location.'}
-                      </p>
-                    </div>
-                  </div>
-                </Popup>
-              </Circle>
-            );
-          }
-          return null;
-        })}
+        {/* Removed: all-foxes walking-speed prediction circles. Replaced by FoxPredictionLayer (🎯 toggle). */}
         
         {/* Current user position */}
         {userPosition && (
@@ -1500,7 +1360,7 @@ const Map: React.FC = () => {
                   <option value="">{t('map.chooseFoxTeam')}</option>
                   {areas.map((area) => (
                     <option key={area.id} value={area.name}>
-                      {area.name} ({area.fox_team_name || t('map.unknownTeam')})
+                      {area.name}
                     </option>
                   ))}
                 </select>
@@ -1563,7 +1423,7 @@ const Map: React.FC = () => {
                   <option value="">{t('map.chooseSpotted')}</option>
                   {areas.map((area) => (
                     <option key={area.id} value={area.name}>
-                      🦊 {area.name} ({area.fox_team_name || t('map.unknownTeam')})
+                      🦊 {area.name}
                     </option>
                   ))}
                 </select>
@@ -1615,7 +1475,7 @@ const Map: React.FC = () => {
       )}
 
       {/* Quick Hint Solution Modal */}
-      {showHintSolutionModal && selectedHint && (
+      {showHintSolutionModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
@@ -1646,7 +1506,8 @@ const Map: React.FC = () => {
               </button>
             </div>
             
-            {/* Hint Display */}
+            {/* Hint Display (only when solving a specific synced article) */}
+            {selectedHint && (
             <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-700">
               <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">
                 {selectedHint.title}
@@ -1664,7 +1525,8 @@ const Map: React.FC = () => {
                 {t('map.publishedLabel')} {new Date(selectedHint.published_at).toLocaleString()}
               </div>
             </div>
-            
+            )}
+
             {/* Solution Form */}
             <div className="space-y-6">
               {/* Text Solution */}

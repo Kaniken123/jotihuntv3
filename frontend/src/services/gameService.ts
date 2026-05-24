@@ -1,5 +1,5 @@
 import { api } from './authService';
-import { Area, Article, UserLocation, Hunt } from '../types';
+import { Area, Article, UserLocation, Hunt, FoxPrediction } from '../types';
 
 export const gameService = {
   async getAreas(): Promise<Area[]> {
@@ -130,8 +130,9 @@ export const gameService = {
     return response.data;
   },
 
-  // Hint solution functions
-  async submitHintSolution(articleId: number, solution: string, foxCoordinates?: any) {
+  // Hint solution functions. articleId may be null for a standalone hint location
+  // entered before/without the matching API article being synced.
+  async submitHintSolution(articleId: number | null, solution: string, foxCoordinates?: any) {
     const response = await api.post('/hints/solutions', {
       article_id: articleId,
       solution,
@@ -150,7 +151,12 @@ export const gameService = {
     return response.data;
   },
 
-  async updateHintSolution(solutionId: number, data: { is_correct: boolean, fox_team?: string, reveals_fox_location?: boolean }) {
+  // Admin: set verification status for a hint solution. Drives the predictor's
+  // trust weighting ('confirmed' = full, 'unverified' = low, 'rejected' = ignored).
+  async updateHintSolution(
+    solutionId: number,
+    data: { verification_status: 'confirmed' | 'rejected' | 'unverified' }
+  ) {
     const response = await api.patch(`/hints/solutions/${solutionId}`, data);
     return response.data;
   },
@@ -179,6 +185,29 @@ export const gameService = {
   // Admin: Reset all fox locations
   async resetAllFoxLocations() {
     const response = await api.post('/jotihunt/areas/reset-locations');
+    return response.data;
+  },
+
+  // Fox location prediction
+  async getFoxPrediction(areaId: number): Promise<FoxPrediction | null> {
+    try {
+      const response = await api.get(`/jotihunt/areas/${areaId}/prediction`);
+      return response.data;
+    } catch (error: any) {
+      if (error?.response?.status === 404) return null; // no prediction yet
+      throw error;
+    }
+  },
+
+  // Admin: recompute predictions for all fox areas
+  async recomputePredictions() {
+    const response = await api.post('/jotihunt/predictions/recompute');
+    return response.data;
+  },
+
+  // Admin: granular reset before a fresh event. Each flag opts that category in.
+  async resetForLaunch(flags: Record<string, boolean>) {
+    const response = await api.post('/jotihunt/admin/reset', flags);
     return response.data;
   },
 };

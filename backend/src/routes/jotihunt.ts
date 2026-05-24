@@ -3,6 +3,7 @@ import { db } from '../utils/database';
 import { authenticateToken, requireAdmin, enforceTenantIsolation } from '../middleware/auth';
 import { getSocketIO } from '../socketManager';
 import { JotihuntApiService } from '../services/jotihuntApi';
+import { getLatestPrediction, predictAllForTenant, triggerPrediction } from '../services/foxPrediction';
 
 const router = express.Router();
 
@@ -51,13 +52,18 @@ router.get('/areas', authenticateToken, enforceTenantIsolation, async (req, res)
   }
 });
 
-// Get fox route history for a specific area  
+// Get fox route history for a specific area. The "route" is the unified trail
+// of *every* sighting source for this fox within the window, ordered by time:
+//   - area_locations (manual pins via 'user_report'/'admin_manual', plus 'api'),
+//   - hunts (photo-verified; rejected ones skipped),
+//   - hint_solutions (only verification_status='confirmed' — unverified guesses
+//     would mislead the trail).
+// IDs are prefixed by source so React keys never collide across tables.
 router.get('/areas/:areaId/route', authenticateToken, enforceTenantIsolation, async (req, res) => {
   try {
     const { areaId } = req.params;
     const { limit = '100', hours = '24' } = req.query;
-    
-    // Validate area exists and belongs to current tenant
+
     const area = await db('areas')
       .where('id', areaId)
       .where('tenant_id', req.tenantId)
@@ -65,35 +71,69 @@ router.get('/areas/:areaId/route', authenticateToken, enforceTenantIsolation, as
     if (!area) {
       return res.status(404).json({ error: 'Area not found' });
     }
-    
-    // Get route history for the specified time period
-    const timeThreshold = Date.now() - parseInt(hours as string) * 60 * 60 * 1000;
-    
-    const routePoints = await db('area_locations')
+
+    const hoursNum = parseInt(hours as string);
+    const limitNum = parseInt(limit as string);
+    const sinceMs = Date.now() - hoursNum * 60 * 60 * 1000;
+    const sinceDate = new Date(sinceMs);
+
+    // 1) Pins + API coords (already in area_locations). Use ms threshold to match
+    //    the column's mixed numeric/iso writes (see jotihunt.ts:'recorded_at').
+    const locs = await db('area_locations')
       .where('area_id', areaId)
-      .where('recorded_at', '>', timeThreshold)
-      .orderBy('recorded_at', 'asc')
-      .limit(parseInt(limit as string));
-    
-    // Transform route points to have proper date format
-    const transformedRoutePoints = routePoints.map(point => ({
-      ...point,
-      recorded_at: new Date(point.recorded_at).toISOString()
-    }));
-    
+      .where('recorded_at', '>', sinceMs);
+
+    // 2) Hunt photos for this fox (matched by name, scoped to tenant).
+    const hunts = await db('hunts')
+      .where('fox_area', area.name)
+      .where('tenant_id', req.tenantId)
+      .whereNot('status', 'rejected')
+      .where('hunt_time', '>=', sinceDate)
+      .whereNotNull('hunt_lat');
+
+    // 3) Confirmed hint solutions for this fox. Unverified/rejected are excluded.
+    const hints = await db('hint_solutions')
+      .where('fox_team', area.name)
+      .where('verification_status', 'confirmed')
+      .where('created_at', '>=', sinceDate)
+      .whereNotNull('lat');
+
+    type RoutePoint = { id: string; lat: number; lng: number; recorded_at: string; source: string };
+    const merged: RoutePoint[] = [
+      ...locs.map((l: any) => ({
+        id: `loc-${l.id}`,
+        lat: Number(l.lat),
+        lng: Number(l.lng),
+        recorded_at: new Date(l.recorded_at).toISOString(),
+        source: l.source || 'api',
+      })),
+      ...hunts.map((h: any) => ({
+        id: `hunt-${h.id}`,
+        lat: Number(h.hunt_lat),
+        lng: Number(h.hunt_lng),
+        recorded_at: new Date(h.hunt_time).toISOString(),
+        source: 'hunt',
+      })),
+      ...hints.map((h: any) => ({
+        id: `hint-${h.id}`,
+        lat: Number(h.lat),
+        lng: Number(h.lng),
+        recorded_at: new Date(h.created_at).toISOString(),
+        source: 'hint',
+      })),
+    ]
+      .sort((a, b) => new Date(a.recorded_at).getTime() - new Date(b.recorded_at).getTime())
+      .slice(0, limitNum);
+
     res.json({
-      area: {
-        id: area.id,
-        name: area.name,
-        fox_team_name: area.fox_team_name
-      },
-      route: transformedRoutePoints,
+      area: { id: area.id, name: area.name, fox_team_name: area.fox_team_name },
+      route: merged,
       route_stats: {
-        total_points: transformedRoutePoints.length,
-        time_span_hours: parseInt(hours as string),
-        first_point: transformedRoutePoints[0]?.recorded_at || null,
-        last_point: transformedRoutePoints[transformedRoutePoints.length - 1]?.recorded_at || null
-      }
+        total_points: merged.length,
+        time_span_hours: hoursNum,
+        first_point: merged[0]?.recorded_at || null,
+        last_point: merged[merged.length - 1]?.recorded_at || null,
+      },
     });
   } catch (error) {
     console.error('Get fox route error:', error);
@@ -553,6 +593,9 @@ router.post('/areas/:area_id/location', authenticateToken, enforceTenantIsolatio
       console.error('Socket emission error:', socketError);
     }
 
+    // New manual sighting → refresh this fox's prediction (fire-and-forget).
+    triggerPrediction(parseInt(area_id), req.tenantId!);
+
     res.json(updatedArea);
   } catch (error) {
     console.error('Update area location error:', error);
@@ -921,5 +964,98 @@ router.get('/subscriptions-with-visits', authenticateToken, async (req, res) => 
 
 // Note: Subscription area is now read-only and automatically synced from the Jotihunt API
 // Manual updates have been removed to maintain data consistency with the external API
+
+// FOX LOCATION PREDICTION ENDPOINTS
+
+// Get the latest prediction (heatmap + top zones + confidence) for one fox area.
+router.get('/areas/:areaId/prediction', authenticateToken, enforceTenantIsolation, async (req, res) => {
+  try {
+    const areaId = parseInt(req.params.areaId, 10);
+    const prediction = await getLatestPrediction(areaId, req.tenantId!);
+    if (!prediction) {
+      return res.status(404).json({ error: 'No prediction available for this area yet' });
+    }
+    res.json(prediction);
+  } catch (error) {
+    console.error('Get prediction error:', error);
+    res.status(500).json({ error: 'Failed to get prediction' });
+  }
+});
+
+// Admin: recompute predictions for all areas of this tenant on demand.
+router.post('/predictions/recompute', authenticateToken, requireAdmin, enforceTenantIsolation, async (req, res) => {
+  try {
+    const count = await predictAllForTenant(req.tenantId!);
+    res.json({ message: 'Predictions recomputed', areas: count });
+  } catch (error) {
+    console.error('Recompute predictions error:', error);
+    res.status(500).json({ error: 'Failed to recompute predictions' });
+  }
+});
+
+// Admin: granular reset for launching a fresh event. EVERY category is an
+// independent flag — the admin opts in to each one in the UI. Runs as a single
+// transaction so a partial failure leaves the DB unchanged.
+//
+// Caveats:
+//  - `hint_solutions` has no tenant_id; we deleted across tenants (single-tenant DB).
+//  - Hunt photo files on disk (`uploads/hunts/`) are NOT deleted — orphans only.
+//  - Chat channels themselves are left in place; only messages/reactions are wiped.
+router.post('/admin/reset', authenticateToken, requireAdmin, enforceTenantIsolation, async (req, res) => {
+  try {
+    const tenantId = req.tenantId!;
+    const flags = (req.body || {}) as Record<string, boolean>;
+    const deleted: Record<string, number> = {};
+
+    await db.transaction(async (trx) => {
+      if (flags.fox_locations) {
+        const areaIds = await trx('areas').where('tenant_id', tenantId).pluck('id');
+        deleted.area_locations = areaIds.length
+          ? await trx('area_locations').whereIn('area_id', areaIds).del()
+          : 0;
+        // Also reset status to 'active' — a fresh launch means every fox is
+        // huntable again. Without this, hunt submit's status='active' guard
+        // rejects every fox that was 'inactive'/'hunted' before the reset.
+        deleted.areas_cleared = await trx('areas')
+          .where('tenant_id', tenantId)
+          .update({ lat: null, lng: null, last_seen: null, status: 'active', updated_at: new Date() });
+      }
+      if (flags.fox_status_history) {
+        deleted.fox_status_history = await trx('fox_status_history').where('tenant_id', tenantId).del();
+      }
+      if (flags.predictions) {
+        deleted.fox_predictions = await trx('fox_predictions').where('tenant_id', tenantId).del();
+      }
+      if (flags.hunts) {
+        deleted.hunts = await trx('hunts').where('tenant_id', tenantId).del();
+      }
+      if (flags.hint_solutions) {
+        // hint_solutions has no tenant_id (single-tenant after consolidation).
+        deleted.hint_solutions = await trx('hint_solutions').del();
+      }
+      if (flags.subscription_visits) {
+        const subIds = await trx('subscriptions').where('tenant_id', tenantId).pluck('id');
+        deleted.subscription_visits = subIds.length
+          ? await trx('subscription_visits').whereIn('subscription_id', subIds).del()
+          : 0;
+      }
+      if (flags.api_cache) {
+        deleted.api_cache = await trx('api_cache').del();
+      }
+      if (flags.articles) {
+        deleted.articles = await trx('articles').where('tenant_id', tenantId).del();
+      }
+      if (flags.chat) {
+        deleted.message_reactions = await trx('message_reactions').where('tenant_id', tenantId).del();
+        deleted.team_messages = await trx('team_messages').where('tenant_id', tenantId).del();
+      }
+    });
+
+    res.json({ message: 'Reset complete', deleted });
+  } catch (error: any) {
+    console.error('Admin reset error:', error);
+    res.status(500).json({ error: 'Reset failed: ' + (error.message || 'unknown') });
+  }
+});
 
 export default router;

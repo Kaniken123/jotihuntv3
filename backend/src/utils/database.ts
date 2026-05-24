@@ -34,6 +34,20 @@ const knexConfig = {
 
 export const db = knex(knexConfig);
 
+/**
+ * Normalize knex `.insert(...).returning('id')` results.
+ *
+ * Knex 3 on SQLite returns `[{ id: N }]`; older versions/drivers sometimes
+ * returned `[N]`. Callers that did `const [id] = await ...returning('id')`
+ * silently ended up with `{id: N}` as the "id" — every later `where('id', id)`
+ * lookup then failed, producing empty responses (see chat send bug).
+ */
+export function extractInsertId(result: any[]): number {
+  const first = result?.[0];
+  if (first == null) throw new Error('Insert returned no id');
+  return typeof first === 'object' && 'id' in first ? first.id : first;
+}
+
 export const initializeDatabase = async () => {
   try {
     await db.migrate.latest();

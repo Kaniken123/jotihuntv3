@@ -2,9 +2,10 @@ import express from 'express';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
-import { db } from '../utils/database';
+import { db, extractInsertId } from '../utils/database';
 import { authenticateToken, requireAdmin, isAdmin, enforceTenantIsolation } from '../middleware/auth';
 import { getSocketIO } from '../socketManager';
+import { triggerPrediction } from '../services/foxPrediction';
 
 const router = express.Router();
 
@@ -46,18 +47,25 @@ const calculateHuntPoints = (huntArea: string, teamArea?: string): number => {
   return 3; // Other area hunt
 };
 
-// Check hunt cooldown (prevent spam)
-const HUNT_COOLDOWN_MINUTES = 15;
+// Hunt cooldown — flip ENABLED to false to disable enforcement entirely.
+const HUNT_COOLDOWN_ENABLED = true;
+const HUNT_COOLDOWN_MINUTES = 60;
 
-const checkHuntCooldown = async (userId: number, foxArea: string): Promise<boolean> => {
+const checkHuntCooldown = async (teamId: number | null, foxArea: string): Promise<boolean> => {
+  if (!HUNT_COOLDOWN_ENABLED) return true;
+  if (!teamId) return true; // unassigned users (e.g. solo admin testing) aren't gated
   const cooldownTime = new Date(Date.now() - HUNT_COOLDOWN_MINUTES * 60 * 1000);
-  
+
+  // Cooldown is anchored on approved_at — the 60-min timer begins when the
+  // admin approves, not when the hunt was submitted. Pending/rejected hunts
+  // do not lock the team out.
   const recentHunt = await db('hunts')
-    .where('hunter_user_id', userId)
+    .where('hunter_team_id', teamId)
     .where('fox_area', foxArea)
-    .where('hunt_time', '>', cooldownTime)
+    .where('status', 'approved')
+    .where('approved_at', '>', cooldownTime)
     .first();
-    
+
   return !recentHunt;
 };
 
@@ -122,7 +130,34 @@ router.post('/submit', authenticateToken, enforceTenantIsolation, upload.single(
       .where('team_members.user_id', req.user!.id)
       .first();
 
-    // Allow hunts without team membership and without cooldown restrictions
+    // Enforce per-team cooldown per Jotihunt rules (60 min after a hunt of the
+    // same fox by the same scouting group). Solo users without a team are not
+    // gated. Frontend also blocks, but this is the authoritative safety net.
+    if (teamMembership?.team_id) {
+      const huntable = await checkHuntCooldown(teamMembership.team_id, fox_area);
+      if (!huntable) {
+        const cooldownTime = new Date(Date.now() - HUNT_COOLDOWN_MINUTES * 60 * 1000);
+        const last = await db('hunts')
+          .where('hunter_team_id', teamMembership.team_id)
+          .where('fox_area', fox_area)
+          .where('status', 'approved')
+          .where('approved_at', '>', cooldownTime)
+          .orderBy('approved_at', 'desc')
+          .first();
+        const cooldownUntil = last?.approved_at
+          ? new Date(new Date(last.approved_at).getTime() + HUNT_COOLDOWN_MINUTES * 60 * 1000)
+          : null;
+        const waitMin = cooldownUntil
+          ? Math.max(1, Math.ceil((cooldownUntil.getTime() - Date.now()) / 60_000))
+          : HUNT_COOLDOWN_MINUTES;
+        return res.status(429).json({
+          error: `Cooldown active for ${fox_area}. Wait ${waitMin} min before re-hunting.`,
+          fox_area,
+          cooldown_until: cooldownUntil,
+          wait_minutes: waitMin,
+        });
+      }
+    }
 
     // Parse coordinates (allow default values for flexible submissions)
     const lat = parseFloat(hunt_lat) || 0;
@@ -154,7 +189,17 @@ router.post('/submit', authenticateToken, enforceTenantIsolation, upload.single(
       tenant_id: req.tenantId,
     };
 
-    const [huntId] = await db('hunts').insert(huntData).returning('id');
+    const huntId = extractInsertId(await db('hunts').insert(huntData).returning('id'));
+
+    // A hunt is a photo-verified sighting → push the fox's current location
+    // to the areas row so other UIs (hunt-submit dropdown, map markers) reflect
+    // "last seen at X". Only updates when the hunt carries real coords.
+    if (lat && lng) {
+      await db('areas')
+        .where('id', foxArea.id)
+        .where('tenant_id', req.tenantId)
+        .update({ lat, lng, last_seen: new Date(), updated_at: new Date() });
+    }
 
     // Get full hunt data with user info
     const hunt = await db('hunts')
@@ -172,6 +217,9 @@ router.post('/submit', authenticateToken, enforceTenantIsolation, upload.single(
     // Emit to admins for review
     io.emit('hunt-pending-review', hunt);
 
+    // Fresh photo-verified sighting → refresh this fox's prediction.
+    triggerPrediction(foxArea.id, req.tenantId!);
+
     res.status(201).json(hunt);
   } catch (error) {
     console.error('Submit hunt error:', error);
@@ -179,22 +227,33 @@ router.post('/submit', authenticateToken, enforceTenantIsolation, upload.single(
   }
 });
 
-// Get hunt cooldowns for user
+// Hunt cooldowns for the *team* (not per user — the rules apply group-wide).
+// Returns one entry per fox area the team has recently hunted, with when it
+// becomes huntable again. Rejected hunts excluded.
 router.get('/cooldowns', authenticateToken, enforceTenantIsolation, async (req, res) => {
   try {
-    const cooldownTime = new Date(Date.now() - HUNT_COOLDOWN_MINUTES * 60 * 1000);
-    
-    const recentHunts = await db('hunts')
-      .select('fox_area', 'hunt_time')
-      .where('hunter_user_id', req.user!.id)
-      .where('tenant_id', req.tenantId)
-      .where('hunt_time', '>', cooldownTime)
-      .orderBy('hunt_time', 'desc');
+    if (!HUNT_COOLDOWN_ENABLED) return res.json([]);
+    const membership = await db('team_members').where('user_id', req.user!.id).first();
+    if (!membership) return res.json([]); // no team → no cooldowns
 
-    const cooldowns = recentHunts.map(hunt => ({
+    const cooldownTime = new Date(Date.now() - HUNT_COOLDOWN_MINUTES * 60 * 1000);
+
+    // Latest APPROVED hunt per fox_area for this team, only those still in
+    // cooldown. Anchored on approved_at (set when admin approves), not the
+    // original submission time.
+    const recentHunts = await db('hunts')
+      .select('fox_area')
+      .max('approved_at as approved_at')
+      .where('hunter_team_id', membership.team_id)
+      .where('tenant_id', req.tenantId)
+      .where('status', 'approved')
+      .where('approved_at', '>', cooldownTime)
+      .groupBy('fox_area');
+
+    const cooldowns = recentHunts.map((hunt: any) => ({
       fox_area: hunt.fox_area,
-      hunt_time: hunt.hunt_time,
-      cooldown_until: new Date(new Date(hunt.hunt_time).getTime() + HUNT_COOLDOWN_MINUTES * 60 * 1000)
+      approved_at: hunt.approved_at,
+      cooldown_until: new Date(new Date(hunt.approved_at).getTime() + HUNT_COOLDOWN_MINUTES * 60 * 1000),
     }));
 
     res.json(cooldowns);
@@ -246,6 +305,13 @@ router.put('/:hunt_id/review', authenticateToken, requireAdmin, enforceTenantIso
     if (status === 'rejected') {
       updateData.rejection_reason = rejection_reason;
       updateData.points_awarded = 0;
+    }
+    // Stamp the approval moment — cooldown timer is anchored on this, not on
+    // the submission time. Cleared when a hunt is un-approved (rejected).
+    if (status === 'approved') {
+      updateData.approved_at = new Date();
+    } else if (status === 'rejected') {
+      updateData.approved_at = null;
     }
 
     await db('hunts').where('id', hunt_id).where('tenant_id', req.tenantId).update(updateData);

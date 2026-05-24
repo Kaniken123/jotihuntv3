@@ -13,18 +13,37 @@ const HuntRegistration: React.FC = () => {
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [currentLocation, setCurrentLocation] = useState<{lat: number, lng: number} | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  // Cooldowns removed to allow always submitting hunts
+  // Map of fox_area -> ISO timestamp when this team can hunt that fox again.
+  // Driven by the team-scoped /hunts/cooldowns endpoint (rules: 60-min lockout
+  // per scouting group, per fox).
+  const [cooldowns, setCooldowns] = useState<Record<string, string>>({});
+  const [now, setNow] = useState<number>(Date.now());
   const [recentHunts, setRecentHunts] = useState<Hunt[]>([]);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  // Auth state no longer needed for team requirement
-
   useEffect(() => {
     loadAreas();
     loadRecentHunts();
+    loadCooldowns();
     getCurrentLocation();
+    // Tick once a minute so the "ready in Xm" countdown stays current.
+    const tick = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(tick);
   }, []);
+
+  const loadCooldowns = async () => {
+    try {
+      const res = await api.get('/hunts/cooldowns');
+      const map: Record<string, string> = {};
+      (res.data || []).forEach((c: any) => {
+        if (c?.fox_area && c?.cooldown_until) map[c.fox_area] = c.cooldown_until;
+      });
+      setCooldowns(map);
+    } catch (error) {
+      console.error('Failed to load cooldowns:', error);
+    }
+  };
 
   const loadAreas = async () => {
     try {
@@ -96,6 +115,12 @@ const HuntRegistration: React.FC = () => {
 
   // Cooldown functions removed
 
+  // Minutes left in cooldown for a given fox area (0 if ready).
+  const cooldownWait = (foxArea: string): number => {
+    const cdUntil = cooldowns[foxArea] ? new Date(cooldowns[foxArea]).getTime() : 0;
+    return cdUntil > now ? Math.ceil((cdUntil - now) / 60_000) : 0;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -106,7 +131,12 @@ const HuntRegistration: React.FC = () => {
       return;
     }
 
-    // Allow submissions without cooldown restrictions
+    // Enforce per-team cooldown client-side (rules: 60 min after a hunt).
+    const wait = cooldownWait(selectedArea);
+    if (wait > 0) {
+      setError(t('hunt.cooldownActive', { area: selectedArea, count: wait }));
+      return;
+    }
 
     setIsSubmitting(true);
 
@@ -133,6 +163,7 @@ const HuntRegistration: React.FC = () => {
       
       // Reload data
       loadRecentHunts();
+      loadCooldowns();
     } catch (error: any) {
       setError(error.response?.data?.error || t('hunt.submitFailed'));
     } finally {
@@ -196,16 +227,18 @@ const HuntRegistration: React.FC = () => {
               {areas.length === 0 ? (
                 <option value="" disabled>{t('hunt.loadingAreas')}</option>
               ) : (
-                areas.map((area) => (
-                  <option
-                    key={area.id}
-                    value={area.name}
-                  >
-                    🦊 {area.name} {area.fox_team_name ? `- ${area.fox_team_name}` : ''}
-                    {area.status === 'hunted' ? t('hunt.optHunted') : area.status === 'active' ? t('hunt.optActive') : t('hunt.optReady')}
-                    {area.last_seen ? ` - ${t('hunt.lastSeen')}: ${new Date(area.last_seen).toLocaleDateString()}` : ''}
-                  </option>
-                ))
+                areas.map((area) => {
+                  const cdUntil = cooldowns[area.name] ? new Date(cooldowns[area.name]).getTime() : 0;
+                  const waitMin = cdUntil > now ? Math.ceil((cdUntil - now) / 60_000) : 0;
+                  const readinessLabel = waitMin > 0
+                    ? ` - ${t('hunt.waitMinutes', { count: waitMin })}`
+                    : ` - ${t('hunt.optReady')}`;
+                  return (
+                    <option key={area.id} value={area.name}>
+                      🦊 {area.name}{readinessLabel}
+                    </option>
+                  );
+                })
               )}
             </select>
             {areas.length === 0 && (
@@ -263,11 +296,11 @@ const HuntRegistration: React.FC = () => {
             )}
           </div>
 
-          {/* Submit Button */}
+          {/* Submit Button — disabled while this fox is in team cooldown. */}
           <button
             type="submit"
-            disabled={isSubmitting}
-            className="w-full btn btn-primary flex items-center justify-center space-x-2"
+            disabled={isSubmitting || (!!selectedArea && cooldownWait(selectedArea) > 0)}
+            className="w-full btn btn-primary flex items-center justify-center space-x-2 disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {isSubmitting ? (
               <>

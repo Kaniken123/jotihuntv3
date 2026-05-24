@@ -145,12 +145,19 @@ const RouteTracker: React.FC = () => {
   const [isLoadingRoute, setIsLoadingRoute] = useState(false);
   const [error, setError] = useState('');
   const [timePeriod, setTimePeriod] = useState(24); // hours
-  const [showFoxOnly, setShowFoxOnly] = useState(false);
+  // Fox-team route view (separate from per-user routes): the foxes Alpha…Hotel
+  // are listed in their own section; clicking one loads its merged sighting
+  // trail (hunts + hints + manual pins + API) via gameService.getFoxRoute.
+  const [areas, setAreas] = useState<any[]>([]);
+  const [selectedFoxArea, setSelectedFoxArea] = useState<any | null>(null);
+  const [foxRouteData, setFoxRouteData] = useState<any | null>(null);
+  const [isLoadingFoxRoute, setIsLoadingFoxRoute] = useState(false);
   const { state } = useAuth();
   const { t } = useTranslation();
 
   useEffect(() => {
     loadUsers();
+    gameService.getAreas().then(setAreas).catch((e) => console.error('Failed to load areas:', e));
   }, []);
 
   // Auto-reload route when time period changes
@@ -182,6 +189,9 @@ const RouteTracker: React.FC = () => {
     try {
       setIsLoadingRoute(true);
       setError('');
+      // user routes and fox routes are mutually exclusive in the view
+      setSelectedFoxArea(null);
+      setFoxRouteData(null);
       console.log(`Loading route for user ${user.id} (${getUserDisplayName(user)})`);
       const route = await gameService.getUserRoute(user.id, timePeriod);
       console.log('Route data received:', route);
@@ -195,6 +205,30 @@ const RouteTracker: React.FC = () => {
       setIsLoadingRoute(false);
     }
   };
+
+  const loadFoxRoute = async (area: any) => {
+    try {
+      setIsLoadingFoxRoute(true);
+      setError('');
+      // mutually exclusive with user route
+      setSelectedUser(null);
+      setRouteData(null);
+      setSelectedFoxArea(area);
+      const data = await gameService.getFoxRoute(area.id, timePeriod);
+      setFoxRouteData(data);
+    } catch (error: any) {
+      console.error('Error loading fox route:', error);
+      setError(error?.response?.data?.error || error.message || 'Failed to load fox route');
+    } finally {
+      setIsLoadingFoxRoute(false);
+    }
+  };
+
+  // Reload fox route when time period changes while a fox is selected.
+  useEffect(() => {
+    if (selectedFoxArea) loadFoxRoute(selectedFoxArea);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timePeriod]);
 
   const formatTime = (dateString: string) => {
     return new Date(dateString).toLocaleString();
@@ -224,13 +258,24 @@ const RouteTracker: React.FC = () => {
     return '#3B82F6'; // Default blue for regular users
   };
 
-  const isFoxTeamMember = (user: User) => {
-    return user.team_area && ['Alpha', 'Bravo', 'Charlie', 'Delta', 'Echo', 'Foxtrot', 'Golf', 'Hotel'].includes(user.team_area);
-  };
+  // Users are NEVER fox teams. The actual foxes are listed in their own section
+  // below — a hunter team's `team_area` only says which fox they hunt for, not
+  // that they are that fox. (Before: any user whose hunter team had area='Alpha'
+  // was wrongly painted as a fox-team member.)
+  const isFoxTeamMember = (_user: User) => false;
 
-  const filteredUsers = showFoxOnly ? users.filter(user => isFoxTeamMember(user)) : users;
+  const filteredUsers = users;
 
-  const center: [number, number] = [52.1597, 6.4131];
+  // Center the map on whichever route is being viewed (fox first since it's
+  // typically far from the static default), falling back to the user route's
+  // first point, then Gelderland.
+  const foxFirstPoint = foxRouteData?.route?.[0];
+  const userFirstLoc = routeData?.locations?.[0];
+  const center: [number, number] = foxFirstPoint
+    ? [foxFirstPoint.lat, foxFirstPoint.lng]
+    : userFirstLoc
+    ? [userFirstLoc.lat, userFirstLoc.lng]
+    : [52.1597, 6.4131];
   const routePositions: [number, number][] = routeData?.locations.map(loc => [loc.lat, loc.lng]) || [];
 
   return (
@@ -271,24 +316,7 @@ const RouteTracker: React.FC = () => {
               </button>
             </div>
 
-            {/* Fox Filter Toggle */}
-            <div className="mb-4 p-3 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-700 rounded-lg">
-              <label className="flex items-center space-x-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={showFoxOnly}
-                  onChange={(e) => setShowFoxOnly(e.target.checked)}
-                  className="rounded border-gray-300 dark:border-gray-600"
-                />
-                <Target className="w-4 h-4 text-orange-600" />
-                <span className="text-sm font-medium text-orange-800 dark:text-orange-200">
-                  {t('routeTracker.showFoxOnly')}
-                </span>
-              </label>
-              <p className="text-xs text-orange-600 dark:text-orange-400 mt-1">
-                {t('routeTracker.showFoxOnlyHelp')}
-              </p>
-            </div>
+            {/* Fox-only toggle removed — fox teams are now a separate section below. */}
 
             {/* Time Period Selector */}
             <div className="mb-4">
@@ -373,6 +401,47 @@ const RouteTracker: React.FC = () => {
                 ))}
               </div>
             )}
+
+            {/* Fox teams — listed individually; only foxes are foxes (no users). */}
+            <div className="mt-6">
+              <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center space-x-2">
+                <Target className="w-4 h-4 text-orange-600" />
+                <span>{t('routeTracker.foxTeam')}</span>
+              </h3>
+              <div className="space-y-2">
+                {areas.length === 0 && (
+                  <p className="text-xs text-gray-500 dark:text-gray-400">No fox teams loaded.</p>
+                )}
+                {areas.map((area) => {
+                  const color = getRouteColor({ team_area: area.name } as any);
+                  const isSelected = selectedFoxArea?.id === area.id;
+                  return (
+                    <button
+                      key={area.id}
+                      onClick={() => loadFoxRoute(area)}
+                      className={`w-full text-left p-3 border rounded-lg transition-all flex items-center justify-between ${
+                        isSelected
+                          ? 'border-primary-300 dark:border-primary-700 bg-primary-50 dark:bg-primary-900/20'
+                          : 'border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600'
+                      }`}
+                      style={{ borderLeft: `4px solid ${color}` }}
+                    >
+                      <div>
+                        <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                          🦊 {area.name}
+                        </p>
+                        {area.last_seen && (
+                          <p className="text-xs text-gray-500 dark:text-gray-500">
+                            {t('hunt.lastSeen')}: {new Date(area.last_seen).toLocaleString()}
+                          </p>
+                        )}
+                      </div>
+                      {isLoadingFoxRoute && isSelected && <LoadingSpinner size="sm" />}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         </div>
 
@@ -472,7 +541,7 @@ const RouteTracker: React.FC = () => {
             </h2>
 
             <div className="h-64 sm:h-80 lg:h-96 rounded-lg overflow-hidden relative">
-              {!selectedUser ? (
+              {!selectedUser && !selectedFoxArea ? (
                 <div className="h-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center rounded-lg">
                   <div className="text-center">
                     <Navigation className="w-12 h-12 text-gray-400 mx-auto mb-2" />
@@ -487,6 +556,7 @@ const RouteTracker: React.FC = () => {
                 </div>
               ) : (
                 <MapContainer
+                  key={selectedFoxArea ? `fox-${selectedFoxArea.id}` : `user-${selectedUser?.id}`}
                   center={center}
                   zoom={11}
                   style={{ height: '100%', width: '100%' }}
@@ -498,14 +568,36 @@ const RouteTracker: React.FC = () => {
                   
                   {/* Route Path */}
                   {routePositions.length > 1 && (
-                    <Polyline 
-                      positions={routePositions} 
-                      color={getRouteColor(selectedUser)} 
+                    <Polyline
+                      positions={routePositions}
+                      color={getRouteColor(selectedUser)}
                       weight={isFoxTeamMember(selectedUser) ? 4 : 3}
                       opacity={0.8}
                       dashArray={isFoxTeamMember(selectedUser) ? '10, 5' : undefined}
                     />
                   )}
+
+                  {/* Fox-team route: merged trail of every sighting source. */}
+                  {selectedFoxArea && foxRouteData && foxRouteData.route && foxRouteData.route.length > 1 && (
+                    <Polyline
+                      positions={foxRouteData.route.map((p: any) => [p.lat, p.lng])}
+                      color={getRouteColor({ team_area: selectedFoxArea.name } as any)}
+                      weight={4}
+                      opacity={0.85}
+                      dashArray="10, 5"
+                    />
+                  )}
+                  {selectedFoxArea && foxRouteData && foxRouteData.route && foxRouteData.route.map((p: any) => (
+                    <Marker key={`fox-rp-${p.id}`} position={[p.lat, p.lng]}>
+                      <Popup>
+                        <div className="text-xs">
+                          <p><strong>🦊 {selectedFoxArea.name}</strong></p>
+                          <p>Source: {p.source}</p>
+                          <p>{new Date(p.recorded_at).toLocaleString()}</p>
+                        </div>
+                      </Popup>
+                    </Marker>
+                  ))}
 
                   {/* Start Marker */}
                   {routeData?.locations.length > 0 && (

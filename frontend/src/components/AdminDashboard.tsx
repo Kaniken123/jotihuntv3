@@ -7,6 +7,8 @@ import { Hunt, User, Area } from '../types';
 import LoadingSpinner from './LoadingSpinner';
 import TenantSwitcher from './TenantSwitcher';
 import SubscriptionManager from './SubscriptionManager';
+import AdminHintVerification from './AdminHintVerification';
+import AdminLaunchReset from './AdminLaunchReset';
 import { isAdmin, isSuperAdmin } from '../utils/roleUtils';
 import { 
   Users, 
@@ -529,6 +531,7 @@ const AdminDashboard: React.FC = () => {
   const tabs = [
     { id: 'overview', label: t('admin.tabOverview'), icon: BarChart3 },
     { id: 'hunts', label: t('admin.tabHunts'), icon: Camera },
+    { id: 'hints', label: t('admin.tabHints'), icon: MapPin },
     { id: 'users', label: t('admin.tabUsers'), icon: Users },
     { id: 'areas', label: t('admin.tabAreas'), icon: MapPin },
     { id: 'subscriptions', label: t('admin.tabSubscriptions'), icon: Home },
@@ -539,6 +542,7 @@ const AdminDashboard: React.FC = () => {
 
   const renderOverview = () => (
     <div className="space-y-6">
+      <AdminLaunchReset />
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <div className="card p-6">
@@ -1877,6 +1881,7 @@ const AdminDashboard: React.FC = () => {
     switch (activeTab) {
       case 'overview': return renderOverview();
       case 'hunts': return renderHuntReview();
+      case 'hints': return <AdminHintVerification />;
       case 'users': return renderUserManagement();
       case 'areas': return renderAreaManagement();
       case 'subscriptions': return <SubscriptionManager />;

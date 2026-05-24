@@ -67,6 +67,31 @@ export interface AreaLocation {
   source: string;
 }
 
+export interface PredictionZone {
+  lat: number;
+  lng: number;
+  label: string;
+  score: number;
+}
+
+export interface FoxPrediction {
+  id: number;
+  area_id: number;
+  generated_at: string;
+  anchor_source: 'hunt' | 'hint' | 'manual' | 'api' | 'none';
+  anchor_time: string | null;
+  confidence: number;
+  top_zones: PredictionZone[];
+  heatmap_geojson: {
+    type: string;
+    features: Array<{
+      type: string;
+      geometry: { type: string; coordinates: [number, number] };
+      properties: { weight: number };
+    }>;
+  };
+}
+
 export interface Article {
   id: number;
   title: string;
@@ -164,11 +189,14 @@ export interface NotificationData {
 }
 
 export interface FoxRoutePoint {
-  id: number;
-  area_id: number;
+  // Prefixed string ids ("loc-N", "hunt-N", "hint-N") so React keys never
+  // collide across the merged sources. May be number for legacy callers.
+  id: string | number;
+  area_id?: number;
   lat: number;
   lng: number;
   recorded_at: string;
+  // Sources: 'api' | 'user_report' | 'admin_manual' | 'hunt' | 'hint'
   source: string;
 }
 
