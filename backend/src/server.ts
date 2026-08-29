@@ -1,9 +1,9 @@
+import './loadEnv'; // MUST be first: loads backend/.env before any module reads process.env
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
-import dotenv from 'dotenv';
 import path from 'path';
 import * as cron from 'node-cron';
 
@@ -19,8 +19,6 @@ import huntRoutes from './routes/hunts';
 import rulesRoutes from './routes/rules';
 import adminRoutes from './routes/admin';
 import hintsRoutes from './routes/hints';
-
-dotenv.config();
 
 const app = express();
 const server = createServer(app);
