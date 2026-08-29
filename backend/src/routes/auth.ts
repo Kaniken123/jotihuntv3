@@ -5,7 +5,10 @@ import { db } from '../utils/database';
 import { authenticateToken, requireSuperAdmin, hasRole } from '../middleware/auth';
 
 const router = express.Router();
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  throw new Error('JWT_SECRET environment variable is required — refusing to start with an insecure default');
+}
 
 router.post('/login', async (req, res) => {
   try {

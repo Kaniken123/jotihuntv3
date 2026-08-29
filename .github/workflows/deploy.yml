@@ -20,8 +20,12 @@ jobs:
             set -e
             cd /var/www/jotihunt
 
-            echo "--- Backing up database ---"
+            echo "--- Backing up database + env ---"
             cp backend/database/jotihunt.db /tmp/jotihunt_backup.db 2>/dev/null || true
+            # backend/.env is gitignored (holds JWT_SECRET etc) and lives only on
+            # the server. The reset --hard below would delete it, so back it up and
+            # restore it afterwards — same pattern as the DB above.
+            cp backend/.env /tmp/jotihunt_backup.env 2>/dev/null || true
 
             echo "--- Syncing code to origin/main ---"
             # Hard reset instead of `git pull`: the server rebuilds dist/ during
@@ -36,6 +40,11 @@ jobs:
             echo "--- Restoring database if missing ---"
             if [ ! -f backend/database/jotihunt.db ] && [ -f /tmp/jotihunt_backup.db ]; then
               cp /tmp/jotihunt_backup.db backend/database/jotihunt.db
+            fi
+
+            echo "--- Restoring env if missing ---"
+            if [ ! -f backend/.env ] && [ -f /tmp/jotihunt_backup.env ]; then
+              cp /tmp/jotihunt_backup.env backend/.env
             fi
 
             echo "--- Building backend ---"

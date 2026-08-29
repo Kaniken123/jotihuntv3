@@ -1,4 +1,9 @@
 node_modules
+
+# Environment files — contain secrets (JWT_SECRET etc). NEVER commit.
+# .env.example stays tracked (different filename) as the documented template.
+.env
+
 backend/database/*.db
 backend/database/*.db-journal
 backend/database/*.db-shm
