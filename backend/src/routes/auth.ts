@@ -1,6 +1,7 @@
 import express from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import rateLimit from 'express-rate-limit';
 import { db } from '../utils/database';
 import { authenticateToken, requireSuperAdmin, hasRole } from '../middleware/auth';
 
@@ -10,7 +11,32 @@ if (!JWT_SECRET) {
   throw new Error('JWT_SECRET environment variable is required — refusing to start with an insecure default');
 }
 
-router.post('/login', async (req, res) => {
+// Public signup is open to the world, so cap it per IP. Requires app.set('trust
+// proxy', ...) so req.ip is the real client behind nginx, not nginx itself.
+const registerLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 10,                   // 10 signups per IP per hour
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many signup attempts from this address. Please try again later.' },
+});
+
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 30,                   // 30 login attempts per IP per window
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many login attempts. Please try again later.' },
+});
+
+// Human-readable reason a non-approved account can't sign in.
+const STATUS_MESSAGES: Record<string, string> = {
+  pending: 'Your account is awaiting approval by an admin.',
+  rejected: 'Your account request was not approved.',
+  suspended: 'Your account has been suspended.',
+};
+
+router.post('/login', loginLimiter, async (req, res) => {
   try {
     const { username, password, selected_tenant_id } = req.body;
 
@@ -52,6 +78,16 @@ router.post('/login', async (req, res) => {
     }
 
     const user = selectedUser;
+
+    // Approval gate: only approved accounts may sign in. Existing users were
+    // backfilled to 'approved' by the account-status migration; new signups are
+    // 'pending' until an admin approves them.
+    if (user.status && user.status !== 'approved') {
+      return res.status(403).json({
+        error: STATUS_MESSAGES[user.status] || 'Your account is not active.',
+        account_status: user.status,
+      });
+    }
 
     // Get user roles
     const roles = await db('user_roles')
@@ -118,12 +154,18 @@ router.post('/login', async (req, res) => {
   }
 });
 
-router.post('/register', async (req, res) => {
+router.post('/register', registerLimiter, async (req, res) => {
   try {
-    const { username, email, password, first_name, last_name, tenant_slug } = req.body;
+    // Only these fields are read from the body. Any role/status a client sends
+    // is ignored — the server decides those (role=user, status=pending).
+    const { username, email, password, first_name, last_name, scouting_group, tenant_slug } = req.body;
 
     if (!username || !email || !password) {
       return res.status(400).json({ error: 'Username, email, and password are required' });
+    }
+
+    if (!first_name || !last_name || !scouting_group) {
+      return res.status(400).json({ error: 'First name, last name, and scouting group are required' });
     }
 
     // Get the tenant (default to first active tenant if not specified)
@@ -166,6 +208,8 @@ router.post('/register', async (req, res) => {
       password_hash,
       first_name,
       last_name,
+      scouting_group,
+      status: 'pending', // server-decided; requires admin approval before login
       tenant_id: tenant.id,
       is_active: true
     });
@@ -194,7 +238,8 @@ router.post('/register', async (req, res) => {
 
     const { password_hash: _, ...userWithoutPassword } = user;
 
-    res.status(201).json({ 
+    res.status(201).json({
+      message: 'Registration submitted. An admin will review your account before you can sign in.',
       user: {
         ...userWithoutPassword,
         tenant: {

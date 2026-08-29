@@ -1,185 +1,74 @@
-# Jotihunt V2 - Current Implementation Status
+# Jotihunt V3 — Status & Build Tracker
 
-## ✅ Completed Features
+> Living document. Update this whenever a phase moves. Last updated: **2026-08-30**.
+> Detailed sub-plans: [FOX_PREDICTION_PLAN.md](./FOX_PREDICTION_PLAN.md) (predictor),
+> [MOBILE_TODO.md](./MOBILE_TODO.md) (mobile parity).
 
-### Core Infrastructure
-- **Project Structure**: Complete monorepo setup with backend/frontend separation
-- **Database Schema**: 15 tables covering all game mechanics with proper relationships
-- **Authentication**: JWT-based auth with bcrypt password hashing
-- **API Infrastructure**: RESTful API with 25+ endpoints
-- **Real-time Communication**: Socket.IO integration for live updates
+## Deployment
 
-### Backend Features ✅
-- **User Management**: Registration, login, profile management
-- **Team System**: Team creation, membership management
-- **Location Tracking**: GPS data collection with privacy controls
-- **Chat System**: Real-time team messaging with file attachments
-- **Hunt System**: Photo submission with cooldown management
-- **Game Areas**: Fox team tracking across 8 areas (Alpha-Foxtrot, Golf, Hotel)
-- **Articles System**: Hints, assignments, and news management
-- **File Uploads**: Secure handling for chat attachments and hunt photos
+- Push to `main` auto-deploys to EC2 via [.github/workflows/deploy.yml](.github/workflows/deploy.yml)
+  (backup db+.env → `git reset --hard` → restore → build → migrate → `pm2 restart`).
+- `backend/.env` is **gitignored** and lives only on the server; the deploy backs it
+  up/restores it around the reset. Never commit it.
+- Post-deploy smoke check:
+  - `GET https://jotihunt-gog.nl/api/health` → `200`
+  - `POST /api/auth/login` bad creds → `401`
 
-### Frontend Features ✅
-- **Authentication Flow**: Login/logout with persistent sessions
-- **Interactive Map**: Leaflet-based map with real-time location display
-- **Team Chat**: Full-featured chat with real-time messaging and file sharing
-- **Hunt Registration**: Photo submission with location validation
-- **Game Updates**: Filterable display of hints, assignments, and news
-- **Navigation**: Responsive navbar with route-based navigation
-- **Error Handling**: Comprehensive error boundaries and user feedback
+## Security fixes (done)
 
-### Security & Quality ✅
-- **Input Validation**: Comprehensive validation on all endpoints
-- **File Upload Security**: Type validation and size limits
-- **CORS Protection**: Configured for frontend-backend communication
-- **SQL Injection Prevention**: Parameterized queries with Knex.js
-- **Password Security**: Bcrypt hashing with salt rounds
+- **JWT secret** — was the committed placeholder (forgeable admin tokens). Rotated on
+  the server; `.env` untracked; app now refuses to boot without a real secret; env is
+  loaded first via `src/loadEnv.ts` (explicit path, before route imports).
+- **Socket auth** — the Socket.IO layer was fully unauthenticated (anyone could join
+  any room + receive a global live-GPS firehose). Now JWT-verified on connect, rooms
+  assigned server-side from membership, location broadcast scoped to the tenant room.
 
-## 🚧 Partially Implemented Features
+## Build plan — accounts / deelgebieden / chat / admin / navigation
 
-### Hunt System
-- ✅ Basic hunt submission with photos
-- ✅ Cooldown management (15-minute intervals)
-- ✅ Point calculation (6 points own area, 3 points other areas)
-- ❌ Admin review interface for hunt approval/rejection
-- ❌ Hunt statistics and leaderboards
+Sequenced data model → enforcement → UI. Key calls: "deelgebied" is a NEW entity (not
+the `areas`/fox table); multi-tenancy is frozen (prod is single-tenant — new work
+ignores `tenant_id`); there is no session store (stateless JWT).
 
-### Real-time Features
-- ✅ Team chat with Socket.IO
-- ✅ Hunt notifications structure
-- ❌ Live location updates on map
-- ❌ Real-time hunt status updates
-- ❌ Assignment deadline notifications
+| Phase | Scope | Status |
+|---|---|---|
+| 0 | Security stop-the-bleed (JWT, scope location firehose) | ✅ done |
+| 1 | Socket auth + per-user socket registry | ✅ done & deployed |
+| 2 | Account states + public signup hardening | ✅ done (see below) |
+| 3 | Approval enforcement in token middleware + socket connect; suspension force-disconnect | ⬜ next |
+| 4 | Deelgebieden table + user↔deelgebied memberships (joined_at/left_at); retire teams.area enum | ⬜ |
+| 5 | Membership-derived channel/map access; send-time re-check | ⬜ |
+| 6 | Mobile chat (channels API) + hunt-cooldown UI (see MOBILE_TODO.md) | ⬜ |
+| 7 | Admin panel: pending queue, approve+assign, reassignment roster | ⬜ |
+| 8 | Map filtering default (own deelgebied + toggle) + chat unread markers | ⬜ |
+| 9 | In-app navigation (routing polyline over Leaflet) — BLOCKED on Jotihunt rules check | ⬜ |
 
-## 📋 Missing Core Features
+### Phase 2 — account states (done 2026-08-30)
 
-### High Priority
-1. **Admin Dashboard**
-   - User management interface
-   - Hunt review and approval system
-   - Game statistics and monitoring
-   - Area and fox team management
+- Migration `20260830000000_add_user_account_status.js`: adds `users.status`
+  (pending/approved/rejected/suspended, default pending) + `users.scouting_group`;
+  backfills all existing users to `approved`. `is_active` stays the hard kill switch.
+- `POST /auth/register`: requires first name, last name, scouting group; forces
+  `role=user` + `status=pending` (any role/status in the body is ignored); IP
+  rate-limited (10/hr). Returns a "pending review" message.
+- `POST /auth/login`: rate-limited (30 / 15 min); rejects non-approved accounts with a
+  clear per-status message + `account_status`.
+- `app.set('trust proxy', 1)` so per-IP limits see the real client behind nginx.
+- Web signup form collects scouting group; success message says "pending approval".
+- **Not yet:** mid-session enforcement (a user approved→suspended while logged in is
+  only blocked at next login until Phase 3 adds token-middleware + socket checks).
 
-2. **Location Features**
-   - Privacy controls interface
-   - Location sharing settings
-   - Restricted zone validation (500m base camp radius)
-   - Live location updates on map
+## Known issues / tech debt
 
-3. **Game Mechanics**
-   - Hunt approval workflow
-   - Scoring system with leaderboards
-   - Assignment deadline management
-   - Fox team status updates
-
-### Medium Priority
-4. **Notification System**
-   - Push notifications for assignments
-   - Hunt status updates
-   - Team activity alerts
-   - Deadline warnings
-
-5. **Route Planning**
-   - Optimal route calculation
-   - Waypoint management
-   - Distance and time estimates
-
-6. **Enhanced UI**
-   - Dark/light theme toggle
-   - Mobile-optimized interface
-   - Accessibility improvements
-
-### Low Priority
-7. **Advanced Features**
-   - Hunt history and analytics
-   - Team performance metrics
-   - Export functionality
-   - API rate limiting
-
-## 🛠️ Technical Debt
-
-### Backend
-- Server-side file upload validation needs enhancement
-- Database indexing for performance optimization
-- API rate limiting implementation
-- Comprehensive logging system
-
-### Frontend
-- Mobile responsiveness improvements needed
-- Loading states for all async operations
-- Offline functionality for PWA
-- Image optimization for hunt photos
-
-## 🚀 Quick Start Guide
-
-### Prerequisites
-- Node.js 18+ and npm
-- Git
-
-### Setup Instructions
-
-1. **Install Dependencies**
-```bash
-npm run install:all
-```
-
-2. **Database Setup**
-```bash
-cd backend
-npm run db:migrate
-npm run db:seed
-```
-
-3. **Environment Configuration**
-```bash
-cp backend/.env.example backend/.env
-# Edit backend/.env with your settings
-```
-
-4. **Start Development Servers**
-```bash
-npm run dev
-```
-
-### Demo Credentials
-- **Admin**: `admin` / `admin123`
-- **User 1**: `hunter1` / `password123`
-- **User 2**: `hunter2` / `password123`
-
-### Available URLs
-- **Frontend**: http://localhost:3000
-- **Backend API**: http://localhost:3001
-- **Health Check**: http://localhost:3001/api/health
-
-## 📁 Project Structure
-
-```
-jotihuntv2/
-├── backend/                 # Node.js/Express API
-│   ├── src/
-│   │   ├── routes/         # API endpoints
-│   │   ├── middleware/     # Auth, validation
-│   │   ├── types/          # TypeScript types
-│   │   └── utils/          # Database, helpers
-│   ├── database/
-│   │   ├── migrations/     # Database schema
-│   │   └── seeds/          # Initial data
-│   └── uploads/            # File storage
-├── frontend/               # React application
-│   └── src/
-│       ├── components/     # React components
-│       ├── contexts/       # State management
-│       ├── services/       # API calls
-│       └── types/          # TypeScript types
-└── README.md              # Documentation
-```
-
-## 🎯 Next Development Priorities
-
-1. **Admin Dashboard** - Critical for game management
-2. **Hunt Review System** - Required for game flow
-3. **Real-time Location Updates** - Core gameplay feature
-4. **Mobile Optimization** - Primary user interface
-5. **Notification System** - User engagement
-
-The application has a solid foundation with core functionality implemented. The architecture supports scalable development of remaining features.
+- **Prod `.env` runs dev values** (`ENABLE_AUTO_SYNC=false`, `NODE_ENV=development`) —
+  must flip to prod values before an event (auto-sync MUST be on). CORS uses
+  `origin:true` so `FRONTEND_URL` doesn't matter.
+- **Mobile chat is broken** (calls a non-existent `/chat/team/:id/messages`) and hunt
+  cooldowns are unwired — Phase 6 / MOBILE_TODO.md.
+- Several game-state socket broadcasts are still global `io.emit` (fox status/location) —
+  fine single-tenant; scope when multi-deelgebied lands.
+- Pre-existing dead-room emits (hunt-reviewed `team-${id}`, user-notifications
+  `user-${id}`) never reach clients — revisit in the hunt/admin phases.
+- Fox predictor trust/decay weights need a real-data calibration pass; play boundary is
+  a placeholder; OSRM not built (straight-line reachability) — FOX_PREDICTION_PLAN.md.
+- Frontend has ~90 non-blocking TS errors (vite/esbuild strips types); the `User` type
+  is missing the flat `role` the API returns — a one-line type gap, not a runtime bug.

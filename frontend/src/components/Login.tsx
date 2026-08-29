@@ -12,6 +12,7 @@ const Login: React.FC = () => {
   const [password, setPassword] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
+  const [scoutingGroup, setScoutingGroup] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -47,14 +48,15 @@ const Login: React.FC = () => {
         // Login successful, user will be redirected by auth state change
       } else {
         // Registration
-        await authService.register({
+        const res = await authService.register({
           username,
           email,
           password,
           first_name: firstName,
-          last_name: lastName
+          last_name: lastName,
+          scouting_group: scoutingGroup
         });
-        setSuccess(t('login.registerSuccess'));
+        setSuccess(res.message || t('login.registerSuccess'));
         setIsLoginMode(true);
         // Clear form
         setUsername('');
@@ -62,6 +64,7 @@ const Login: React.FC = () => {
         setPassword('');
         setFirstName('');
         setLastName('');
+        setScoutingGroup('');
       }
     } catch (err: any) {
       setError(err.response?.data?.error || (isLoginMode ? t('login.loginFailed') : t('login.registerFailed')));
@@ -163,6 +166,23 @@ const Login: React.FC = () => {
                       placeholder={t('login.emailPlaceholder')}
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
+                      disabled={isLoading}
+                    />
+                  </div>
+
+                  <div>
+                    <label htmlFor="scoutingGroup" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      {t('login.scoutingGroup')}
+                    </label>
+                    <input
+                      id="scoutingGroup"
+                      name="scoutingGroup"
+                      type="text"
+                      required
+                      className="input"
+                      placeholder={t('login.scoutingGroupPlaceholder')}
+                      value={scoutingGroup}
+                      onChange={(e) => setScoutingGroup(e.target.value)}
                       disabled={isLoading}
                     />
                   </div>

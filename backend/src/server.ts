@@ -22,6 +22,9 @@ import adminRoutes from './routes/admin';
 import hintsRoutes from './routes/hints';
 
 const app = express();
+// Behind nginx: trust the first proxy hop so req.ip reflects the real client
+// (X-Forwarded-For) — required for per-IP rate limiting to work correctly.
+app.set('trust proxy', 1);
 const server = createServer(app);
 const io = new Server(server, {
   path: '/api/socket.io/',
