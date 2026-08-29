@@ -63,7 +63,6 @@ exports.seed = async function(knex) {
   const chrisPassword = await bcrypt.hash('#J0t1h4ntw8w00rd!', 10);
   
   await knex('users').insert({
-    id: 1,
     username: 'chris.ruhlmann',
     email: 'chris@jotihunt.com',
     password_hash: chrisPassword,
@@ -101,7 +100,7 @@ exports.seed = async function(knex) {
   // Create user roles
   await knex('user_roles').insert([
     { user_id: adminId, role: 'super_admin', tenant_id: 1 },
-    { user_id: 1, role: 'super_admin', tenant_id: 1 },
+    { user_id: chrisUser.id, role: 'super_admin', tenant_id: 1 },
     { user_id: user1.id, role: 'user', tenant_id: 1 },
     { user_id: user2.id, role: 'user', tenant_id: 1 }
   ]);
@@ -110,7 +109,7 @@ exports.seed = async function(knex) {
   await knex('team_members').insert([
     { user_id: user1.id, team_id: team1.id, role: 'leader' },
     { user_id: user2.id, team_id: team2.id, role: 'leader' },
-    { user_id: 1, team_id: adminTeam.id, role: 'leader' }
+    { user_id: chrisUser.id, team_id: adminTeam.id, role: 'leader' }
   ]);
 
   // Insert sample articles

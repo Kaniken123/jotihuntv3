@@ -20,5 +20,9 @@
   "workspaces": [
     "frontend",
     "backend"
-  ]
+  ],
+  "allowScripts": {
+    "esbuild@0.21.5": true,
+    "sqlite3@5.1.7": true
+  }
 }

@@ -41,6 +41,10 @@ exports.up = function(knex) {
       // Create team channels for existing teams and migrate existing messages
       return knex('teams').select('id', 'name')
         .then(teams => {
+          if (teams.length === 0) {
+            return null;
+          }
+
           const channelInserts = teams.map(team => ({
             name: `Team ${team.name}`,
             type: 'team',
@@ -50,7 +54,7 @@ exports.up = function(knex) {
             created_at: knex.fn.now(),
             updated_at: knex.fn.now()
           }));
-          
+
           return knex('chat_channels').insert(channelInserts);
         });
     })
