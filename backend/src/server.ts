@@ -9,6 +9,7 @@ import * as cron from 'node-cron';
 
 import { initializeDatabase } from './utils/database';
 import { setSocketIO } from './socketManager';
+import { setupSocket } from './socketAuth';
 import { JotihuntApiService } from './services/jotihuntApi';
 import authRoutes from './routes/auth';
 import jotihuntRoutes from './routes/jotihunt';
@@ -75,44 +76,9 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-io.on('connection', (socket) => {
-  console.log('User connected:', socket.id);
-
-  // Join tenant-specific rooms
-  socket.on('join-room', (roomName) => {
-    socket.join(roomName);
-    console.log(`User ${socket.id} joined room ${roomName}`);
-  });
-
-  // Join tenant-specific general chat
-  socket.on('join-tenant-general', (tenantId) => {
-    socket.join(`tenant-${tenantId}-general-chat`);
-    console.log(`User ${socket.id} joined tenant ${tenantId} general chat`);
-  });
-
-  // Join tenant-specific team rooms  
-  socket.on('join-team', (teamId, tenantId) => {
-    socket.join(`tenant-${tenantId}-team-${teamId}`);
-    console.log(`User ${socket.id} joined tenant ${tenantId} team ${teamId}`);
-  });
-
-  socket.on('leave-team', (teamId, tenantId) => {
-    socket.leave(`tenant-${tenantId}-team-${teamId}`);
-    console.log(`User ${socket.id} left tenant ${tenantId} team ${teamId}`);
-  });
-
-  socket.on('team-message', (data) => {
-    socket.to(`tenant-${data.tenantId}-team-${data.teamId}`).emit('new-message', data);
-  });
-
-  socket.on('location-update', (data) => {
-    socket.to(`tenant-${data.tenantId}-team-${data.teamId}`).emit('location-updated', data);
-  });
-
-  socket.on('disconnect', () => {
-    console.log('User disconnected:', socket.id);
-  });
-});
+// Authenticated Socket.IO: verifies the JWT on connect and assigns rooms from
+// the user's membership server-side. Clients can no longer join arbitrary rooms.
+setupSocket(io);
 
 const startServer = async () => {
   try {

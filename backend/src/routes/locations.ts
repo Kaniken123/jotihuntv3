@@ -99,6 +99,7 @@ router.post('/update', authenticateToken, enforceTenantIsolation, async (req, re
     const { getSocketIO } = require('../socketManager');
     try {
       const io = getSocketIO();
+      const tenantId = req.user!.current_tenant_id || req.user!.tenant_id;
       const locationUpdate = {
         user_id: req.user!.id,
         username: user?.username,
@@ -110,8 +111,10 @@ router.post('/update', authenticateToken, enforceTenantIsolation, async (req, re
         recorded_at: new Date()
       };
 
-      // Emit to all connected users (respecting privacy settings)
-      io.emit('location-update', locationUpdate);
+      // Emit only to authenticated clients in the same tenant. Was a global
+      // io.emit firehose that reached every connected socket (incl. anonymous
+      // ones, before socket auth) across all tenants.
+      io.to(`tenant-${tenantId}`).emit('location-update', locationUpdate);
 
       // Also emit to user's team if they have one
       const teamMember = await db('team_members')
@@ -119,7 +122,6 @@ router.post('/update', authenticateToken, enforceTenantIsolation, async (req, re
         .first();
 
       if (teamMember) {
-        const tenantId = req.user!.current_tenant_id || req.user!.tenant_id;
         io.to(`tenant-${tenantId}-team-${teamMember.team_id}`).emit('team-location-update', locationUpdate);
       }
     } catch (socketError) {
