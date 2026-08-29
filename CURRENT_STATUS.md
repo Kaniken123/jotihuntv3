@@ -1,6 +1,6 @@
 # Jotihunt V3 — Status & Build Tracker
 
-> Living document. Update this whenever a phase moves. Last updated: **2026-08-30**.
+> Living document. Update this whenever a phase moves. Last updated: **2026-08-30** (Phase 3).
 > Detailed sub-plans: [FOX_PREDICTION_PLAN.md](./FOX_PREDICTION_PLAN.md) (predictor),
 > [MOBILE_TODO.md](./MOBILE_TODO.md) (mobile parity).
 
@@ -34,8 +34,8 @@ ignores `tenant_id`); there is no session store (stateless JWT).
 | 0 | Security stop-the-bleed (JWT, scope location firehose) | ✅ done |
 | 1 | Socket auth + per-user socket registry | ✅ done & deployed |
 | 2 | Account states + public signup hardening | ✅ done (see below) |
-| 3 | Approval enforcement in token middleware + socket connect; suspension force-disconnect | ⬜ next |
-| 4 | Deelgebieden table + user↔deelgebied memberships (joined_at/left_at); retire teams.area enum | ⬜ |
+| 3 | Approval enforcement in token middleware + socket connect; suspension force-disconnect | ✅ done & deployed |
+| 4 | Deelgebieden table + user↔deelgebied memberships (joined_at/left_at); retire teams.area enum | ⬜ next |
 | 5 | Membership-derived channel/map access; send-time re-check | ⬜ |
 | 6 | Mobile chat (channels API) + hunt-cooldown UI (see MOBILE_TODO.md) | ⬜ |
 | 7 | Admin panel: pending queue, approve+assign, reassignment roster | ⬜ |
@@ -54,8 +54,20 @@ ignores `tenant_id`); there is no session store (stateless JWT).
   clear per-status message + `account_status`.
 - `app.set('trust proxy', 1)` so per-IP limits see the real client behind nginx.
 - Web signup form collects scouting group; success message says "pending approval".
-- **Not yet:** mid-session enforcement (a user approved→suspended while logged in is
-  only blocked at next login until Phase 3 adds token-middleware + socket checks).
+### Phase 3 — approval enforcement (done 2026-08-30)
+
+- `authenticateToken` (HTTP) and `authenticateSocket` (socket connect) now reject any
+  account whose `status` isn't `approved` — enforcing mid-session, not just at login.
+  Both fail open on null/unknown status so a legacy row is never wrongly locked out.
+- `PATCH /api/users/:id/status` (admin, tenant-scoped): set approved/rejected/
+  suspended/pending; any non-approved status calls `disconnectUser()` to close the
+  target's live sockets immediately (suspension closes connections, not just blocks
+  the next request).
+- Verified locally: 10/10 — pending blocked; approve→login works; approved token works
+  on HTTP + socket; suspend→same token gets 403 (HTTP) and refused (socket); invalid
+  status 400; non-admin forbidden.
+- **Not yet:** admin UI to drive the status endpoint (Phase 7). The endpoint exists and
+  is tested; the pending-queue / approve-and-assign UI is Phase 7.
 
 ## Known issues / tech debt
 

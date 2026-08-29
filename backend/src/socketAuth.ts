@@ -51,6 +51,12 @@ export async function authenticateSocket(
       return next(new Error('User not found or inactive'));
     }
 
+    // A non-approved account must not hold a live socket (no chat, no position
+    // pushes). Fail open on null/unknown status (see HTTP middleware).
+    if (user.status && user.status !== 'approved') {
+      return next(new Error('Account not approved'));
+    }
+
     const roles = await db('user_roles').where({
       user_id: user.id,
       is_active: true,

@@ -2,8 +2,41 @@ import express from 'express';
 import bcrypt from 'bcryptjs';
 import { db } from '../utils/database';
 import { authenticateToken, requireAdmin, isAdmin, enforceTenantIsolation } from '../middleware/auth';
+import { disconnectUser } from '../socketManager';
 
 const router = express.Router();
+
+// Admin: change an account's approval status (approve/reject/suspend/pending).
+// Suspending or otherwise revoking access force-disconnects the user's live
+// sockets so pushes stop mid-session, not just on their next request.
+const ACCOUNT_STATUSES = ['pending', 'approved', 'rejected', 'suspended'];
+router.patch('/users/:id/status', authenticateToken, requireAdmin, enforceTenantIsolation, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    if (!ACCOUNT_STATUSES.includes(status)) {
+      return res.status(400).json({ error: 'Invalid status' });
+    }
+
+    const target = await db('users').where({ id, tenant_id: req.tenantId }).first();
+    if (!target) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    await db('users').where({ id }).update({ status, updated_at: db.fn.now() });
+
+    // Any status that isn't 'approved' loses access — close live connections now.
+    if (status !== 'approved') {
+      disconnectUser(Number(id));
+    }
+
+    res.json({ id: Number(id), status });
+  } catch (error) {
+    console.error('Update user status error:', error);
+    res.status(500).json({ error: 'Failed to update user status' });
+  }
+});
 
 router.get('/users', authenticateToken, requireAdmin, enforceTenantIsolation, async (req, res) => {
   try {

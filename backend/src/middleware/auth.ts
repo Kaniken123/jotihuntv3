@@ -69,6 +69,14 @@ export const authenticateToken = async (req: Request, res: Response, next: NextF
       return res.status(401).json({ error: 'User not found or inactive' });
     }
 
+    // Approval enforcement: a non-approved account (pending/rejected/suspended)
+    // cannot use the API even with a valid token — this catches a mid-session
+    // status change, not just login. Fail open on null/unknown so a legacy row
+    // without a status is never accidentally locked out.
+    if (user.status && user.status !== 'approved') {
+      return res.status(403).json({ error: 'Account not active', account_status: user.status });
+    }
+
     // Get user roles
     const roles = await db('user_roles')
       .where({ user_id: user.id, is_active: true });
