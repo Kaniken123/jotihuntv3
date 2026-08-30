@@ -8,6 +8,7 @@ import {
   FoxRoute,
   Subscription,
   TeamMessage,
+  ChatChannel,
 } from '../types';
 
 export const gameService = {
@@ -113,24 +114,19 @@ export const gameService = {
     return response.data;
   },
 
-  // Chat
-  async getTeamMessages(teamId: number): Promise<TeamMessage[]> {
-    const response = await api.get(`/chat/team/${teamId}/messages`);
+  // Chat — deelgebied channels (general + the hunter's assigned deelgebieden).
+  async getChatChannels(): Promise<ChatChannel[]> {
+    const response = await api.get('/chat/channels');
     return response.data;
   },
 
-  async sendTeamMessage(teamId: number, message: string, attachment?: FormData): Promise<TeamMessage> {
-    if (attachment) {
-      attachment.append('message', message);
-      const response = await api.post(`/chat/team/${teamId}/messages`, attachment, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
-      return response.data;
-    }
-    
-    const response = await api.post(`/chat/team/${teamId}/messages`, { message });
+  async getChannelMessages(channelId: number): Promise<TeamMessage[]> {
+    const response = await api.get(`/chat/channels/${channelId}/messages`);
+    return response.data;
+  },
+
+  async sendChannelMessage(channelId: number, message: string): Promise<TeamMessage> {
+    const response = await api.post(`/chat/channels/${channelId}/messages`, { message });
     return response.data;
   },
 

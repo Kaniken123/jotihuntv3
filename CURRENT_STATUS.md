@@ -39,7 +39,7 @@ ignores `tenant_id`); there is no session store (stateless JWT).
 | 5 | Membership-derived chat channels (per deelgebied) + send-time re-check | ✅ done & deployed (map filtering → Phase 8) |
 | 7 | Admin panel (approvals + deelgebied assignment in User Management); role-gated routes; simplified signup | ✅ done & deployed |
 | 7b | Full team→deelgebied replacement in hunt cooldown + area points | ✅ done & deployed |
-| 6 | Mobile chat (channels API) + hunt-cooldown UI (see MOBILE_TODO.md) | ⬜ next |
+| 6 | Mobile chat (deelgebied channels) + hunt-cooldown UI | ✅ code done — needs APK rebuild |
 | 8 | Map filtering default (own deelgebied + toggle) + chat unread markers | ⬜ |
 | 9 | In-app navigation (routing polyline over Leaflet) — BLOCKED on Jotihunt rules check | ⬜ |
 
@@ -145,6 +145,22 @@ ignores `tenant_id`); there is no session store (stateless JWT).
 - Legacy team dropdown removed from the Add User modal (assign deelgebieden via Edit).
 - Verified: 8/8 hunt-logic checks (own vs other area points; deelgebied cooldown locks
   same-deelgebied hunters, spares others).
+
+### Phase 6 — mobile chat + hunt cooldowns (code done 2026-08-31; needs APK rebuild)
+
+- **Mobile chat rewritten to the deelgebied channels API.** Was calling a
+  non-existent `/chat/team/:id/messages` (404, never worked). Now uses
+  `getChatChannels / getChannelMessages / sendChannelMessage`, a channel switcher
+  (general + the hunter's deelgebieden), listens for the `new-message` socket event
+  filtered by channel, optimistic send. Removed the "No Team" gate. Server assigns
+  rooms from membership. (Attachment send dropped for now — text only on mobile.)
+- **Hunt cooldowns wired into HuntScreen**: loads `/hunts/cooldowns`, shows `🔒 N min`
+  per fox in the picker + a warning, disables Submit while the selected fox cools down,
+  30s countdown tick, handles the 429. Dropped the old `fox_team_name` picker suffix.
+- `FoxRoutePoint.id` widened to `string | number`; added `ChatChannel` type. Mobile has
+  no signup screen (hunters sign up on web).
+- **Deploy note:** the EC2 pipeline builds only backend + web. Mobile reaches phones
+  only via an **EAS APK rebuild** (`cd mobile && npm run build:apk`) + reinstall.
 
 ## Known issues / tech debt
 

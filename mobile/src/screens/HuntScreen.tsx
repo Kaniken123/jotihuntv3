@@ -26,11 +26,30 @@ const HuntScreen: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [recentHunts, setRecentHunts] = useState<Hunt[]>([]);
   const [success, setSuccess] = useState('');
+  // fox_area -> ISO time it becomes huntable again (per the hunter's deelgebied).
+  const [cooldowns, setCooldowns] = useState<Record<string, string>>({});
+  const [nowTs, setNowTs] = useState<number>(Date.now());
 
   useEffect(() => {
     loadData();
     getCurrentLocation();
+    // Keep the "X min left" countdown current.
+    const tick = setInterval(() => setNowTs(Date.now()), 30000);
+    return () => clearInterval(tick);
   }, []);
+
+  const loadCooldowns = async () => {
+    try {
+      const cds = await gameService.getHuntCooldowns();
+      const map: Record<string, string> = {};
+      (cds || []).forEach((c: any) => {
+        if (c?.fox_area && c?.cooldown_until) map[c.fox_area] = c.cooldown_until;
+      });
+      setCooldowns(map);
+    } catch (error) {
+      console.error('Failed to load cooldowns:', error);
+    }
+  };
 
   const loadData = async () => {
     try {
@@ -41,12 +60,20 @@ const HuntScreen: React.FC = () => {
       ]);
       setAreas(areasData);
       setRecentHunts(huntsData.slice(0, 5));
+      await loadCooldowns();
     } catch (error) {
       console.error('Failed to load data:', error);
       Alert.alert('Error', 'Failed to load hunt data');
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Minutes left before the selected fox can be hunted again (0 = ready).
+  const cooldownWait = (area: string): number => {
+    const until = cooldowns[area] ? new Date(cooldowns[area]).getTime() : 0;
+    if (!until) return 0;
+    return Math.max(0, Math.ceil((until - nowTs) / 60000));
   };
 
   const getCurrentLocation = async () => {
@@ -108,6 +135,11 @@ const HuntScreen: React.FC = () => {
       return;
     }
 
+    if (cooldownWait(selectedArea) > 0) {
+      Alert.alert('Cooldown', `Wait ${cooldownWait(selectedArea)} min before hunting ${selectedArea} again.`);
+      return;
+    }
+
     setIsSubmitting(true);
     setSuccess('');
 
@@ -134,12 +166,15 @@ const HuntScreen: React.FC = () => {
       setSelectedArea('');
       setPhoto(null);
 
-      // Reload hunts
+      // Reload hunts + cooldowns
       const huntsData = await gameService.getMyHunts();
       setRecentHunts(huntsData.slice(0, 5));
+      await loadCooldowns();
     } catch (error: any) {
       const errorMessage = error.response?.data?.error || 'Failed to submit hunt';
       Alert.alert('Error', errorMessage);
+      // A 429 means someone in the deelgebied already hunted this fox — refresh.
+      if (error.response?.status === 429) await loadCooldowns();
     } finally {
       setIsSubmitting(false);
     }
@@ -206,17 +241,25 @@ const HuntScreen: React.FC = () => {
             style={styles.picker}
           >
             <Picker.Item label="Select a fox area..." value="" />
-            {areas.map((area) => (
-              <Picker.Item
-                key={area.id}
-                label={`🦊 ${area.name}${area.fox_team_name ? ` - ${area.fox_team_name}` : ''}`}
-                value={area.name}
-              />
-            ))}
+            {areas.map((area) => {
+              const wait = cooldownWait(area.name);
+              return (
+                <Picker.Item
+                  key={area.id}
+                  label={`🦊 ${area.name}${wait > 0 ? `  🔒 ${wait} min` : ''}`}
+                  value={area.name}
+                />
+              );
+            })}
           </Picker>
         </View>
         {areas.length === 0 && (
           <Text style={styles.warningText}>⚠️ No fox areas found. Contact admin to set up fox teams.</Text>
+        )}
+        {selectedArea && cooldownWait(selectedArea) > 0 && (
+          <Text style={styles.warningText}>
+            🔒 {cooldownWait(selectedArea)} min cooldown left for {selectedArea} — your deelgebied already hunted it.
+          </Text>
         )}
       </View>
 
@@ -270,16 +313,18 @@ const HuntScreen: React.FC = () => {
 
       {/* Submit Button */}
       <TouchableOpacity
-        style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
+        style={[styles.submitButton, (isSubmitting || cooldownWait(selectedArea) > 0) && styles.submitButtonDisabled]}
         onPress={handleSubmit}
-        disabled={isSubmitting}
+        disabled={isSubmitting || cooldownWait(selectedArea) > 0}
       >
         {isSubmitting ? (
           <ActivityIndicator color="#FFFFFF" />
         ) : (
           <>
             <Ionicons name="send" size={20} color="#FFFFFF" />
-            <Text style={styles.submitButtonText}>Submit Hunt</Text>
+            <Text style={styles.submitButtonText}>
+              {cooldownWait(selectedArea) > 0 ? `Cooldown: ${cooldownWait(selectedArea)} min` : 'Submit Hunt'}
+            </Text>
           </>
         )}
       </TouchableOpacity>

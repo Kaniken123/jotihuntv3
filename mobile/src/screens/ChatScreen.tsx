@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   FlatList,
+  ScrollView,
   TextInput,
   TouchableOpacity,
   KeyboardAvoidingView,
@@ -15,77 +16,81 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
 import { useWebSocket } from '../contexts/WebSocketContext';
 import { gameService } from '../services/gameService';
-import { TeamMessage } from '../types';
+import { TeamMessage, ChatChannel } from '../types';
 import { format, isToday, isYesterday } from 'date-fns';
+
+const senderName = (m: TeamMessage): string =>
+  m.first_name || m.username || m.user?.first_name || m.user?.username || 'Unknown';
 
 const ChatScreen: React.FC = () => {
   const { state: authState } = useAuth();
-  const { on, off, emit, isConnected } = useWebSocket();
+  const { on, off, isConnected } = useWebSocket();
   const flatListRef = useRef<FlatList>(null);
 
+  const [channels, setChannels] = useState<ChatChannel[]>([]);
+  const [activeChannel, setActiveChannel] = useState<ChatChannel | null>(null);
+  const activeChannelRef = useRef<ChatChannel | null>(null);
   const [messages, setMessages] = useState<TeamMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
 
-  const teamId = authState.team?.id;
+  useEffect(() => { activeChannelRef.current = activeChannel; }, [activeChannel]);
 
+  // Load the channels the hunter can see (general + their deelgebieden). The
+  // server assigns socket rooms from membership, so no join needed here.
   useEffect(() => {
-    if (teamId) {
-      loadMessages();
-      joinTeamRoom();
-    }
-  }, [teamId]);
+    (async () => {
+      try {
+        const chans = await gameService.getChatChannels();
+        setChannels(chans);
+        // Default to the general channel, else the first available.
+        setActiveChannel(chans.find((c) => c.type === 'general') || chans[0] || null);
+      } catch (error) {
+        console.error('Failed to load channels:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    })();
+  }, []);
 
-  // WebSocket listeners
+  // Load messages whenever the active channel changes.
+  useEffect(() => {
+    if (!activeChannel) return;
+    (async () => {
+      try {
+        const data = await gameService.getChannelMessages(activeChannel.id);
+        setMessages(data);
+      } catch (error) {
+        console.error('Failed to load messages:', error);
+      }
+    })();
+  }, [activeChannel?.id]);
+
+  // Realtime: the server emits 'new-message' into the channel's room. Only keep
+  // ones for the channel currently open.
   useEffect(() => {
     const handleNewMessage = (message: TeamMessage) => {
-      setMessages((prev) => [...prev, message]);
-      // Scroll to bottom
-      setTimeout(() => {
-        flatListRef.current?.scrollToEnd({ animated: true });
-      }, 100);
+      if (message.channel_id !== activeChannelRef.current?.id) return;
+      setMessages((prev) => (prev.some((m) => m.id === message.id) ? prev : [...prev, message]));
+      setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
     };
-
-    on('team-message', handleNewMessage);
-    on('new-team-message', handleNewMessage);
-
-    return () => {
-      off('team-message', handleNewMessage);
-      off('new-team-message', handleNewMessage);
-    };
+    on('new-message', handleNewMessage);
+    return () => off('new-message', handleNewMessage);
   }, [on, off]);
 
-  const joinTeamRoom = () => {
-    if (teamId) {
-      emit('join-team', teamId);
-    }
-  };
-
-  const loadMessages = async () => {
-    if (!teamId) return;
-
-    try {
-      setIsLoading(true);
-      const data = await gameService.getTeamMessages(teamId);
-      setMessages(data);
-    } catch (error) {
-      console.error('Failed to load messages:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const sendMessage = async () => {
-    if (!newMessage.trim() || !teamId || isSending) return;
+    if (!newMessage.trim() || !activeChannel || isSending) return;
 
     const messageText = newMessage.trim();
     setNewMessage('');
     setIsSending(true);
 
     try {
-      await gameService.sendTeamMessage(teamId, messageText);
-      // Message will arrive via WebSocket
+      const sent = await gameService.sendChannelMessage(activeChannel.id, messageText);
+      // Optimistically add — don't rely on the socket echo reaching us.
+      setMessages((prev) => (prev.some((m) => m.id === sent.id) ? prev : [...prev, sent]));
+      setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
     } catch (error: any) {
       Alert.alert('Error', 'Failed to send message');
       setNewMessage(messageText); // Restore message
@@ -119,7 +124,7 @@ const ChatScreen: React.FC = () => {
         {!isOwnMessage && showAvatar && (
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>
-              {item.user?.first_name?.[0] || item.user?.username?.[0] || '?'}
+              {senderName(item)[0]?.toUpperCase() || '?'}
             </Text>
           </View>
         )}
@@ -131,9 +136,7 @@ const ChatScreen: React.FC = () => {
           ]}
         >
           {!isOwnMessage && showAvatar && (
-            <Text style={styles.senderName}>
-              {item.user?.first_name || item.user?.username || 'Unknown'}
-            </Text>
+            <Text style={styles.senderName}>{senderName(item)}</Text>
           )}
           <Text
             style={[
@@ -157,23 +160,11 @@ const ChatScreen: React.FC = () => {
     );
   };
 
-  if (!teamId) {
-    return (
-      <View style={styles.noTeamContainer}>
-        <Ionicons name="people-outline" size={64} color="#9CA3AF" />
-        <Text style={styles.noTeamTitle}>No Team</Text>
-        <Text style={styles.noTeamText}>
-          You need to be part of a team to use the chat feature.
-        </Text>
-      </View>
-    );
-  }
-
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#1E40AF" />
-        <Text style={styles.loadingText}>Loading messages...</Text>
+        <Text style={styles.loadingText}>Loading chat...</Text>
       </View>
     );
   }
@@ -187,10 +178,10 @@ const ChatScreen: React.FC = () => {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerInfo}>
-          <Text style={styles.headerTitle}>Team Chat</Text>
-          <Text style={styles.headerSubtitle}>
-            {authState.team?.name || 'Your Team'}
-          </Text>
+          <Text style={styles.headerTitle}>{activeChannel?.name || 'Chat'}</Text>
+          {activeChannel?.description ? (
+            <Text style={styles.headerSubtitle}>{activeChannel.description}</Text>
+          ) : null}
         </View>
         <View
           style={[
@@ -209,6 +200,28 @@ const ChatScreen: React.FC = () => {
           </Text>
         </View>
       </View>
+
+      {/* Channel switcher */}
+      {channels.length > 1 && (
+        <View style={styles.channelBar}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.channelBarContent}>
+            {channels.map((c) => {
+              const active = c.id === activeChannel?.id;
+              return (
+                <TouchableOpacity
+                  key={c.id}
+                  onPress={() => setActiveChannel(c)}
+                  style={[styles.channelTab, active && styles.channelTabActive]}
+                >
+                  <Text style={[styles.channelTabText, active && styles.channelTabTextActive]}>
+                    {c.type === 'general' ? '# ' : ''}{c.name}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
+      )}
 
       {/* Messages */}
       <FlatList
@@ -341,6 +354,34 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '500',
     color: '#1F2937',
+  },
+  channelBar: {
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  channelBarContent: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    gap: 8,
+  },
+  channelTab: {
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: '#F3F4F6',
+    marginRight: 8,
+  },
+  channelTabActive: {
+    backgroundColor: '#1E40AF',
+  },
+  channelTabText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#374151',
+  },
+  channelTabTextActive: {
+    color: '#FFFFFF',
   },
   messagesList: {
     padding: 16,

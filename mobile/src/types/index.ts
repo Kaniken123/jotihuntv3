@@ -101,16 +101,31 @@ export interface UserLocation {
   minutes_since_last_activity?: number;
 }
 
+export interface ChatChannel {
+  id: number;
+  name: string;
+  type: 'general' | 'deelgebied' | 'team';
+  description?: string;
+  deelgebied_id?: number;
+  team_id?: number;
+  is_active: boolean;
+}
+
 export interface TeamMessage {
   id: number;
-  team_id: number;
+  team_id?: number;
+  channel_id?: number;
   user_id: number;
   message: string;
   attachment_url?: string;
   attachment_type?: string;
-  is_edited: boolean;
+  is_edited?: boolean;
   edited_at?: string;
   created_at: string;
+  // The channels API returns sender fields flat (not nested).
+  username?: string;
+  first_name?: string;
+  last_name?: string;
   user?: {
     username: string;
     first_name?: string;
@@ -164,7 +179,9 @@ export interface NotificationData {
 }
 
 export interface FoxRoutePoint {
-  id: number;
+  // Backend returns prefixed string ids ("loc-N"/"hunt-N"/"hint-N") from the
+  // merged route trail; may be a number for legacy callers.
+  id: string | number;
   area_id: number;
   lat: number;
   lng: number;
