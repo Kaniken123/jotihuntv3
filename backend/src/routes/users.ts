@@ -264,12 +264,14 @@ router.put('/users/:id', authenticateToken, enforceTenantIsolation, async (req, 
       }
     }
 
+    // NB: users has no `role` column (multi-tenancy moved roles to user_roles) —
+    // selecting it here used to crash the whole update with "no such column".
     const user = await db('users')
-      .select('id', 'username', 'email', 'first_name', 'last_name', 'role', 'is_active', 'created_at')
+      .select('id', 'username', 'email', 'first_name', 'last_name', 'status', 'is_active', 'created_at')
       .where('id', id)
       .first();
 
-    res.json(user);
+    res.json({ ...user, role: role || 'user' });
   } catch (error) {
     console.error('Update user error:', error);
     res.status(500).json({ error: 'Failed to update user' });
