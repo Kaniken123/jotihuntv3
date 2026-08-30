@@ -1,6 +1,6 @@
 # Jotihunt V3 — Status & Build Tracker
 
-> Living document. Update this whenever a phase moves. Last updated: **2026-08-30** (Phase 4).
+> Living document. Update this whenever a phase moves. Last updated: **2026-08-31** (Phase 5).
 > Detailed sub-plans: [FOX_PREDICTION_PLAN.md](./FOX_PREDICTION_PLAN.md) (predictor),
 > [MOBILE_TODO.md](./MOBILE_TODO.md) (mobile parity).
 
@@ -36,8 +36,8 @@ ignores `tenant_id`); there is no session store (stateless JWT).
 | 2 | Account states + public signup hardening | ✅ done (see below) |
 | 3 | Approval enforcement in token middleware + socket connect; suspension force-disconnect | ✅ done & deployed |
 | 4 | Deelgebieden table + user↔deelgebied memberships (joined_at/left_at) | ✅ done & deployed (groups + teams.area retirement deferred) |
-| 5 | Membership-derived channel/map access; send-time re-check | ⬜ next |
-| 6 | Mobile chat (channels API) + hunt-cooldown UI (see MOBILE_TODO.md) | ⬜ |
+| 5 | Membership-derived chat channels (per deelgebied) + send-time re-check | ✅ done & deployed (map filtering → Phase 8) |
+| 6 | Mobile chat (channels API) + hunt-cooldown UI (see MOBILE_TODO.md) | ⬜ next |
 | 7 | Admin panel: pending queue, approve+assign, reassignment roster | ⬜ |
 | 8 | Map filtering default (own deelgebied + toggle) + chat unread markers | ⬜ |
 | 9 | In-app navigation (routing polyline over Leaflet) — BLOCKED on Jotihunt rules check | ⬜ |
@@ -87,6 +87,25 @@ ignores `tenant_id`); there is no session store (stateless JWT).
   Not needed for Phase 5 (channels are per-deelgebied, driven by memberships) and the
   teams retirement is a risky tear-out (existing chat uses team channels) — do it
   deliberately when Phase 5/6 touch chat.
+
+### Phase 5 — chat channels tied to deelgebieden (done 2026-08-31)
+
+- Migration `20260831000000_add_deelgebied_chat_channels.js`: adds
+  `chat_channels.deelgebied_id`, creates one `type='deelgebied'` channel per
+  deelgebied, and renames the global general channel to "Hunters algemeen".
+- `chat.ts`: `GET /channels` now returns the general channel + the caller's
+  deelgebied channels (admins see all); an unassigned hunter sees only general
+  (valid). Read/send access is derived server-side via `canAccessChannel()` from
+  `user_deelgebied_memberships` and **re-checked at send time** — a reassigned
+  hunter can't post to a channel they've left. Messages/reactions emit to the
+  channel's room via `channelRoom()`.
+- `socketAuth.ts`: on connect, joins `tenant-{t}-deelgebied-{id}` rooms from
+  membership (admins join every active deelgebied room).
+- Web `ModernChat` renders deelgebied channels by name (no UI change needed beyond
+  the type union). Mobile still uses the broken team endpoint — Phase 6.
+- Verified locally: 10/10 (channels created; unassigned=general only; assigned sees
+  own not others; post to non-member channel 403; socket delivery to deelgebied room).
+- Note: **map** filtering by deelgebied is Phase 8, not here (this phase is chat).
 
 ## Known issues / tech debt
 

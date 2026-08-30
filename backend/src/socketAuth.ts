@@ -15,7 +15,9 @@ export interface SocketUser {
   tenantId: number;
   currentTenantId: number;
   isSuperAdmin: boolean;
+  isAdmin: boolean;
   teamIds: number[];
+  deelgebiedIds: number[];
 }
 
 /**
@@ -75,9 +77,16 @@ export async function authenticateSocket(
       return next(new Error('Tenant not found or inactive'));
     }
 
+    const isAdmin = isSuperAdmin || roles.some((r) => r.role === 'tenant_admin');
+
     const teams = await db('team_members')
       .where({ user_id: user.id })
       .select('team_id');
+
+    const memberships = await db('user_deelgebied_memberships')
+      .where({ user_id: user.id })
+      .whereNull('left_at')
+      .select('deelgebied_id');
 
     const socketUser: SocketUser = {
       id: user.id,
@@ -85,7 +94,9 @@ export async function authenticateSocket(
       tenantId: user.tenant_id,
       currentTenantId,
       isSuperAdmin,
+      isAdmin,
       teamIds: teams.map((t) => t.team_id),
+      deelgebiedIds: memberships.map((m) => m.deelgebied_id),
     };
 
     socket.data.user = socketUser;
@@ -103,7 +114,7 @@ export async function authenticateSocket(
 export function setupSocket(io: SocketIOServer): void {
   io.use(authenticateSocket);
 
-  io.on('connection', (socket) => {
+  io.on('connection', async (socket) => {
     const u = socket.data.user as SocketUser;
 
     registerUserSocket(u.id, socket.id);
@@ -115,9 +126,19 @@ export function setupSocket(io: SocketIOServer): void {
       socket.join(`tenant-${u.currentTenantId}-team-${teamId}`);
     }
 
+    // Deelgebied chat rooms from membership; admins receive every deelgebied.
+    let deelgebiedIds = u.deelgebiedIds;
+    if (u.isAdmin) {
+      const all = await db('deelgebieden').where({ is_active: true }).select('id');
+      deelgebiedIds = all.map((d) => d.id);
+    }
+    for (const id of deelgebiedIds) {
+      socket.join(`tenant-${u.currentTenantId}-deelgebied-${id}`);
+    }
+
     console.log(
       `Socket ${socket.id} authenticated: user ${u.id} (${u.username}), ` +
-        `tenant ${u.currentTenantId}, teams [${u.teamIds.join(',')}]`
+        `tenant ${u.currentTenantId}, deelgebieden [${deelgebiedIds.join(',')}]`
     );
 
     socket.on('disconnect', () => {

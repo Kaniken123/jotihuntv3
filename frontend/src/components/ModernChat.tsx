@@ -9,9 +9,10 @@ import { Send, Paperclip, Hash, Users, MoreHorizontal, Search, Phone, Video } fr
 interface Channel {
   id: number;
   name: string;
-  type: 'general' | 'team';
+  type: 'general' | 'team' | 'deelgebied';
   description?: string;
   team_id?: number;
+  deelgebied_id?: number;
   is_active: boolean;
 }
 

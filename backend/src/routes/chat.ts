@@ -8,6 +8,46 @@ import { getSocketIO } from '../socketManager';
 
 const router = express.Router();
 
+// --- Deelgebied-channel helpers (Phase 5) ------------------------------------
+// A user's current deelgebied ids (membership not yet ended).
+async function currentDeelgebiedIds(userId: number): Promise<number[]> {
+  const rows = await db('user_deelgebied_memberships')
+    .where({ user_id: userId })
+    .whereNull('left_at')
+    .select('deelgebied_id');
+  return rows.map((r) => r.deelgebied_id);
+}
+
+// Socket room a channel broadcasts to.
+function channelRoom(tenantId: number, channel: any): string {
+  if (channel.type === 'general') return `tenant-${tenantId}-general-chat`;
+  if (channel.type === 'deelgebied') return `tenant-${tenantId}-deelgebied-${channel.deelgebied_id}`;
+  return `tenant-${tenantId}-team-${channel.team_id}`; // legacy
+}
+
+// Whether a user may read/write a channel. Derived server-side, never trusted
+// from the client. general = everyone; deelgebied = current member (or admin);
+// team = member (legacy). Re-run on every send, not just channel open.
+async function canAccessChannel(user: any, channel: any): Promise<boolean> {
+  if (channel.type === 'general') return true;
+  if (isAdmin(user)) return true;
+  if (channel.type === 'deelgebied') {
+    const m = await db('user_deelgebied_memberships')
+      .where({ user_id: user.id, deelgebied_id: channel.deelgebied_id })
+      .whereNull('left_at')
+      .first();
+    return !!m;
+  }
+  if (channel.type === 'team') {
+    const m = await db('team_members')
+      .where({ user_id: user.id, team_id: channel.team_id })
+      .first();
+    return !!m;
+  }
+  return false;
+}
+// -----------------------------------------------------------------------------
+
 // Ensure the chat upload dir exists at startup — multer's diskStorage throws
 // ENOENT on first use otherwise (which was silently breaking attachment sends).
 const chatUploadsDir = path.join(__dirname, '../../uploads/chat');
@@ -218,22 +258,27 @@ router.get('/channels', authenticateToken, enforceTenantIsolation, async (req, r
   try {
     const tenantId = req.user!.current_tenant_id || req.user!.tenant_id;
     
+    // Access derives from deelgebied membership. Admins see every deelgebied
+    // channel; everyone sees the global general channel.
+    const admin = isAdmin(req.user!);
+    const myDeelgebiedIds = admin ? [] : await currentDeelgebiedIds(req.user!.id);
+
     const channels = await db('chat_channels')
       .select('*')
       .where('tenant_id', tenantId)
-      .where(function() {
-        this.where('type', 'general')
-          .orWhere(function() {
-            this.where('type', 'team')
-              .whereIn('team_id', function() {
-                this.select('team_id')
-                  .from('team_members')
-                  .where('user_id', req.user!.id);
-              });
-          });
-      })
       .where('is_active', true)
-      .orderBy('type', 'desc') // general first, then team
+      .where(function () {
+        this.where('type', 'general');
+        this.orWhere(function () {
+          this.where('type', 'deelgebied');
+          if (!admin) {
+            // [-1] guards the empty case: an unassigned hunter sees no deelgebied
+            // channels (a valid state), just the general one.
+            this.whereIn('deelgebied_id', myDeelgebiedIds.length ? myDeelgebiedIds : [-1]);
+          }
+        });
+      })
+      .orderBy('type', 'desc') // general first, then deelgebied
       .orderBy('name');
 
     res.json(channels);
@@ -259,15 +304,9 @@ router.get('/channels/:channel_id/messages', authenticateToken, enforceTenantIso
       return res.status(404).json({ error: 'Channel not found' });
     }
 
-    // Check access permissions
-    if (channel.type === 'team') {
-      const membership = await db('team_members')
-        .where({ user_id: req.user!.id, team_id: channel.team_id })
-        .first();
-      
-      if (!membership && !isAdmin(req.user!)) {
-        return res.status(403).json({ error: 'Access denied' });
-      }
+    // Access derived server-side from membership (general / deelgebied / team).
+    if (!(await canAccessChannel(req.user!, channel))) {
+      return res.status(403).json({ error: 'Access denied' });
     }
 
     const messages = await db('team_messages')
@@ -332,19 +371,14 @@ router.post('/channels/:channel_id/messages', authenticateToken, enforceTenantIs
       return res.status(404).json({ error: 'Channel not found' });
     }
 
-    // Check permissions
-    if (channel.type === 'team') {
-      const membership = await db('team_members')
-        .where({ user_id: req.user!.id, team_id: channel.team_id })
-        .first();
-
-      if (!membership) {
-        return res.status(403).json({ error: 'Access denied' });
-      }
+    // Membership is re-checked at SEND time (not only at channel open) — a
+    // reassigned hunter whose socket is still attached cannot post here.
+    if (!(await canAccessChannel(req.user!, channel))) {
+      return res.status(403).json({ error: 'Access denied' });
     }
 
     const messageData: any = {
-      team_id: channel.team_id, // null for general channels
+      team_id: channel.team_id, // null for general/deelgebied channels
       channel_id: parseInt(channel_id),
       user_id: req.user!.id,
       tenant_id: tenantId,
@@ -373,10 +407,9 @@ router.post('/channels/:channel_id/messages', authenticateToken, enforceTenantIs
       .where('team_messages.id', messageId)
       .first();
 
-    // Emit to appropriate tenant-specific room
+    // Emit to the channel's room (general / deelgebied / legacy team).
     const io = getSocketIO();
-    const roomName = channel.type === 'general' ? `tenant-${tenantId}-general-chat` : `tenant-${tenantId}-team-${channel.team_id}`;
-    io.to(roomName).emit('new-message', fullMessage);
+    io.to(channelRoom(tenantId, channel)).emit('new-message', fullMessage);
 
     res.status(201).json(fullMessage);
   } catch (error) {
@@ -397,7 +430,7 @@ router.post('/messages/:message_id/reactions', authenticateToken, async (req, re
 
     // Check if message exists and user has access
     const message = await db('team_messages')
-      .select('team_messages.*', 'chat_channels.type', 'chat_channels.team_id')
+      .select('team_messages.*', 'chat_channels.type', 'chat_channels.team_id', 'chat_channels.deelgebied_id')
       .leftJoin('chat_channels', 'team_messages.channel_id', 'chat_channels.id')
       .where('team_messages.id', message_id)
       .first();
@@ -406,15 +439,9 @@ router.post('/messages/:message_id/reactions', authenticateToken, async (req, re
       return res.status(404).json({ error: 'Message not found' });
     }
 
-    // Check access for team channels
-    if (message.type === 'team') {
-      const membership = await db('team_members')
-        .where({ user_id: req.user!.id, team_id: message.team_id })
-        .first();
-      
-      if (!membership && !isAdmin(req.user!)) {
-        return res.status(403).json({ error: 'Access denied' });
-      }
+    // Access derived from membership (general / deelgebied / team).
+    if (!(await canAccessChannel(req.user!, message))) {
+      return res.status(403).json({ error: 'Access denied' });
     }
 
     // Insert or update reaction (upsert)
@@ -435,7 +462,7 @@ router.post('/messages/:message_id/reactions', authenticateToken, async (req, re
     // Emit reaction update with tenant-specific room
     const io = getSocketIO();
     const tenantId = req.user!.current_tenant_id || req.user!.tenant_id;
-    const roomName = message.type === 'general' ? `tenant-${tenantId}-general-chat` : `tenant-${tenantId}-team-${message.team_id}`;
+    const roomName = channelRoom(tenantId, message);
     io.to(roomName).emit('message-reaction-added', {
       message_id: parseInt(message_id),
       reactions
@@ -468,7 +495,7 @@ router.delete('/messages/:message_id/reactions/:emoji', authenticateToken, async
 
     // Get message info for room detection
     const message = await db('team_messages')
-      .select('team_messages.*', 'chat_channels.type', 'chat_channels.team_id')
+      .select('team_messages.*', 'chat_channels.type', 'chat_channels.team_id', 'chat_channels.deelgebied_id')
       .leftJoin('chat_channels', 'team_messages.channel_id', 'chat_channels.id')
       .where('team_messages.id', message_id)
       .first();
@@ -476,7 +503,7 @@ router.delete('/messages/:message_id/reactions/:emoji', authenticateToken, async
     // Emit reaction update with tenant-specific room
     const io = getSocketIO();
     const tenantId = req.user!.current_tenant_id || req.user!.tenant_id;
-    const roomName = message.type === 'general' ? `tenant-${tenantId}-general-chat` : `tenant-${tenantId}-team-${message.team_id}`;
+    const roomName = channelRoom(tenantId, message);
     io.to(roomName).emit('message-reaction-removed', {
       message_id: parseInt(message_id),
       reactions
