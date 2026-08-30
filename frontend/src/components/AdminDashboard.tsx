@@ -1078,26 +1078,9 @@ const AdminDashboard: React.FC = () => {
                 </select>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Team/Area Assignment
-                </label>
-                <select
-                  value={newUserData.team_id}
-                  onChange={(e) => setNewUserData({ ...newUserData, team_id: e.target.value })}
-                  className="input"
-                >
-                  <option value="">No Team</option>
-                  {availableTeams.map((team) => (
-                    <option key={team.id} value={team.id}>
-                      {team.name} {team.area && `(${team.area})`}
-                    </option>
-                  ))}
-                </select>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  Select the team/area this user belongs to
-                </p>
-              </div>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Assign deelgebied(en) after creating the user via Edit.
+              </p>
             </div>
 
             <div className="flex space-x-3 mt-6">

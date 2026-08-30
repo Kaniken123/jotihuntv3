@@ -38,8 +38,8 @@ ignores `tenant_id`); there is no session store (stateless JWT).
 | 4 | Deelgebieden table + user↔deelgebied memberships (joined_at/left_at) | ✅ done & deployed (groups + teams.area retirement deferred) |
 | 5 | Membership-derived chat channels (per deelgebied) + send-time re-check | ✅ done & deployed (map filtering → Phase 8) |
 | 7 | Admin panel (approvals + deelgebied assignment in User Management); role-gated routes; simplified signup | ✅ done & deployed |
-| 7b | Full team→deelgebied replacement in hunt cooldown + area points | ⬜ next (Part B) |
-| 6 | Mobile chat (channels API) + hunt-cooldown UI (see MOBILE_TODO.md) | ⬜ |
+| 7b | Full team→deelgebied replacement in hunt cooldown + area points | ✅ done & deployed |
+| 6 | Mobile chat (channels API) + hunt-cooldown UI (see MOBILE_TODO.md) | ⬜ next |
 | 8 | Map filtering default (own deelgebied + toggle) + chat unread markers | ⬜ |
 | 9 | In-app navigation (routing polyline over Leaflet) — BLOCKED on Jotihunt rules check | ⬜ |
 
@@ -130,10 +130,21 @@ ignores `tenant_id`); there is no session store (stateless JWT).
   (checkboxes)**; Save syncs `user_deelgebied_memberships` (add checked / remove
   unchecked). `GET /users` returns each user's active `deelgebieden`. Assigning →
   the user gets that deelgebied's chat channel (Phase 5). Multiple deelgebieden per user.
-- **Still TODO (Part B / Phase 7b):** hunts still use the OLD `teams` for the 60-min
-  cooldown + area-bonus points. Decided (2026-08-31): FULL replacement — re-key hunt
-  cooldown + points off the hunter's deelgebied memberships. The Add/Edit User modals
-  also still show the legacy team dropdown — convert or drop in Part B.
+### Phase 7b — hunt logic full replacement (done 2026-08-31)
+
+- `hunts.ts`: **cooldown + area points now key off deelgebied**, not the old team.
+  - Own-area bonus (6 pts vs 3) if the hunted fox is one of the hunter's deelgebieden.
+  - Cooldown: locked out of fox X if any hunter sharing one of your **current
+    deelgebieden** has an approved hunt for X within 60 min ("your deelgebied already
+    hunted this fox"). Computed via `hunts.hunter_user_id` → memberships, anchored on
+    `approved_at`. Unassigned hunters aren't gated. `/hunts/cooldowns` re-keyed the same
+    way (same response shape, so the web HuntRegistration UI works unchanged).
+  - `hunts.hunter_team_id` is still written (legacy views) but no longer drives logic.
+- Also fixed a latent bug: `PUT /users/:id` selected the dropped `users.role` column
+  → 500 on every admin user edit; now selects real columns (b21a8b1).
+- Legacy team dropdown removed from the Add User modal (assign deelgebieden via Edit).
+- Verified: 8/8 hunt-logic checks (own vs other area points; deelgebied cooldown locks
+  same-deelgebied hunters, spares others).
 
 ## Known issues / tech debt
 

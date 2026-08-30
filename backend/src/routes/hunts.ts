@@ -39,9 +39,19 @@ const upload = multer({
   }
 });
 
-// Calculate points based on hunt location and team area
-const calculateHuntPoints = (huntArea: string, teamArea?: string): number => {
-  if (teamArea && huntArea === teamArea) {
+// A user's current deelgebieden (the "team" — team == deelgebied). left_at NULL
+// means still a member. Used for both hunt points and the cooldown.
+const getUserDeelgebieden = async (userId: number): Promise<Array<{ id: number; name: string }>> => {
+  return db('user_deelgebied_memberships as m')
+    .join('deelgebieden as d', 'm.deelgebied_id', 'd.id')
+    .where('m.user_id', userId)
+    .whereNull('m.left_at')
+    .select('d.id', 'd.name');
+};
+
+// Own-area bonus if the hunted fox matches ANY of the hunter's deelgebieden.
+const calculateHuntPoints = (huntArea: string, ownAreas: string[]): number => {
+  if (ownAreas.includes(huntArea)) {
     return 6; // Own area hunt
   }
   return 3; // Other area hunt
@@ -51,19 +61,22 @@ const calculateHuntPoints = (huntArea: string, teamArea?: string): number => {
 const HUNT_COOLDOWN_ENABLED = true;
 const HUNT_COOLDOWN_MINUTES = 60;
 
-const checkHuntCooldown = async (teamId: number | null, foxArea: string): Promise<boolean> => {
+// Deelgebied-scoped cooldown (team == deelgebied): a hunter is locked out of
+// fox X if any of their current deelgebieden already has an approved hunt for X
+// within the window — i.e. "your deelgebied already hunted this fox". Anchored on
+// approved_at (timer starts when an admin approves). Unassigned users aren't gated.
+const checkHuntCooldown = async (deelgebiedIds: number[], foxArea: string): Promise<boolean> => {
   if (!HUNT_COOLDOWN_ENABLED) return true;
-  if (!teamId) return true; // unassigned users (e.g. solo admin testing) aren't gated
+  if (!deelgebiedIds.length) return true;
   const cooldownTime = new Date(Date.now() - HUNT_COOLDOWN_MINUTES * 60 * 1000);
 
-  // Cooldown is anchored on approved_at — the 60-min timer begins when the
-  // admin approves, not when the hunt was submitted. Pending/rejected hunts
-  // do not lock the team out.
-  const recentHunt = await db('hunts')
-    .where('hunter_team_id', teamId)
-    .where('fox_area', foxArea)
-    .where('status', 'approved')
-    .where('approved_at', '>', cooldownTime)
+  const recentHunt = await db('hunts as h')
+    .join('user_deelgebied_memberships as m', 'm.user_id', 'h.hunter_user_id')
+    .whereNull('m.left_at')
+    .whereIn('m.deelgebied_id', deelgebiedIds)
+    .where('h.fox_area', foxArea)
+    .where('h.status', 'approved')
+    .where('h.approved_at', '>', cooldownTime)
     .first();
 
   return !recentHunt;
@@ -123,26 +136,35 @@ router.post('/submit', authenticateToken, enforceTenantIsolation, upload.single(
       });
     }
 
-    // Get user's team (optional for hunt submission)
+    // The hunter's deelgebieden are the "team" now (team == deelgebied).
+    const myDeelgebieden = await getUserDeelgebieden(req.user!.id);
+    const myDeelgebiedIds = myDeelgebieden.map((d) => d.id);
+    const myDeelgebiedNames = myDeelgebieden.map((d) => d.name);
+
+    // Legacy team (kept only so old team-scoped views still resolve a name);
+    // no longer drives cooldown or points.
     const teamMembership = await db('team_members')
       .join('teams', 'team_members.team_id', 'teams.id')
       .select('teams.*', 'team_members.role')
       .where('team_members.user_id', req.user!.id)
       .first();
 
-    // Enforce per-team cooldown per Jotihunt rules (60 min after a hunt of the
-    // same fox by the same scouting group). Solo users without a team are not
-    // gated. Frontend also blocks, but this is the authoritative safety net.
-    if (teamMembership?.team_id) {
-      const huntable = await checkHuntCooldown(teamMembership.team_id, fox_area);
+    // Enforce the 60-min cooldown per deelgebied (Jotihunt rule: your group can't
+    // re-hunt the same fox within 60 min). Unassigned users aren't gated. The
+    // frontend also blocks, but this is the authoritative safety net.
+    if (myDeelgebiedIds.length) {
+      const huntable = await checkHuntCooldown(myDeelgebiedIds, fox_area);
       if (!huntable) {
         const cooldownTime = new Date(Date.now() - HUNT_COOLDOWN_MINUTES * 60 * 1000);
-        const last = await db('hunts')
-          .where('hunter_team_id', teamMembership.team_id)
-          .where('fox_area', fox_area)
-          .where('status', 'approved')
-          .where('approved_at', '>', cooldownTime)
-          .orderBy('approved_at', 'desc')
+        const last = await db('hunts as h')
+          .join('user_deelgebied_memberships as m', 'm.user_id', 'h.hunter_user_id')
+          .whereNull('m.left_at')
+          .whereIn('m.deelgebied_id', myDeelgebiedIds)
+          .where('h.fox_area', fox_area)
+          .where('h.status', 'approved')
+          .where('h.approved_at', '>', cooldownTime)
+          .orderBy('h.approved_at', 'desc')
+          .select('h.approved_at')
           .first();
         const cooldownUntil = last?.approved_at
           ? new Date(new Date(last.approved_at).getTime() + HUNT_COOLDOWN_MINUTES * 60 * 1000)
@@ -172,8 +194,8 @@ router.post('/submit', authenticateToken, enforceTenantIsolation, upload.single(
       return res.status(400).json({ error: 'Invalid or inactive fox area' });
     }
 
-    // Calculate points (use team area if available, otherwise default to 3 points)
-    const points = calculateHuntPoints(fox_area, teamMembership?.area);
+    // Own-area bonus if the fox is one of the hunter's deelgebieden.
+    const points = calculateHuntPoints(fox_area, myDeelgebiedNames);
 
     // Create hunt record
     const huntData = {
@@ -227,28 +249,29 @@ router.post('/submit', authenticateToken, enforceTenantIsolation, upload.single(
   }
 });
 
-// Hunt cooldowns for the *team* (not per user — the rules apply group-wide).
-// Returns one entry per fox area the team has recently hunted, with when it
-// becomes huntable again. Rejected hunts excluded.
+// Hunt cooldowns for the caller's deelgebieden (team == deelgebied; the rules
+// apply group-wide). One entry per fox area any of their deelgebieden recently
+// hunted, with when it becomes huntable again. Rejected/pending hunts excluded.
 router.get('/cooldowns', authenticateToken, enforceTenantIsolation, async (req, res) => {
   try {
     if (!HUNT_COOLDOWN_ENABLED) return res.json([]);
-    const membership = await db('team_members').where('user_id', req.user!.id).first();
-    if (!membership) return res.json([]); // no team → no cooldowns
+    const deelgebiedIds = (await getUserDeelgebieden(req.user!.id)).map((d) => d.id);
+    if (!deelgebiedIds.length) return res.json([]); // unassigned → no cooldowns
 
     const cooldownTime = new Date(Date.now() - HUNT_COOLDOWN_MINUTES * 60 * 1000);
 
-    // Latest APPROVED hunt per fox_area for this team, only those still in
-    // cooldown. Anchored on approved_at (set when admin approves), not the
-    // original submission time.
-    const recentHunts = await db('hunts')
-      .select('fox_area')
-      .max('approved_at as approved_at')
-      .where('hunter_team_id', membership.team_id)
-      .where('tenant_id', req.tenantId)
-      .where('status', 'approved')
-      .where('approved_at', '>', cooldownTime)
-      .groupBy('fox_area');
+    // Latest APPROVED hunt per fox_area by any hunter sharing one of the caller's
+    // deelgebieden, still in cooldown. Anchored on approved_at.
+    const recentHunts = await db('hunts as h')
+      .join('user_deelgebied_memberships as m', 'm.user_id', 'h.hunter_user_id')
+      .whereNull('m.left_at')
+      .whereIn('m.deelgebied_id', deelgebiedIds)
+      .where('h.tenant_id', req.tenantId)
+      .where('h.status', 'approved')
+      .where('h.approved_at', '>', cooldownTime)
+      .groupBy('h.fox_area')
+      .select('h.fox_area')
+      .max('h.approved_at as approved_at');
 
     const cooldowns = recentHunts.map((hunt: any) => ({
       fox_area: hunt.fox_area,
