@@ -8,11 +8,9 @@ import LanguageSwitcher from './LanguageSwitcher';
 const Login: React.FC = () => {
   const [isLoginMode, setIsLoginMode] = useState(true);
   const [username, setUsername] = useState('');
-  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
-  const [scoutingGroup, setScoutingGroup] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -47,24 +45,20 @@ const Login: React.FC = () => {
         }
         // Login successful, user will be redirected by auth state change
       } else {
-        // Registration
+        // Registration — only the person's name + password. Username/email are
+        // assigned by the server (name@jotihunt-gog.nl).
         const res = await authService.register({
-          username,
-          email,
           password,
           first_name: firstName,
-          last_name: lastName,
-          scouting_group: scoutingGroup
+          last_name: lastName
         });
         setSuccess(res.message || t('login.registerSuccess'));
         setIsLoginMode(true);
         // Clear form
         setUsername('');
-        setEmail('');
         setPassword('');
         setFirstName('');
         setLastName('');
-        setScoutingGroup('');
       }
     } catch (err: any) {
       setError(err.response?.data?.error || (isLoginMode ? t('login.loginFailed') : t('login.registerFailed')));
@@ -153,59 +147,31 @@ const Login: React.FC = () => {
                     </div>
                   </div>
                   
-                  <div>
-                    <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      {t('login.email')}
-                    </label>
-                    <input
-                      id="email"
-                      name="email"
-                      type="email"
-                      required
-                      className="input"
-                      placeholder={t('login.emailPlaceholder')}
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      disabled={isLoading}
-                    />
-                  </div>
-
-                  <div>
-                    <label htmlFor="scoutingGroup" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      {t('login.scoutingGroup')}
-                    </label>
-                    <input
-                      id="scoutingGroup"
-                      name="scoutingGroup"
-                      type="text"
-                      required
-                      className="input"
-                      placeholder={t('login.scoutingGroupPlaceholder')}
-                      value={scoutingGroup}
-                      onChange={(e) => setScoutingGroup(e.target.value)}
-                      disabled={isLoading}
-                    />
-                  </div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    {t('login.signupNote')}
+                  </p>
                 </>
               )}
-              
-              <div>
-                <label htmlFor="username" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  {t('login.username')}
-                </label>
-                <input
-                  id="username"
-                  name="username"
-                  type="text"
-                  required
-                  className="input"
-                  placeholder={t('login.usernamePlaceholder')}
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  disabled={isLoading}
-                />
-              </div>
-              
+
+              {isLoginMode && (
+                <div>
+                  <label htmlFor="username" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    {t('login.username')}
+                  </label>
+                  <input
+                    id="username"
+                    name="username"
+                    type="text"
+                    required
+                    className="input"
+                    placeholder={t('login.usernamePlaceholder')}
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    disabled={isLoading}
+                  />
+                </div>
+              )}
+
               <div>
                 <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   {t('login.password')}

@@ -9,10 +9,12 @@ import TenantSwitcher from './TenantSwitcher';
 import SubscriptionManager from './SubscriptionManager';
 import AdminHintVerification from './AdminHintVerification';
 import AdminLaunchReset from './AdminLaunchReset';
+import AdminApprovals from './AdminApprovals';
 import { isAdmin, isSuperAdmin } from '../utils/roleUtils';
-import { 
-  Users, 
-  Camera, 
+import {
+  Users,
+  UserCheck,
+  Camera,
   MessageSquare, 
   Trophy, 
   AlertTriangle, 
@@ -530,6 +532,7 @@ const AdminDashboard: React.FC = () => {
 
   const tabs = [
     { id: 'overview', label: t('admin.tabOverview'), icon: BarChart3 },
+    { id: 'approvals', label: t('admin.tabApprovals'), icon: UserCheck },
     { id: 'hunts', label: t('admin.tabHunts'), icon: Camera },
     { id: 'hints', label: t('admin.tabHints'), icon: MapPin },
     { id: 'users', label: t('admin.tabUsers'), icon: Users },
@@ -1880,6 +1883,7 @@ const AdminDashboard: React.FC = () => {
   const renderContent = () => {
     switch (activeTab) {
       case 'overview': return renderOverview();
+      case 'approvals': return <AdminApprovals />;
       case 'hunts': return renderHuntReview();
       case 'hints': return <AdminHintVerification />;
       case 'users': return renderUserManagement();

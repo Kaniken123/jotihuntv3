@@ -156,16 +156,14 @@ router.post('/login', loginLimiter, async (req, res) => {
 
 router.post('/register', registerLimiter, async (req, res) => {
   try {
-    // Only these fields are read from the body. Any role/status a client sends
-    // is ignored — the server decides those (role=user, status=pending).
-    const { username, email, password, first_name, last_name, scouting_group, tenant_slug } = req.body;
+    // Signups come only from our own group, so we ask for the person's name and
+    // a password — nothing else. Username + email are derived server-side
+    // (name@jotihunt-gog.nl). Any username/email/role/status a client sends is
+    // ignored (server decides role=user, status=pending).
+    const { first_name, last_name, password, tenant_slug } = req.body;
 
-    if (!username || !email || !password) {
-      return res.status(400).json({ error: 'Username, email, and password are required' });
-    }
-
-    if (!first_name || !last_name || !scouting_group) {
-      return res.status(400).json({ error: 'First name, last name, and scouting group are required' });
+    if (!first_name || !last_name || !password) {
+      return res.status(400).json({ error: 'First name, last name, and password are required' });
     }
 
     // Get the tenant (default to first active tenant if not specified)
@@ -187,16 +185,30 @@ router.post('/register', registerLimiter, async (req, res) => {
       return res.status(400).json({ error: 'No active tenant available' });
     }
 
-    // Check if user exists in this tenant
-    const existingUser = await db('users')
-      .where({ tenant_id: tenant.id })
-      .where(function() {
-        this.where('username', username).orWhere('email', email);
-      })
-      .first();
+    // Derive a unique username + email from the name.
+    const EMAIL_DOMAIN = 'jotihunt-gog.nl';
+    const base = `${first_name}.${last_name}`
+      .toLowerCase()
+      .normalize('NFD').replace(/[̀-ͯ]/g, '') // strip accents
+      .replace(/\s+/g, '')
+      .replace(/[^a-z0-9.]/g, '') || 'hunter';
 
-    if (existingUser) {
-      return res.status(409).json({ error: 'Username or email already exists in this organization' });
+    let username = base;
+    let email = `${base}@${EMAIL_DOMAIN}`;
+    let suffix = 1;
+    // Append a counter until username + email are unique in this tenant.
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      const clash = await db('users')
+        .where({ tenant_id: tenant.id })
+        .where(function () {
+          this.where('username', username).orWhere('email', email);
+        })
+        .first();
+      if (!clash) break;
+      suffix += 1;
+      username = `${base}${suffix}`;
+      email = `${base}${suffix}@${EMAIL_DOMAIN}`;
     }
 
     const password_hash = await bcrypt.hash(password, 10);
@@ -208,7 +220,6 @@ router.post('/register', registerLimiter, async (req, res) => {
       password_hash,
       first_name,
       last_name,
-      scouting_group,
       status: 'pending', // server-decided; requires admin approval before login
       tenant_id: tenant.id,
       is_active: true

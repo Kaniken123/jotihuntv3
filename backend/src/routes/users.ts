@@ -44,7 +44,7 @@ router.get('/users', authenticateToken, requireAdmin, enforceTenantIsolation, as
     
     // Get users with their roles for current tenant
     const users = await db('users')
-      .select('users.id', 'users.username', 'users.email', 'users.first_name', 'users.last_name', 'users.is_active', 'users.created_at')
+      .select('users.id', 'users.username', 'users.email', 'users.first_name', 'users.last_name', 'users.is_active', 'users.status', 'users.scouting_group', 'users.created_at')
       .where('users.tenant_id', currentTenantId)
       .orderBy('users.username');
 

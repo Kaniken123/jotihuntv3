@@ -40,12 +40,9 @@ export const authService = {
   },
 
   async register(userData: {
-    username: string;
-    email: string;
-    password: string;
     first_name: string;
     last_name: string;
-    scouting_group: string;
+    password: string;
     tenant_slug?: string;
   }): Promise<{ user: User; message?: string }> {
     const response = await api.post('/auth/register', userData);

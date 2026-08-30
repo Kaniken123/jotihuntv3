@@ -18,6 +18,7 @@ import AdminRouteTracking from './components/AdminRouteTracking';
 import RouteTracker from './components/RouteTracker';
 import LocationSettings from './components/LocationSettings';
 import WelcomeModal from './components/WelcomeModal';
+import { isAdmin } from './utils/roleUtils';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { state } = useAuth();
@@ -36,7 +37,30 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
   if (!state.isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
-  
+
+  return <>{children}</>;
+};
+
+// Admin-only guard: hunters can't reach admin screens even by typing the URL.
+const AdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { state } = useAuth();
+
+  if (state.isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <LoadingSpinner size="lg" />
+      </div>
+    );
+  }
+
+  if (!state.isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (!isAdmin(state.user)) {
+    return <Navigate to="/" replace />;
+  }
+
   return <>{children}</>;
 };
 
@@ -135,27 +159,27 @@ const AppContent: React.FC = () => {
           <Route
             path="/admin"
             element={
-              <ProtectedRoute>
+              <AdminRoute>
                 <div className="flex flex-col h-screen">
                   <Navbar />
                   <div className="flex-1 overflow-y-auto">
                     <AdminDashboard />
                   </div>
                 </div>
-              </ProtectedRoute>
+              </AdminRoute>
             }
           />
           <Route
             path="/admin/routes"
             element={
-              <ProtectedRoute>
+              <AdminRoute>
                 <div className="flex flex-col h-screen">
                   <Navbar />
                   <div className="flex-1 overflow-y-auto">
                     <AdminRouteTracking />
                   </div>
                 </div>
-              </ProtectedRoute>
+              </AdminRoute>
             }
           />
           <Route

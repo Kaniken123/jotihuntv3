@@ -1,6 +1,6 @@
 # Jotihunt V3 — Status & Build Tracker
 
-> Living document. Update this whenever a phase moves. Last updated: **2026-08-31** (Phase 5).
+> Living document. Update this whenever a phase moves. Last updated: **2026-08-31** (Phase 7).
 > Detailed sub-plans: [FOX_PREDICTION_PLAN.md](./FOX_PREDICTION_PLAN.md) (predictor),
 > [MOBILE_TODO.md](./MOBILE_TODO.md) (mobile parity).
 
@@ -37,8 +37,8 @@ ignores `tenant_id`); there is no session store (stateless JWT).
 | 3 | Approval enforcement in token middleware + socket connect; suspension force-disconnect | ✅ done & deployed |
 | 4 | Deelgebieden table + user↔deelgebied memberships (joined_at/left_at) | ✅ done & deployed (groups + teams.area retirement deferred) |
 | 5 | Membership-derived chat channels (per deelgebied) + send-time re-check | ✅ done & deployed (map filtering → Phase 8) |
+| 7 | Admin panel: approvals + deelgebied roster; role-gated routes; simplified signup | ✅ done & deployed (multi-select + nav badge = follow-up) |
 | 6 | Mobile chat (channels API) + hunt-cooldown UI (see MOBILE_TODO.md) | ⬜ next |
-| 7 | Admin panel: pending queue, approve+assign, reassignment roster | ⬜ |
 | 8 | Map filtering default (own deelgebied + toggle) + chat unread markers | ⬜ |
 | 9 | In-app navigation (routing polyline over Leaflet) — BLOCKED on Jotihunt rules check | ⬜ |
 
@@ -106,6 +106,24 @@ ignores `tenant_id`); there is no session store (stateless JWT).
 - Verified locally: 10/10 (channels created; unassigned=general only; assigned sees
   own not others; post to non-member channel 403; socket delivery to deelgebied room).
 - Note: **map** filtering by deelgebied is Phase 8, not here (this phase is chat).
+
+### Phase 7 — admin panel + role-gating + simplified signup (done 2026-08-31)
+
+- **Simplified signup:** `POST /auth/register` now needs only first name, last name,
+  password. Username + email are derived server-side (`first.last@jotihunt-gog.nl`,
+  with a numeric suffix on collision). No scouting group / manual email/username.
+  Web signup form updated to match; `login.signupNote` explains the derived login.
+- **Role-gated routes:** new `AdminRoute` guard in App.tsx redirects non-admins away
+  from `/admin` and `/admin/routes` (the Navbar already hid the links). A hunter's UI
+  is exactly Map, Chat, Hunt, Routes, Updates, Rules (+ profile/location settings).
+- **Admin Approvals tab** (`AdminApprovals.tsx`): pending queue (newest first) with a
+  deelgebied dropdown → Approve (+ assign in one action) / Reject, and a **deelgebied
+  roster** (per-deelgebied member list with add-hunter / remove, live counts). Reads
+  `GET /users` (now returns `status`) + the `/deelgebieden` endpoints.
+- Verified: 8/8 signup integration checks; backend tsc clean; frontend builds.
+- **Follow-ups (were in the plan, simplified for v1):** multi-select bulk
+  approve/reject and multi-select "move a whole car" in the roster; a *persistent*
+  pending-count badge in the nav (currently the count shows on the Approvals view).
 
 ## Known issues / tech debt
 
