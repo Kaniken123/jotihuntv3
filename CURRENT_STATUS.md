@@ -123,12 +123,13 @@ ignores `tenant_id`); there is no session store (stateless JWT).
   `GET /users` (now returns `status`) + the `/deelgebieden` endpoints.
 - Verified: 8/8 signup integration checks; backend tsc clean; frontend builds.
 - **Reworked 2026-08-31 per user feedback:** team == deelgebied. The separate
-  Approvals tab + deelgebieden roster were removed; approve/reject and a
-  **multi-deelgebied** assignment now live directly in the **User Management** table
-  (Deelgebieden column = chips + "add" dropdown; Status column shows approval;
-  pending rows get Approve/Reject). `GET /users` now returns each user's active
-  `deelgebieden`. Assigning writes a membership → the user gets that deelgebied's
-  chat channel (Phase 5). A user can hold multiple deelgebieden.
+  Approvals tab + deelgebieden roster were removed. In **User Management**: the table's
+  Deelgebieden column shows each user's memberships (read-only chips) + approval status,
+  with inline Approve/Reject for pending rows. **Assignment happens in the existing
+  Edit modal** — its old "Team/Area" single-select is now a **deelgebied multi-select
+  (checkboxes)**; Save syncs `user_deelgebied_memberships` (add checked / remove
+  unchecked). `GET /users` returns each user's active `deelgebieden`. Assigning →
+  the user gets that deelgebied's chat channel (Phase 5). Multiple deelgebieden per user.
 - **Still TODO (Part B / Phase 7b):** hunts still use the OLD `teams` for the 60-min
   cooldown + area-bonus points. Decided (2026-08-31): FULL replacement — re-key hunt
   cooldown + points off the hunter's deelgebied memberships. The Add/Edit User modals

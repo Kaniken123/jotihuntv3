@@ -90,6 +90,7 @@ const AdminDashboard: React.FC = () => {
     last_name: '',
     role: 'user',
     team_id: '',
+    deelgebied_ids: [] as number[],
     is_active: true
   });
 
@@ -334,6 +335,7 @@ const AdminDashboard: React.FC = () => {
       last_name: user.last_name || '',
       role: user.role,
       team_id: user.team ? availableTeams.find(t => t.name === user.team?.name)?.id?.toString() || '' : '',
+      deelgebied_ids: ((user as any).deelgebieden || []).map((d: any) => d.id),
       is_active: user.is_active
     });
     setShowEditUserModal(true);
@@ -355,11 +357,21 @@ const AdminDashboard: React.FC = () => {
 
       const response = await api.put(`/users/${editingUser.id}`, updateData);
       console.log('User updated:', response.data);
-      
+
+      // Sync deelgebied memberships to the checked set (team = deelgebied).
+      const current: number[] = ((editingUser as any).deelgebieden || []).map((d: any) => d.id);
+      const selected = editUserData.deelgebied_ids;
+      const toAdd = selected.filter((id) => !current.includes(id));
+      const toRemove = current.filter((id) => !selected.includes(id));
+      await Promise.all([
+        ...toAdd.map((id) => api.post(`/deelgebieden/${id}/members`, { user_id: editingUser.id })),
+        ...toRemove.map((id) => api.delete(`/deelgebieden/${id}/members/${editingUser.id}`)),
+      ]);
+
       // Reload users
       const usersResponse = await api.get('/users');
       setUsers(usersResponse.data);
-      
+
       setShowEditUserModal(false);
       setEditingUser(null);
       setEditUserData({
@@ -369,6 +381,7 @@ const AdminDashboard: React.FC = () => {
         last_name: '',
         role: 'user',
         team_id: '',
+        deelgebied_ids: [],
         is_active: true
       });
       
@@ -820,31 +833,6 @@ const AdminDashboard: React.FC = () => {
     setUsers(res.data);
   };
 
-  const assignDeelgebied = async (userId: number, deelgebiedId: number) => {
-    if (!deelgebiedId) return;
-    setBusyUserId(userId);
-    try {
-      await api.post(`/deelgebieden/${deelgebiedId}/members`, { user_id: userId });
-      await refreshUsers();
-    } catch (e: any) {
-      alert(e?.response?.data?.error || 'Failed to assign deelgebied');
-    } finally {
-      setBusyUserId(null);
-    }
-  };
-
-  const removeDeelgebied = async (userId: number, deelgebiedId: number) => {
-    setBusyUserId(userId);
-    try {
-      await api.delete(`/deelgebieden/${deelgebiedId}/members/${userId}`);
-      await refreshUsers();
-    } catch (e: any) {
-      alert(e?.response?.data?.error || 'Failed to remove deelgebied');
-    } finally {
-      setBusyUserId(null);
-    }
-  };
-
   const setUserApproval = async (userId: number, status: 'approved' | 'rejected') => {
     setBusyUserId(userId);
     try {
@@ -928,35 +916,16 @@ const AdminDashboard: React.FC = () => {
                     </span>
                   </td>
                   <td className="px-6 py-4 align-top text-sm text-gray-900 dark:text-gray-100">
-                    <div className="flex flex-wrap gap-1 mb-1 max-w-xs">
+                    <div className="flex flex-wrap gap-1 max-w-xs">
                       {(user.deelgebieden || []).length === 0 && (
                         <span className="text-xs text-gray-400">None</span>
                       )}
                       {(user.deelgebieden || []).map((d: any) => (
-                        <span key={d.id} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                        <span key={d.id} className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
                           {d.name}
-                          <button
-                            onClick={() => removeDeelgebied(user.id, d.id)}
-                            disabled={busyUserId === user.id}
-                            className="hover:text-red-600"
-                            title="Remove"
-                          >×</button>
                         </span>
                       ))}
                     </div>
-                    <select
-                      className="input h-7 py-0 text-xs max-w-[10rem]"
-                      value=""
-                      disabled={busyUserId === user.id}
-                      onChange={(e) => e.target.value && assignDeelgebied(user.id, Number(e.target.value))}
-                    >
-                      <option value="">+ Add deelgebied…</option>
-                      {deelgebieden
-                        .filter((d) => !(user.deelgebieden || []).some((ud: any) => ud.id === d.id))
-                        .map((d) => (
-                          <option key={d.id} value={d.id}>{d.name}</option>
-                        ))}
-                    </select>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap align-top">
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusBadgeClass(user.status)}`}>
@@ -1258,22 +1227,35 @@ const AdminDashboard: React.FC = () => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Team/Area Assignment
+                  Team / deelgebied assignment
                 </label>
-                <select
-                  value={editUserData.team_id}
-                  onChange={(e) => setEditUserData({ ...editUserData, team_id: e.target.value })}
-                  className="input"
-                >
-                  <option value="">No Team</option>
-                  {availableTeams.map((team) => (
-                    <option key={team.id} value={team.id}>
-                      {team.name} {team.area && `(${team.area})`}
-                    </option>
-                  ))}
-                </select>
+                <div className="grid grid-cols-2 gap-2 p-2 rounded-lg border border-gray-200 dark:border-gray-700 max-h-48 overflow-y-auto">
+                  {deelgebieden.length === 0 && (
+                    <span className="text-xs text-gray-400 col-span-2">No deelgebieden available</span>
+                  )}
+                  {deelgebieden.map((d) => {
+                    const checked = editUserData.deelgebied_ids.includes(d.id);
+                    return (
+                      <label key={d.id} className="flex items-center gap-2 text-sm text-gray-800 dark:text-gray-200 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={(e) =>
+                            setEditUserData({
+                              ...editUserData,
+                              deelgebied_ids: e.target.checked
+                                ? [...editUserData.deelgebied_ids, d.id]
+                                : editUserData.deelgebied_ids.filter((id) => id !== d.id),
+                            })
+                          }
+                        />
+                        {d.name}
+                      </label>
+                    );
+                  })}
+                </div>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  Select the team/area this user belongs to
+                  Select the deelgebied(en) this user belongs to. They'll be added to the matching chat channel.
                 </p>
               </div>
             </div>
@@ -1298,6 +1280,7 @@ const AdminDashboard: React.FC = () => {
                     last_name: '',
                     role: 'user',
                     team_id: '',
+                    deelgebied_ids: [],
                     is_active: true
                   });
                 }}
