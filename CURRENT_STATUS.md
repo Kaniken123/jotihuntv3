@@ -37,8 +37,9 @@ ignores `tenant_id`); there is no session store (stateless JWT).
 | 3 | Approval enforcement in token middleware + socket connect; suspension force-disconnect | ✅ done & deployed |
 | 4 | Deelgebieden table + user↔deelgebied memberships (joined_at/left_at) | ✅ done & deployed (groups + teams.area retirement deferred) |
 | 5 | Membership-derived chat channels (per deelgebied) + send-time re-check | ✅ done & deployed (map filtering → Phase 8) |
-| 7 | Admin panel: approvals + deelgebied roster; role-gated routes; simplified signup | ✅ done & deployed (multi-select + nav badge = follow-up) |
-| 6 | Mobile chat (channels API) + hunt-cooldown UI (see MOBILE_TODO.md) | ⬜ next |
+| 7 | Admin panel (approvals + deelgebied assignment in User Management); role-gated routes; simplified signup | ✅ done & deployed |
+| 7b | Full team→deelgebied replacement in hunt cooldown + area points | ⬜ next (Part B) |
+| 6 | Mobile chat (channels API) + hunt-cooldown UI (see MOBILE_TODO.md) | ⬜ |
 | 8 | Map filtering default (own deelgebied + toggle) + chat unread markers | ⬜ |
 | 9 | In-app navigation (routing polyline over Leaflet) — BLOCKED on Jotihunt rules check | ⬜ |
 
@@ -121,9 +122,17 @@ ignores `tenant_id`); there is no session store (stateless JWT).
   roster** (per-deelgebied member list with add-hunter / remove, live counts). Reads
   `GET /users` (now returns `status`) + the `/deelgebieden` endpoints.
 - Verified: 8/8 signup integration checks; backend tsc clean; frontend builds.
-- **Follow-ups (were in the plan, simplified for v1):** multi-select bulk
-  approve/reject and multi-select "move a whole car" in the roster; a *persistent*
-  pending-count badge in the nav (currently the count shows on the Approvals view).
+- **Reworked 2026-08-31 per user feedback:** team == deelgebied. The separate
+  Approvals tab + deelgebieden roster were removed; approve/reject and a
+  **multi-deelgebied** assignment now live directly in the **User Management** table
+  (Deelgebieden column = chips + "add" dropdown; Status column shows approval;
+  pending rows get Approve/Reject). `GET /users` now returns each user's active
+  `deelgebieden`. Assigning writes a membership → the user gets that deelgebied's
+  chat channel (Phase 5). A user can hold multiple deelgebieden.
+- **Still TODO (Part B / Phase 7b):** hunts still use the OLD `teams` for the 60-min
+  cooldown + area-bonus points. Decided (2026-08-31): FULL replacement — re-key hunt
+  cooldown + points off the hunter's deelgebied memberships. The Add/Edit User modals
+  also still show the legacy team dropdown — convert or drop in Part B.
 
 ## Known issues / tech debt
 

@@ -9,11 +9,9 @@ import TenantSwitcher from './TenantSwitcher';
 import SubscriptionManager from './SubscriptionManager';
 import AdminHintVerification from './AdminHintVerification';
 import AdminLaunchReset from './AdminLaunchReset';
-import AdminApprovals from './AdminApprovals';
 import { isAdmin, isSuperAdmin } from '../utils/roleUtils';
 import {
   Users,
-  UserCheck,
   Camera,
   MessageSquare, 
   Trophy, 
@@ -78,6 +76,8 @@ const AdminDashboard: React.FC = () => {
   });
   const [availableTeams, setAvailableTeams] = useState<any[]>([]);
   const [availableUsers, setAvailableUsers] = useState<any[]>([]);
+  const [deelgebieden, setDeelgebieden] = useState<any[]>([]);
+  const [busyUserId, setBusyUserId] = useState<number | null>(null);
   const [sendingNotification, setSendingNotification] = useState(false);
   
   // User editing state
@@ -116,13 +116,14 @@ const AdminDashboard: React.FC = () => {
   const loadDashboardData = async () => {
     try {
       console.log('Loading dashboard data...');
-      const [statsRes, huntsRes, usersRes, areasRes, teamsRes, usersForNotificationsRes] = await Promise.all([
+      const [statsRes, huntsRes, usersRes, areasRes, teamsRes, usersForNotificationsRes, deelgebiedenRes] = await Promise.all([
         api.get('/admin/stats'),
         api.get('/hunts/pending'),
         api.get('/users'),
         api.get('/jotihunt/areas'),
         api.get('/admin/notifications/teams'),
-        api.get('/admin/notifications/users')
+        api.get('/admin/notifications/users'),
+        api.get('/deelgebieden')
       ]);
 
       console.log('Dashboard data loaded:', {
@@ -138,6 +139,7 @@ const AdminDashboard: React.FC = () => {
       setAreas(areasRes.data);
       setAvailableTeams(teamsRes.data);
       setAvailableUsers(usersForNotificationsRes.data);
+      setDeelgebieden(deelgebiedenRes.data);
     } catch (error: any) {
       console.error('Failed to load dashboard data:', error);
       if (error.response) {
@@ -532,7 +534,6 @@ const AdminDashboard: React.FC = () => {
 
   const tabs = [
     { id: 'overview', label: t('admin.tabOverview'), icon: BarChart3 },
-    { id: 'approvals', label: t('admin.tabApprovals'), icon: UserCheck },
     { id: 'hunts', label: t('admin.tabHunts'), icon: Camera },
     { id: 'hints', label: t('admin.tabHints'), icon: MapPin },
     { id: 'users', label: t('admin.tabUsers'), icon: Users },
@@ -813,6 +814,59 @@ const AdminDashboard: React.FC = () => {
     </div>
   );
 
+  // --- Deelgebied assignment + approval (Phase 7 rework) --------------------
+  const refreshUsers = async () => {
+    const res = await api.get('/users');
+    setUsers(res.data);
+  };
+
+  const assignDeelgebied = async (userId: number, deelgebiedId: number) => {
+    if (!deelgebiedId) return;
+    setBusyUserId(userId);
+    try {
+      await api.post(`/deelgebieden/${deelgebiedId}/members`, { user_id: userId });
+      await refreshUsers();
+    } catch (e: any) {
+      alert(e?.response?.data?.error || 'Failed to assign deelgebied');
+    } finally {
+      setBusyUserId(null);
+    }
+  };
+
+  const removeDeelgebied = async (userId: number, deelgebiedId: number) => {
+    setBusyUserId(userId);
+    try {
+      await api.delete(`/deelgebieden/${deelgebiedId}/members/${userId}`);
+      await refreshUsers();
+    } catch (e: any) {
+      alert(e?.response?.data?.error || 'Failed to remove deelgebied');
+    } finally {
+      setBusyUserId(null);
+    }
+  };
+
+  const setUserApproval = async (userId: number, status: 'approved' | 'rejected') => {
+    setBusyUserId(userId);
+    try {
+      await api.patch(`/users/${userId}/status`, { status });
+      await refreshUsers();
+    } catch (e: any) {
+      alert(e?.response?.data?.error || 'Failed to update status');
+    } finally {
+      setBusyUserId(null);
+    }
+  };
+
+  const statusBadgeClass = (status?: string) => {
+    switch (status) {
+      case 'approved': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
+      case 'pending': return 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300';
+      case 'rejected': return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
+      case 'suspended': return 'bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-200';
+      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200';
+    }
+  };
+
   const renderUserManagement = () => (
     <div className="space-y-6">
       <div className="card p-6">
@@ -839,7 +893,7 @@ const AdminDashboard: React.FC = () => {
                   Role
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Team
+                  Deelgebieden
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                   Status
@@ -873,20 +927,62 @@ const AdminDashboard: React.FC = () => {
                       {user.role === 'super_admin' || user.role === 'tenant_admin' ? 'Admin' : 'Hunter'}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                    {user.team?.name || 'No team'}
+                  <td className="px-6 py-4 align-top text-sm text-gray-900 dark:text-gray-100">
+                    <div className="flex flex-wrap gap-1 mb-1 max-w-xs">
+                      {(user.deelgebieden || []).length === 0 && (
+                        <span className="text-xs text-gray-400">None</span>
+                      )}
+                      {(user.deelgebieden || []).map((d: any) => (
+                        <span key={d.id} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                          {d.name}
+                          <button
+                            onClick={() => removeDeelgebied(user.id, d.id)}
+                            disabled={busyUserId === user.id}
+                            className="hover:text-red-600"
+                            title="Remove"
+                          >×</button>
+                        </span>
+                      ))}
+                    </div>
+                    <select
+                      className="input h-7 py-0 text-xs max-w-[10rem]"
+                      value=""
+                      disabled={busyUserId === user.id}
+                      onChange={(e) => e.target.value && assignDeelgebied(user.id, Number(e.target.value))}
+                    >
+                      <option value="">+ Add deelgebied…</option>
+                      {deelgebieden
+                        .filter((d) => !(user.deelgebieden || []).some((ud: any) => ud.id === d.id))
+                        .map((d) => (
+                          <option key={d.id} value={d.id}>{d.name}</option>
+                        ))}
+                    </select>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      user.is_active
-                        ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                        : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-                    }`}>
-                      {user.is_active ? 'Active' : 'Inactive'}
+                  <td className="px-6 py-4 whitespace-nowrap align-top">
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusBadgeClass(user.status)}`}>
+                      {user.status ? user.status.charAt(0).toUpperCase() + user.status.slice(1) : (user.is_active ? 'Active' : 'Inactive')}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <button 
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium align-top">
+                    {user.status === 'pending' && (
+                      <>
+                        <button
+                          onClick={() => setUserApproval(user.id, 'approved')}
+                          disabled={busyUserId === user.id}
+                          className="text-green-700 hover:text-green-900 dark:text-green-400 mr-3 font-semibold"
+                        >
+                          Approve
+                        </button>
+                        <button
+                          onClick={() => setUserApproval(user.id, 'rejected')}
+                          disabled={busyUserId === user.id}
+                          className="text-red-600 hover:text-red-900 dark:text-red-400 mr-3"
+                        >
+                          Reject
+                        </button>
+                      </>
+                    )}
+                    <button
                       onClick={() => handleEditUser(user)}
                       className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300 mr-3"
                     >
@@ -1883,7 +1979,6 @@ const AdminDashboard: React.FC = () => {
   const renderContent = () => {
     switch (activeTab) {
       case 'overview': return renderOverview();
-      case 'approvals': return <AdminApprovals />;
       case 'hunts': return renderHuntReview();
       case 'hints': return <AdminHintVerification />;
       case 'users': return renderUserManagement();

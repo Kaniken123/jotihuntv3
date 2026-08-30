@@ -65,11 +65,20 @@ router.get('/users', authenticateToken, requireAdmin, enforceTenantIsolation, as
 
         const primaryRole = roles.find(r => r.is_active)?.role || 'user';
 
+        // Current deelgebied memberships (the new "teams").
+        const deelgebieden = await db('user_deelgebied_memberships as m')
+          .join('deelgebieden as d', 'm.deelgebied_id', 'd.id')
+          .where('m.user_id', user.id)
+          .whereNull('m.left_at')
+          .orderBy('d.name')
+          .select('d.id', 'd.name');
+
         return {
           ...user,
           role: primaryRole,
           roles: roles,
-          team: teamMembership
+          team: teamMembership,
+          deelgebieden
         };
       })
     );
