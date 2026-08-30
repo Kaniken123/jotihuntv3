@@ -1,6 +1,6 @@
 # Jotihunt V3 — Status & Build Tracker
 
-> Living document. Update this whenever a phase moves. Last updated: **2026-08-30** (Phase 3).
+> Living document. Update this whenever a phase moves. Last updated: **2026-08-30** (Phase 4).
 > Detailed sub-plans: [FOX_PREDICTION_PLAN.md](./FOX_PREDICTION_PLAN.md) (predictor),
 > [MOBILE_TODO.md](./MOBILE_TODO.md) (mobile parity).
 
@@ -35,8 +35,8 @@ ignores `tenant_id`); there is no session store (stateless JWT).
 | 1 | Socket auth + per-user socket registry | ✅ done & deployed |
 | 2 | Account states + public signup hardening | ✅ done (see below) |
 | 3 | Approval enforcement in token middleware + socket connect; suspension force-disconnect | ✅ done & deployed |
-| 4 | Deelgebieden table + user↔deelgebied memberships (joined_at/left_at); retire teams.area enum | ⬜ next |
-| 5 | Membership-derived channel/map access; send-time re-check | ⬜ |
+| 4 | Deelgebieden table + user↔deelgebied memberships (joined_at/left_at) | ✅ done & deployed (groups + teams.area retirement deferred) |
+| 5 | Membership-derived channel/map access; send-time re-check | ⬜ next |
 | 6 | Mobile chat (channels API) + hunt-cooldown UI (see MOBILE_TODO.md) | ⬜ |
 | 7 | Admin panel: pending queue, approve+assign, reassignment roster | ⬜ |
 | 8 | Map filtering default (own deelgebied + toggle) + chat unread markers | ⬜ |
@@ -68,6 +68,25 @@ ignores `tenant_id`); there is no session store (stateless JWT).
   status 400; non-admin forbidden.
 - **Not yet:** admin UI to drive the status endpoint (Phase 7). The endpoint exists and
   is tested; the pending-queue / approve-and-assign UI is Phase 7.
+
+### Phase 4 — deelgebieden + assignment (done 2026-08-30)
+
+- Migration `20260830000001_create_deelgebieden.js`: `deelgebieden` (name, is_active,
+  archived_at) seeded Alpha–Foxtrot; `user_deelgebied_memberships` (user_id,
+  deelgebied_id, joined_at, left_at) — left_at NULL = current member; ended rows kept
+  for movement history. No tenant_id (multi-tenancy frozen — decision taken 2026-08-30).
+- `/api/deelgebieden` routes: list (active; admins `?all=true`), `GET /mine` (current
+  user's memberships — empty array when unassigned), admin create, admin
+  `PATCH /:id/archive` (soft, never delete), admin `GET/POST/DELETE /:id/members`
+  (assign / list / end). Assignment is admin-only (no self-service); a hunter may
+  belong to several deelgebieden but not twice to the same one (409).
+- Verified locally: 15/15 (seed, unassigned=empty, admin-only, multi-membership,
+  duplicate 409, member list, leave-preserves-history, create/archive/hide).
+- **Deferred to a later pass (were listed under Phase 4 in the plan):** "groups belong
+  to a deelgebied", and retiring the `teams.area` enum / repurposing teams→groups.
+  Not needed for Phase 5 (channels are per-deelgebied, driven by memberships) and the
+  teams retirement is a risky tear-out (existing chat uses team channels) — do it
+  deliberately when Phase 5/6 touch chat.
 
 ## Known issues / tech debt
 
