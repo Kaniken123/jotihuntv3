@@ -7,8 +7,27 @@ This guide documents the complete process for building an Android APK for the Jo
 Before building, ensure you have the following installed:
 
 1. **Node.js** - Required for npm commands
-2. **Android SDK** - Located at `C:\Users\xctia\AppData\Local\Android\Sdk`
-3. **Java JDK** - Required for Gradle builds
+2. **Android SDK** - `C:\Android\Sdk` on the current machine (set `ANDROID_HOME`)
+3. **Java JDK 17** - `C:\Program Files\Microsoft\jdk-17...` (set `JAVA_HOME`). RN 0.73
+   needs JDK **17** — Java 8 will not work.
+
+## ⚠️ Fresh-machine / Windows gotchas (fixed 2026-08-31)
+
+Two things bite on a clean Windows machine; both are handled but note them:
+
+1. **Gradle wrapper download timeout.** The wrapper's default timeout is short; on a
+   slow link the 200 MB `gradle-8.3-all.zip` download times out. `networkTimeout` is
+   bumped to 60000 in `gradle/wrapper/gradle-wrapper.properties`. If it still times out,
+   pre-download that zip and temporarily point `distributionUrl` at a local
+   `file:///C:/path/gradle-8.3-all.zip` (revert before committing).
+2. **`node:sea` mkdir error on the JS bundle step** (`:app:createBundleReleaseJsAndAssets`
+   → `ENOENT ... mkdir '...\.expo\metro\externals\node:sea'`). Newer Node (24) exposes
+   `node:`-only builtins that Expo's CLI tries to shim as folders with a colon in the
+   name — illegal on Windows. Patch (lives in node_modules, so **re-apply after any
+   `npm install`**): in
+   `mobile/node_modules/@expo/cli/build/src/start/server/metro/externals.js`, in
+   `tapNodeShims`, add `if (moduleId.includes(":")) continue;` at the top of the
+   `for (const moduleId of NODE_STDLIB_MODULES)` loop.
 
 ## Quick Build (If Everything Is Set Up)
 

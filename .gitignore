@@ -12,6 +12,9 @@ backend/database/*.db-wal
 mobile/build_*.log
 mobile/.expo/
 
+# Built mobile APKs — large binaries, distributed out-of-band (not via git)
+*.apk
+
 # Runtime user uploads (hunt photos) — not source, kept on the server
 backend/uploads/
 
