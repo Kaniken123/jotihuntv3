@@ -4,6 +4,7 @@ import { MapContainer, TileLayer, Marker, Popup, useMapEvents, Polyline, Circle 
 import { Icon, LatLng } from 'leaflet';
 import { Area, UserLocation, FoxRoute, Subscription, Article } from '../types/index';
 import { gameService } from '../services/gameService';
+import { getDrivingRoute, DrivingRoute } from '../services/routing';
 import { useWebSocket } from '../contexts/WebSocketContext';
 import { useAuth } from '../contexts/AuthContext';
 import FoxStatusOverlay from './FoxStatusOverlay';
@@ -396,6 +397,11 @@ const Map: React.FC = () => {
   const [selectedFoxRoute, setSelectedFoxRoute] = useState<FoxRoute | null>(null);
   const [isLoadingRoute, setIsLoadingRoute] = useState(false);
   const [routeTimeSpan, setRouteTimeSpan] = useState<number>(24); // hours
+
+  // In-app navigation: a driving route from the user's position to a fox.
+  const [navRoute, setNavRoute] = useState<DrivingRoute | null>(null);
+  const [navTargetName, setNavTargetName] = useState<string>('');
+  const [navLoading, setNavLoading] = useState(false);
   
   // Fox location reporting states (public feature)
   const [isReportFoxMode, setIsReportFoxMode] = useState(false);
@@ -718,6 +724,38 @@ const Map: React.FC = () => {
     setSelectedFoxRoute(null);
   }, []);
 
+  // Driving navigation from the user's current position to a fox.
+  const navigateToFox = useCallback(async (area: Area) => {
+    if (!userPosition) {
+      alert('Your location is not available yet. Enable location and try again.');
+      return;
+    }
+    if (!area.lat || !area.lng) {
+      alert('This fox has no known location to navigate to.');
+      return;
+    }
+    setNavLoading(true);
+    try {
+      const route = await getDrivingRoute(
+        { lat: userPosition.lat, lng: userPosition.lng },
+        { lat: area.lat, lng: area.lng }
+      );
+      if (!route) {
+        alert('Could not calculate a route right now. Please try again.');
+        return;
+      }
+      setNavRoute(route);
+      setNavTargetName(area.fox_team_name || area.name);
+    } finally {
+      setNavLoading(false);
+    }
+  }, [userPosition]);
+
+  const clearNav = useCallback(() => {
+    setNavRoute(null);
+    setNavTargetName('');
+  }, []);
+
   const toggleFoxTeamVisibility = useCallback((teamName: string) => {
     setVisibleFoxTeams(prev => {
       const newSet = new Set(prev);
@@ -886,13 +924,21 @@ const Map: React.FC = () => {
                       Hide Route
                     </button>
                   )}
+                  <button
+                    onClick={() => navigateToFox(area)}
+                    disabled={navLoading || !userPosition}
+                    title={!userPosition ? 'Your location is not available yet' : undefined}
+                    className="w-full px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700 disabled:opacity-50"
+                  >
+                    {navLoading ? 'Routing…' : '🧭 Navigate here'}
+                  </button>
                 </div>
               </div>
             </Popup>
           </Marker>
         ) : null;
     }).filter(Boolean);
-  }, [areas, visibleFoxTeams, isLoadingRoute, selectedFoxRoute, loadFoxRoute, clearFoxRoute]);
+  }, [areas, visibleFoxTeams, isLoadingRoute, selectedFoxRoute, loadFoxRoute, clearFoxRoute, navigateToFox, navLoading, userPosition]);
 
   const userMarkers = useMemo(() => 
     showUserMarkers ? userLocations.map((location) => (
@@ -1024,7 +1070,28 @@ const Map: React.FC = () => {
   return (
     <div className="map-container relative">
       <FoxStatusOverlay areas={areas} />
-      
+
+      {/* In-app navigation panel */}
+      {navRoute && (
+        <div className="absolute top-4 right-4 z-[1000] bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg p-4 max-w-xs">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+              🧭 Route to {navTargetName}
+            </h3>
+            <button
+              onClick={clearNav}
+              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+            >
+              ✕
+            </button>
+          </div>
+          <div className="space-y-1 text-sm text-gray-700 dark:text-gray-300">
+            <p><strong>{navRoute.distanceKm.toFixed(1)} km</strong> · ~{navRoute.durationMin} min drive</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">Straight-line road route from your location.</p>
+          </div>
+        </div>
+      )}
+
       {/* Fox Route Information Panel */}
       {selectedFoxRoute && (
         <div className="absolute top-4 left-4 z-10 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg p-4 max-w-xs">
@@ -1326,6 +1393,16 @@ const Map: React.FC = () => {
               </div>
             </Popup>
           </Marker>
+        )}
+
+        {/* In-app navigation route (driving) from the user to a fox */}
+        {navRoute && navRoute.coordinates.length > 1 && (
+          <Polyline
+            positions={navRoute.coordinates}
+            color="#2563EB"
+            weight={5}
+            opacity={0.85}
+          />
         )}
       </MapContainer>
 
