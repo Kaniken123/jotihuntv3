@@ -41,7 +41,18 @@ ignores `tenant_id`); there is no session store (stateless JWT).
 | 7b | Full team→deelgebied replacement in hunt cooldown + area points | ✅ done & deployed |
 | 6 | Mobile chat (deelgebied channels) + hunt-cooldown UI | ✅ code done — needs APK rebuild |
 | 8 | Map filtering by deelgebied | ❌ scrapped (not needed, user 2026-09-08) |
-| 9 | In-app navigation (routing polyline over Leaflet) | ✅ web + mobile done (mobile needs APK rebuild → v11); VERIFY Jotihunt nav-aid rules before event |
+| 9 | Navigation to a fox → opens Google Maps directions | ✅ web + mobile (APK v13); VERIFY Jotihunt nav-aid rules before event |
+
+### Phase 9 — navigation to a fox (2026-09-09: now hands off to Google Maps)
+
+**Current behavior:** the "🧭 Navigate here" button in a fox popup opens **Google Maps**
+directions (`https://www.google.com/maps/dir/?api=1&destination=<lat>,<lng>&travelmode=driving`;
+origin = the device/browser location). Web: `window.open` new tab. Mobile: `Linking.openURL`
+via a WebView→RN postMessage. This replaced the earlier in-app OSRM polyline (removed
+services/routing.ts on both, plus the mobile WebView-reload bug that came with it). No
+OSRM dependency anymore; verify Jotihunt nav-aid rules before an event still applies.
+
+--- earlier in-app-routing notes (historical) ---
 
 ### Phase 9 — in-app navigation to a fox (web done 2026-08-31)
 

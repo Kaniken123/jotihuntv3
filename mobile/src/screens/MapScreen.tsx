@@ -7,13 +7,13 @@ import {
   ActivityIndicator,
   Alert,
   Dimensions,
+  Linking,
 } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
 import { useWebSocket } from '../contexts/WebSocketContext';
 import { gameService } from '../services/gameService';
-import { getDrivingRoute } from '../services/routing';
 import { locationService } from '../services/locationService';
 import { Area, UserLocation, Subscription } from '../types';
 
@@ -46,7 +46,6 @@ const MapScreen: React.FC = () => {
   const [showHunters, setShowHunters] = useState(true);
   const [showSubscriptions, setShowSubscriptions] = useState(true);
   const [mapReady, setMapReady] = useState(false);
-  const [navInfo, setNavInfo] = useState<{ name: string; distanceKm: number; durationMin: number } | null>(null);
 
   // Load initial data
   useEffect(() => {
@@ -247,39 +246,17 @@ const MapScreen: React.FC = () => {
       if (data.type === 'mapReady') {
         setMapReady(true);
       } else if (data.type === 'navigate') {
-        doNavigate(data.lat, data.lng, data.name);
+        openDirections(data.lat, data.lng);
       }
     } catch (e) {
       console.error('Error parsing map message:', e);
     }
   };
 
-  // Driving navigation from the hunter's position to a fox (tapped in its popup).
-  const doNavigate = async (foxLat: number, foxLng: number, name: string) => {
-    let loc = currentLocation;
-    if (!loc) {
-      const fresh = await locationService.getCurrentLocation();
-      if (fresh) {
-        loc = { lat: fresh.coords.latitude, lng: fresh.coords.longitude };
-        setCurrentLocation(loc);
-      }
-    }
-    if (!loc) {
-      Alert.alert('Location needed', 'Your location is not available yet. Enable location and try again.');
-      return;
-    }
-    const route = await getDrivingRoute(loc, { lat: foxLat, lng: foxLng });
-    if (!route) {
-      Alert.alert('Route unavailable', 'Could not calculate a route right now. Please try again.');
-      return;
-    }
-    setNavInfo({ name, distanceKm: route.distanceKm, durationMin: route.durationMin });
-    webViewRef.current?.injectJavaScript(`drawNavRoute(${JSON.stringify(route.coordinates)}); true;`);
-  };
-
-  const clearNav = () => {
-    setNavInfo(null);
-    webViewRef.current?.injectJavaScript('clearNavRoute(); true;');
+  // Hand off to Google Maps for driving directions to the fox (origin = device).
+  const openDirections = (foxLat: number, foxLng: number) => {
+    const url = `https://www.google.com/maps/dir/?api=1&destination=${foxLat},${foxLng}&travelmode=driving`;
+    Linking.openURL(url).catch(() => Alert.alert('Error', 'Could not open Google Maps.'));
   };
 
   // Stable across renders — the map HTML is static, so memoize it (and the source
@@ -316,19 +293,12 @@ const MapScreen: React.FC = () => {
     var subLayer = L.layerGroup().addTo(map);
     var routeLayer = L.layerGroup().addTo(map);
     var noHuntLayer = L.layerGroup().addTo(map);
-    var navLayer = L.layerGroup().addTo(map);
     var currentLocationMarker = null;
 
-    // Ask React Native to compute + draw a driving route to this fox.
+    // Ask React Native to open Google Maps directions to this fox.
     function navTo(lat, lng, name) {
       window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'navigate', lat: lat, lng: lng, name: name }));
     }
-    function drawNavRoute(coords) {
-      navLayer.clearLayers();
-      var line = L.polyline(coords, { color: '#2563EB', weight: 5, opacity: 0.85 }).addTo(navLayer);
-      try { map.fitBounds(line.getBounds(), { padding: [40, 40] }); } catch (e) {}
-    }
-    function clearNavRoute() { navLayer.clearLayers(); }
     
     function createFoxIcon(color) {
       return L.divIcon({
@@ -480,20 +450,6 @@ const MapScreen: React.FC = () => {
       </View>
 
       {/* Bottom Controls */}
-      {/* Navigation banner */}
-      {navInfo && (
-        <View style={styles.navBanner}>
-          <Ionicons name="navigate" size={20} color="#2563EB" />
-          <View style={styles.navBannerText}>
-            <Text style={styles.navBannerTitle} numberOfLines={1}>Route to {navInfo.name}</Text>
-            <Text style={styles.navBannerSub}>{navInfo.distanceKm.toFixed(1)} km · ~{navInfo.durationMin} min</Text>
-          </View>
-          <TouchableOpacity onPress={clearNav} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-            <Ionicons name="close-circle" size={24} color="#9CA3AF" />
-          </TouchableOpacity>
-        </View>
-      )}
-
       <View style={styles.bottomControls}>
         {/* Center on Location */}
         <TouchableOpacity style={styles.centerButton} onPress={centerOnCurrentLocation}>
@@ -591,37 +547,6 @@ const styles = StyleSheet.create({
   },
   filterEmoji: {
     fontSize: 20,
-  },
-  navBanner: {
-    position: 'absolute',
-    top: 110,
-    left: 16,
-    right: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  navBannerText: {
-    flex: 1,
-    marginLeft: 10,
-  },
-  navBannerTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1F2937',
-  },
-  navBannerSub: {
-    fontSize: 13,
-    color: '#2563EB',
-    marginTop: 1,
   },
   bottomControls: {
     position: 'absolute',
