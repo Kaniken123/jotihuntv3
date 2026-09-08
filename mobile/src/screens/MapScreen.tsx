@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -282,7 +282,13 @@ const MapScreen: React.FC = () => {
     webViewRef.current?.injectJavaScript('clearNavRoute(); true;');
   };
 
-  const mapHtml = `
+  // Stable across renders — the map HTML is static, so memoize it (and the source
+  // object) so the WebView mounts ONCE. Without this, every state change (socket
+  // location updates, navInfo, etc.) recreates the string, react-native-webview
+  // sees a new source and reloads the whole map — the reload loop, and it also
+  // wiped the just-injected navigation route. Markers/routes are pushed in via
+  // injectJavaScript, which persists across re-renders.
+  const mapHtml = useMemo(() => `
 <!DOCTYPE html>
 <html>
 <head>
@@ -411,7 +417,10 @@ const MapScreen: React.FC = () => {
   </script>
 </body>
 </html>
-  `;
+  `, []);
+
+  // Stable source object so the WebView never reloads on re-render.
+  const mapSource = useMemo(() => ({ html: mapHtml }), [mapHtml]);
 
   if (isLoading) {
     return (
@@ -426,7 +435,7 @@ const MapScreen: React.FC = () => {
     <View style={styles.container}>
       <WebView
         ref={webViewRef}
-        source={{ html: mapHtml }}
+        source={mapSource}
         style={styles.map}
         onMessage={handleMapMessage}
         javaScriptEnabled={true}
