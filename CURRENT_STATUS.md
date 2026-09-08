@@ -41,7 +41,7 @@ ignores `tenant_id`); there is no session store (stateless JWT).
 | 7b | Full team→deelgebied replacement in hunt cooldown + area points | ✅ done & deployed |
 | 6 | Mobile chat (deelgebied channels) + hunt-cooldown UI | ✅ code done — needs APK rebuild |
 | 8 | Map filtering default (own deelgebied + toggle) + chat unread markers | ⬜ |
-| 9 | In-app navigation (routing polyline over Leaflet) | 🟡 web done & deployed; mobile port pending; VERIFY Jotihunt nav-aid rules before event |
+| 9 | In-app navigation (routing polyline over Leaflet) | ✅ web + mobile done (mobile needs APK rebuild → v11); VERIFY Jotihunt nav-aid rules before event |
 
 ### Phase 9 — in-app navigation to a fox (web done 2026-08-31)
 
@@ -54,9 +54,13 @@ ignores `tenant_id`); there is no session store (stateless JWT).
 - **Before an event:** (1) VERIFY Jotihunt's rules permit navigation aids; (2) point
   `VITE_OSRM_URL` at a self-hosted OSRM (NL extract) or a keyed provider — the public
   demo is rate-limited/not for production.
-- **Not yet:** mobile port (MapScreen is a WebView with inline Leaflet — inject the
-  same fetch+polyline there; needs an APK rebuild), and turn-by-turn (v1 is route +
-  distance/ETA only).
+- **Mobile port (done 2026-09-08):** `mobile/services/routing.ts` + `MapScreen.tsx` —
+  fox popups get a green **🧭 Navigate here** button that postMessages RN; RN fetches
+  the route and injects `drawNavRoute()` into the WebView (blue polyline, fitBounds) and
+  shows a distance/ETA banner with a clear (✕). Ships in **APK v11** (needs rebuild).
+- **Still not done:** turn-by-turn (v1 is route + distance/ETA only); point the OSRM URL
+  at a reliable endpoint before an event (web: VITE_OSRM_URL; mobile: OSRM_URL const in
+  services/routing.ts).
 
 ### Phase 2 — account states (done 2026-08-30)
 
