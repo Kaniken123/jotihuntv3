@@ -213,15 +213,8 @@ router.post('/submit', authenticateToken, enforceTenantIsolation, upload.single(
 
     const huntId = extractInsertId(await db('hunts').insert(huntData).returning('id'));
 
-    // A hunt is a photo-verified sighting → push the fox's current location
-    // to the areas row so other UIs (hunt-submit dropdown, map markers) reflect
-    // "last seen at X". Only updates when the hunt carries real coords.
-    if (lat && lng) {
-      await db('areas')
-        .where('id', foxArea.id)
-        .where('tenant_id', req.tenantId)
-        .update({ lat, lng, last_seen: new Date(), updated_at: new Date() });
-    }
+    // NB: the fox's map location is updated on ADMIN APPROVAL (see the review
+    // endpoint), not here — a pending/unverified hunt must not move the fox dot.
 
     // Get full hunt data with user info
     const hunt = await db('hunts')
@@ -357,8 +350,34 @@ router.put('/:hunt_id/review', authenticateToken, requireAdmin, enforceTenantIso
       return res.status(404).json({ error: 'Hunt not found' });
     }
 
-    // Emit to team members
     const io = getSocketIO();
+
+    // On approval, the photo confirms exactly where the fox was at that moment,
+    // so move the fox's map dot to the hunt location and push it live (same
+    // event the manual "report fox location" uses). Not done on submit — an
+    // unverified pending hunt must not move the official fox marker.
+    if (status === 'approved' && hunt.hunt_lat && hunt.hunt_lng) {
+      const area = await db('areas')
+        .where({ name: hunt.fox_area, tenant_id: req.tenantId })
+        .first();
+      if (area) {
+        await db('areas')
+          .where({ id: area.id, tenant_id: req.tenantId })
+          .update({ lat: hunt.hunt_lat, lng: hunt.hunt_lng, last_seen: new Date(), updated_at: new Date() });
+        io.emit('fox-location-update', {
+          area_id: area.id,
+          name: area.name,
+          fox_team_name: area.fox_team_name,
+          lat: hunt.hunt_lat,
+          lng: hunt.hunt_lng,
+          last_seen: new Date(),
+          source: 'hunt',
+        });
+        triggerPrediction(area.id, req.tenantId!);
+      }
+    }
+
+    // Notify the hunter's team room + tenant so clients can refresh (e.g. cooldowns).
     io.to(`team-${hunt.hunter_team_id}`).emit('hunt-reviewed', hunt);
 
     res.json(hunt);

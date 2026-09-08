@@ -27,8 +27,12 @@ const HuntRegistration: React.FC = () => {
     loadRecentHunts();
     loadCooldowns();
     getCurrentLocation();
-    // Tick once a minute so the "ready in Xm" countdown stays current.
-    const tick = setInterval(() => setNow(Date.now()), 30_000);
+    // Every 30s: advance the countdown AND re-fetch cooldowns, so a cooldown that
+    // starts when an admin approves a hunt appears here without a manual reload.
+    const tick = setInterval(() => {
+      setNow(Date.now());
+      loadCooldowns();
+    }, 30_000);
     return () => clearInterval(tick);
   }, []);
 

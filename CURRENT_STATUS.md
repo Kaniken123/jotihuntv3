@@ -138,6 +138,19 @@ OSRM dependency anymore; verify Jotihunt nav-aid rules before an event still app
   own not others; post to non-member channel 403; socket delivery to deelgebied room).
 - Note: **map** filtering by deelgebied is Phase 8, not here (this phase is chat).
 
+### Fox dot on hunt approval + cooldown auto-refresh (2026-09-09)
+
+- **Fox location on approval:** approving a hunt now moves the fox's `areas.lat/lng`
+  to the hunt coords, sets `last_seen`, emits `fox-location-update` (web + mobile maps
+  move the dot live), and re-triggers the predictor. The old submit-time update was
+  removed — a pending/unverified hunt no longer moves the official fox marker. Mobile
+  MapScreen now listens for `fox-location-update` (previously only a dead `area-update`).
+- **Cooldown timer visibility:** the hunt screen's 30s tick now also re-fetches
+  `/hunts/cooldowns` (web + mobile), so a cooldown that starts when an admin *approves*
+  a hunt appears within 30s without reloading. (Backend cooldown was already correct;
+  it's deelgebied-scoped, so an unassigned hunter still gets none — that's by design.)
+- Ships in APK **v14**.
+
 ### Admin: delete accounts (2026-09-08)
 
 - User Management: the per-row **Deactivate** button is replaced by **Delete** (admins

@@ -79,12 +79,24 @@ const MapScreen: React.FC = () => {
       });
     };
 
+    // A fox's location moved (manual report, or an approved hunt) — update its
+    // marker live. Payload: { area_id, name, lat, lng, last_seen, ... }.
+    const handleFoxLocationUpdate = (u: any) => {
+      setAreas((prev) =>
+        prev.map((a) =>
+          a.id === u.area_id ? { ...a, lat: u.lat, lng: u.lng, last_seen: u.last_seen } : a
+        )
+      );
+    };
+
     on('location-update', handleLocationUpdate);
     on('area-update', handleAreaUpdate);
+    on('fox-location-update', handleFoxLocationUpdate);
 
     return () => {
       off('location-update', handleLocationUpdate);
       off('area-update', handleAreaUpdate);
+      off('fox-location-update', handleFoxLocationUpdate);
     };
   }, [on, off]);
 

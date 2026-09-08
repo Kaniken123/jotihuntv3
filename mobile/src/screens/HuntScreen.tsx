@@ -33,8 +33,12 @@ const HuntScreen: React.FC = () => {
   useEffect(() => {
     loadData();
     getCurrentLocation();
-    // Keep the "X min left" countdown current.
-    const tick = setInterval(() => setNowTs(Date.now()), 30000);
+    // Every 30s: advance the countdown AND re-fetch cooldowns, so a cooldown that
+    // starts on admin approval shows up here without reopening the screen.
+    const tick = setInterval(() => {
+      setNowTs(Date.now());
+      loadCooldowns();
+    }, 30000);
     return () => clearInterval(tick);
   }, []);
 
