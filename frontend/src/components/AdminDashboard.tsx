@@ -393,12 +393,8 @@ const AdminDashboard: React.FC = () => {
   };
 
   const handleDeleteUser = async (user: User) => {
-    // Safety checks before allowing deletion
-    if (user.is_active) {
-      alert('Cannot delete active user. Please deactivate the user first.');
-      return;
-    }
-
+    // Admins are protected; everyone else can be deleted directly (no need to
+    // deactivate first).
     if (user.role === 'super_admin' || user.role === 'tenant_admin') {
       alert('Cannot delete admin users for security reasons.');
       return;
@@ -435,22 +431,6 @@ const AdminDashboard: React.FC = () => {
       console.error('Error deleting user:', error);
       const errorMessage = error.response?.data?.error || 'Failed to delete user';
       alert(`Error: ${errorMessage}`);
-    }
-  };
-
-  const handleToggleUserStatus = async (userId: number, currentStatus: boolean) => {
-    try {
-      const response = await api.put(`/users/${userId}`, { is_active: !currentStatus });
-      console.log('User status updated:', response.data);
-      
-      // Reload users
-      const usersResponse = await api.get('/users');
-      setUsers(usersResponse.data);
-      
-      alert(`User ${!currentStatus ? 'activated' : 'deactivated'} successfully!`);
-    } catch (error: any) {
-      console.error('Failed to update user status:', error);
-      alert(`Failed to update user status: ${error.response?.data?.error || error.message}`);
     }
   };
 
@@ -957,17 +937,11 @@ const AdminDashboard: React.FC = () => {
                     >
                       Edit
                     </button>
-                    <button 
-                      onClick={() => handleToggleUserStatus(user.id, user.is_active)}
-                      className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 mr-3"
-                    >
-                      {user.is_active ? 'Deactivate' : 'Activate'}
-                    </button>
-                    {!user.is_active && user.role !== 'super_admin' && user.role !== 'tenant_admin' && (
-                      <button 
+                    {user.role !== 'super_admin' && user.role !== 'tenant_admin' && (
+                      <button
                         onClick={() => handleDeleteUser(user)}
-                        className="text-red-800 hover:text-red-900 dark:text-red-600 dark:hover:text-red-400 bg-red-100 dark:bg-red-900/20 px-2 py-1 rounded text-xs font-medium"
-                        title="Permanently delete inactive user"
+                        className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
+                        title="Permanently delete this account"
                       >
                         Delete
                       </button>

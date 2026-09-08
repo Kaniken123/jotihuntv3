@@ -19,6 +19,12 @@ export interface User {
   first_name?: string;
   last_name?: string;
   is_active: boolean;
+  // Flat primary role the users API synthesizes from user_roles ('super_admin' |
+  // 'tenant_admin' | 'user'). Not a DB column on users.
+  role?: string;
+  status?: string;
+  scouting_group?: string;
+  deelgebieden?: Array<{ id: number; name: string }>;
   created_at: string;
   updated_at?: string;
   tenant: Tenant;

@@ -282,47 +282,31 @@ router.delete('/users/:id', authenticateToken, requireAdmin, async (req, res) =>
   try {
     const { id } = req.params;
 
-    // Safety check: Only allow deletion of inactive users
     const user = await db('users').where('id', id).first();
-    
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    if (user.is_active) {
-      return res.status(400).json({ 
-        error: 'Cannot delete active user. Please deactivate the user first.' 
-      });
+    // Admins can delete accounts directly (no need to deactivate first), but with
+    // two guards: you can't delete yourself, and super admins are protected.
+    if (Number(id) === req.user!.id) {
+      return res.status(400).json({ error: 'You cannot delete your own account.' });
+    }
+    const targetRoles = await db('user_roles').where('user_id', id).select('role');
+    if (targetRoles.some((r) => r.role === 'super_admin')) {
+      return res.status(400).json({ error: 'Cannot delete a super admin account.' });
     }
 
-    // Prevent deletion of admin users for safety
-    if (user.role === 'admin') {
-      return res.status(400).json({ 
-        error: 'Cannot delete admin users for security reasons.' 
-      });
-    }
-
-    // Delete user and related data in transaction
+    // Delete user and related data in one transaction.
     await db.transaction(async (trx) => {
-      // Remove team memberships
+      await trx('user_deelgebied_memberships').where('user_id', id).del();
+      await trx('user_roles').where('user_id', id).del();
       await trx('team_members').where('user_id', id).del();
-      
-      // Remove auth tokens
       await trx('auth_tokens').where('user_id', id).del();
-      
-      // Remove location data
       await trx('user_locations').where('user_id', id).del();
-      
-      // Remove location settings
       await trx('location_settings').where('user_id', id).del();
-      
-      // Remove article reads
       await trx('user_article_reads').where('user_id', id).del();
-      
-      // Remove assignment completions
       await trx('user_assignment_completions').where('user_id', id).del();
-      
-      // Finally delete the user
       await trx('users').where('id', id).del();
     });
 

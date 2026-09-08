@@ -40,7 +40,7 @@ ignores `tenant_id`); there is no session store (stateless JWT).
 | 7 | Admin panel (approvals + deelgebied assignment in User Management); role-gated routes; simplified signup | ✅ done & deployed |
 | 7b | Full team→deelgebied replacement in hunt cooldown + area points | ✅ done & deployed |
 | 6 | Mobile chat (deelgebied channels) + hunt-cooldown UI | ✅ code done — needs APK rebuild |
-| 8 | Map filtering default (own deelgebied + toggle) + chat unread markers | ⬜ |
+| 8 | Map filtering by deelgebied | ❌ scrapped (not needed, user 2026-09-08) |
 | 9 | In-app navigation (routing polyline over Leaflet) | ✅ web + mobile done (mobile needs APK rebuild → v11); VERIFY Jotihunt nav-aid rules before event |
 
 ### Phase 9 — in-app navigation to a fox (web done 2026-08-31)
@@ -126,6 +126,17 @@ ignores `tenant_id`); there is no session store (stateless JWT).
 - Verified locally: 10/10 (channels created; unassigned=general only; assigned sees
   own not others; post to non-member channel 403; socket delivery to deelgebied room).
 - Note: **map** filtering by deelgebied is Phase 8, not here (this phase is chat).
+
+### Admin: delete accounts (2026-09-08)
+
+- User Management: the per-row **Deactivate** button is replaced by **Delete** (admins
+  are hidden from it). Deactivation is still possible via the Edit modal's status field.
+- `DELETE /api/users/:id`: no longer requires deactivating first — deletes active users
+  directly, in a transaction that also clears `user_deelgebied_memberships` + `user_roles`.
+  Guards: can't delete yourself (400); can't delete a super admin (400, via user_roles).
+  Verified end-to-end.
+- Frontend `User` type gained the flat `role`/`status`/`scouting_group`/`deelgebieden`
+  fields the API returns (closes the long-standing type gap).
 
 ### Phase 7 — admin panel + role-gating + simplified signup (done 2026-08-31)
 
