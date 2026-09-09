@@ -1,6 +1,6 @@
 # Jotihunt V3 — Status & Build Tracker
 
-> Living document. Update this whenever a phase moves. Last updated: **2026-08-31** (Phase 7).
+> Living document. Update this whenever a phase moves. Last updated: **2026-09-09** (global cooldown, APK v15).
 > Detailed sub-plans: [FOX_PREDICTION_PLAN.md](./FOX_PREDICTION_PLAN.md) (predictor),
 > [MOBILE_TODO.md](./MOBILE_TODO.md) (mobile parity).
 
@@ -39,6 +39,7 @@ ignores `tenant_id`); there is no session store (stateless JWT).
 | 5 | Membership-derived chat channels (per deelgebied) + send-time re-check | ✅ done & deployed (map filtering → Phase 8) |
 | 7 | Admin panel (approvals + deelgebied assignment in User Management); role-gated routes; simplified signup | ✅ done & deployed |
 | 7b | Full team→deelgebied replacement in hunt cooldown + area points | ✅ done & deployed |
+| 7c | Hunt cooldown is now **GLOBAL per fox** — any approved hunt starts a 60-min cooldown everyone sees/obeys (own-area bonus points still deelgebied-based) | ✅ done & deployed (APK v15) |
 | 6 | Mobile chat (deelgebied channels) + hunt-cooldown UI | ✅ code done — needs APK rebuild |
 | 8 | Map filtering by deelgebied | ❌ scrapped (not needed, user 2026-09-08) |
 | 9 | Navigation to a fox → opens Google Maps directions | ✅ web + mobile (APK v13); VERIFY Jotihunt nav-aid rules before event |
