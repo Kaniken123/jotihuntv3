@@ -257,6 +257,13 @@ const HuntRegistration: React.FC = () => {
             )}
           </div>
 
+          {/* Cooldown warning — visible indicator like the mobile app */}
+          {!!selectedArea && cooldownWait(selectedArea) > 0 && (
+            <div className="p-3 bg-amber-100 dark:bg-amber-900/30 border border-amber-300 dark:border-amber-700 rounded-lg text-sm text-amber-800 dark:text-amber-200">
+              🔒 {t('hunt.cooldownActive', { area: selectedArea, count: cooldownWait(selectedArea) })}
+            </div>
+          )}
+
           {/* Photo Upload */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -311,6 +318,8 @@ const HuntRegistration: React.FC = () => {
                 <LoadingSpinner size="sm" />
                 <span>{t('hunt.submitting')}</span>
               </>
+            ) : (!!selectedArea && cooldownWait(selectedArea) > 0) ? (
+              <span>{t('hunt.waitMinutes', { count: cooldownWait(selectedArea) })}</span>
             ) : (
               <>
                 <Camera size={16} />
