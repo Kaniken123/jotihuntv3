@@ -508,31 +508,80 @@ router.put('/areas/:area_id/status', authenticateToken, requireAdmin, async (req
     const { area_id } = req.params;
     const { status, reason } = req.body;
 
-    if (!['active', 'inactive', 'hunted'].includes(status)) {
-      return res.status(400).json({ error: 'Invalid status. Must be active, inactive, or hunted' });
+    // Accept either a raw Jotihunt status (green/orange/red) or a db status
+    // (active/inactive/hunted). Raw values let an admin drive the 3-state display
+    // for testing before the event, when the real API reports everything red.
+    const RAW: Record<string, { api: string; db: 'active' | 'inactive' | 'hunted' }> = {
+      green: { api: 'green', db: 'active' },
+      orange: { api: 'orange', db: 'active' },
+      red: { api: 'red', db: 'inactive' },
+      active: { api: 'green', db: 'active' },
+      inactive: { api: 'red', db: 'inactive' },
+      hunted: { api: 'red', db: 'hunted' },
+    };
+    const mapped = RAW[status];
+    if (!mapped) {
+      return res.status(400).json({ error: 'Invalid status. Use green/orange/red (or active/inactive/hunted).' });
+    }
+
+    const before = await db('areas').where('id', area_id).first();
+    if (!before) {
+      return res.status(404).json({ error: 'Area not found' });
     }
 
     await db('areas')
       .where('id', area_id)
       .update({
-        status,
+        status: mapped.db,
+        api_status: mapped.api,
         updated_at: new Date()
       });
 
     const area = await db('areas').where('id', area_id).first();
 
-    if (!area) {
-      return res.status(404).json({ error: 'Area not found' });
+    // Record the status period (close the previous open one, open a new one).
+    if (before.api_status !== mapped.api) {
+      const now = new Date();
+      const open = await db('fox_status_history')
+        .where('area_id', area_id).whereNull('ended_at')
+        .orderBy('started_at', 'desc').first();
+      if (open) {
+        await db('fox_status_history').where('id', open.id).update({
+          ended_at: now,
+          duration_seconds: Math.floor((now.getTime() - new Date(open.started_at).getTime()) / 1000),
+        });
+      }
+      await db('fox_status_history').insert({
+        area_id: parseInt(area_id),
+        api_status: mapped.api,
+        db_status: mapped.db,
+        fox_team_name: area.fox_team_name,
+        lat: area.lat,
+        lng: area.lng,
+        started_at: now,
+        tenant_id: area.tenant_id,
+      });
     }
 
-    // Emit real-time update
+    // Emit real-time updates: the new 'fox-status-change' (drives the 3-state
+    // overlay + popup) plus the legacy 'fox-status-update' for older listeners.
     try {
       const io = getSocketIO();
-      io.emit('fox-status-update', {
+      const room = `tenant-${area.tenant_id}`;
+      io.to(room).emit('fox-status-change', {
         area_id: parseInt(area_id),
         name: area.name,
         fox_team_name: area.fox_team_name,
-        status,
+        old_status: before.api_status,
+        new_status: mapped.api,
+        lat: area.lat,
+        lng: area.lng,
+      });
+      io.to(room).emit('fox-status-update', {
+        area_id: parseInt(area_id),
+        name: area.name,
+        fox_team_name: area.fox_team_name,
+        status: mapped.db,
         reason,
         updated_at: new Date()
       });

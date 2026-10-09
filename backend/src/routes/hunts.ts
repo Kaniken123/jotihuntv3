@@ -178,13 +178,16 @@ router.post('/submit', authenticateToken, enforceTenantIsolation, upload.single(
     const lat = parseFloat(hunt_lat) || 0;
     const lng = parseFloat(hunt_lng) || 0;
 
-    // Check if fox area exists and is active
+    // The fox area must exist in this tenant. We do NOT require status 'active':
+    // a hunt can be submitted for any fox (admins review it, and the cooldown guards
+    // re-hunts) — and before an event every fox is 'inactive', which must not block
+    // submissions/testing.
     const foxArea = await db('areas')
-      .where({ name: fox_area, status: 'active' })
+      .where({ name: fox_area, tenant_id: req.tenantId })
       .first();
 
     if (!foxArea) {
-      return res.status(400).json({ error: 'Invalid or inactive fox area' });
+      return res.status(400).json({ error: 'Invalid fox area' });
     }
 
     // Own-area bonus if the fox is one of the hunter's deelgebieden.

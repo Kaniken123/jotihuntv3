@@ -517,12 +517,24 @@ const Map: React.FC = () => {
 
   const handleFoxStatusUpdate = useCallback((update: any) => {
     setAreas(prevAreas => {
-      return prevAreas.map(area => 
-        area.id === update.area_id 
+      return prevAreas.map(area =>
+        area.id === update.area_id
           ? { ...area, status: update.status, updated_at: update.updated_at }
           : area
       );
     });
+  }, []);
+
+  // Raw status change (green/orange/red) — update api_status so the 3-state
+  // overlay reflects actief/onderweg/inactief live.
+  const handleFoxStatusChange = useCallback((update: any) => {
+    setAreas(prevAreas =>
+      prevAreas.map(area =>
+        area.id === update.area_id
+          ? { ...area, api_status: update.new_status }
+          : area
+      )
+    );
   }, []);
 
   const handleFoxLocationUpdate = useCallback((update: any) => {
@@ -575,6 +587,7 @@ const Map: React.FC = () => {
       socket.on('location-update', handleLocationUpdate);
       socket.on('team-location-update', handleLocationUpdate);
       socket.on('fox-status-update', handleFoxStatusUpdate);
+      socket.on('fox-status-change', handleFoxStatusChange);
       socket.on('fox-location-update', handleFoxLocationUpdate);
       socket.on('hint-solution-submitted', handleHintSolutionSubmitted);
       socket.on('fox-locations-reset', handleFoxLocationsReset);
@@ -583,12 +596,13 @@ const Map: React.FC = () => {
         socket.off('location-update', handleLocationUpdate);
         socket.off('team-location-update', handleLocationUpdate);
         socket.off('fox-status-update', handleFoxStatusUpdate);
+        socket.off('fox-status-change', handleFoxStatusChange);
         socket.off('fox-location-update', handleFoxLocationUpdate);
         socket.off('hint-solution-submitted', handleHintSolutionSubmitted);
         socket.off('fox-locations-reset', handleFoxLocationsReset);
       };
     }
-  }, [socket, isConnected, handleLocationUpdate, handleFoxStatusUpdate, handleFoxLocationUpdate, handleHintSolutionSubmitted, handleFoxLocationsReset]);
+  }, [socket, isConnected, handleLocationUpdate, handleFoxStatusUpdate, handleFoxStatusChange, handleFoxLocationUpdate, handleHintSolutionSubmitted, handleFoxLocationsReset]);
 
   const handleUserLocationUpdate = useCallback(async (position: LatLng) => {
     setUserPosition(position);
