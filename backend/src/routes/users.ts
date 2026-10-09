@@ -136,52 +136,77 @@ router.get('/users/:id', authenticateToken, enforceTenantIsolation, async (req, 
 
 router.post('/users', authenticateToken, requireAdmin, enforceTenantIsolation, async (req, res) => {
   try {
-    const { username, email, password, first_name, last_name, role, team_id } = req.body;
+    const { password, first_name, last_name, role } = req.body;
     const currentTenantId = req.tenantId!;
 
-    if (!username || !email || !password) {
-      return res.status(400).json({ error: 'Username, email, and password required' });
+    if (!first_name || !last_name || !password) {
+      return res.status(400).json({ error: 'First name, last name, and password are required' });
     }
 
-    // Check if user exists in current tenant
-    const existingUser = await db('users')
-      .where({ tenant_id: currentTenantId })
-      .where(function() {
-        this.where('username', username).orWhere('email', email);
-      })
-      .first();
-
-    if (existingUser) {
-      return res.status(409).json({ error: 'Username or email already exists in this organization' });
+    // Derive a unique username + email from the name — same rule as public signup
+    // (first.last@jotihunt-gog.nl, numeric suffix on collision). Admins no longer
+    // type a username/email; they're assigned server-side.
+    const EMAIL_DOMAIN = 'jotihunt-gog.nl';
+    const base = `${first_name}.${last_name}`
+      .toLowerCase()
+      .normalize('NFD').replace(/[̀-ͯ]/g, '') // strip accents
+      .replace(/\s+/g, '')
+      .replace(/[^a-z0-9.]/g, '') || 'hunter';
+    let username = base;
+    let email = `${base}@${EMAIL_DOMAIN}`;
+    let suffix = 1;
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      const clash = await db('users')
+        .where({ tenant_id: currentTenantId })
+        .where(function () {
+          this.where('username', username).orWhere('email', email);
+        })
+        .first();
+      if (!clash) break;
+      suffix += 1;
+      username = `${base}${suffix}`;
+      email = `${base}${suffix}@${EMAIL_DOMAIN}`;
     }
 
     const password_hash = await bcrypt.hash(password, 10);
-    
-    // Insert user with tenant association
+
+    // Admin-created accounts are pre-approved (unlike public signup, which is pending).
     const insertResult = await db('users').insert({
       username,
       email,
       password_hash,
       first_name,
       last_name,
+      status: 'approved',
       tenant_id: currentTenantId,
       is_active: true
     });
-    
+
     // For SQLite, the insert result is the last inserted ID
     const userId = insertResult[0];
 
-    // Create user role for current tenant
+    // Normalise role to the user_roles CHECK set ('super_admin','tenant_admin','user').
+    const roleMap: Record<string, string> = {
+      admin: 'tenant_admin',
+      administrator: 'tenant_admin',
+      tenant_admin: 'tenant_admin',
+      super_admin: 'super_admin',
+      hunter: 'user',
+      user: 'user',
+    };
+    const normalizedRole = role ? roleMap[String(role).toLowerCase()] || 'user' : 'user';
+
     await db('user_roles').insert({
       user_id: userId,
       tenant_id: currentTenantId,
-      role: role || 'user',
+      role: normalizedRole,
       is_active: true
     });
 
     // Get the newly created user
     const user = await db('users')
-      .select('id', 'username', 'email', 'first_name', 'last_name', 'is_active', 'created_at')
+      .select('id', 'username', 'email', 'first_name', 'last_name', 'status', 'is_active', 'created_at')
       .where({ id: userId, tenant_id: currentTenantId })
       .first();
 
@@ -189,24 +214,9 @@ router.post('/users', authenticateToken, requireAdmin, enforceTenantIsolation, a
       throw new Error('Failed to create user');
     }
 
-    if (team_id) {
-      // Ensure team belongs to current tenant
-      const team = await db('teams')
-        .where({ id: team_id, tenant_id: currentTenantId })
-        .first();
-      
-      if (team) {
-        await db('team_members').insert({
-          user_id: user.id,
-          team_id,
-          role: 'member'
-        });
-      }
-    }
-
     res.status(201).json({
       ...user,
-      role: role || 'user'
+      role: normalizedRole
     });
   } catch (error) {
     console.error('Create user error:', error);

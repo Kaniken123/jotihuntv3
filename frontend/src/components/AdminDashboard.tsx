@@ -51,13 +51,10 @@ const AdminDashboard: React.FC = () => {
   const [areaUpdateData, setAreaUpdateData] = useState({ status: '', lat: '', lng: '', reason: '' });
   const [showUserModal, setShowUserModal] = useState(false);
   const [newUserData, setNewUserData] = useState({
-    username: '',
-    email: '',
     password: '',
     first_name: '',
     last_name: '',
     role: 'user',
-    team_id: ''
   });
   const [syncStatus, setSyncStatus] = useState<any>(null);
   const [syncing, setSyncing] = useState(false);
@@ -224,28 +221,21 @@ const AdminDashboard: React.FC = () => {
 
   const handleCreateUser = async () => {
     try {
-      const userData = {
-        ...newUserData,
-        team_id: newUserData.team_id ? parseInt(newUserData.team_id) : undefined
-      };
-      
-      const createResponse = await api.post('/users', userData);
+      // Username + email are derived server-side from the name (first.last@jotihunt-gog.nl).
+      const createResponse = await api.post('/users', newUserData);
       console.log('User created:', createResponse.data);
-      
+
       // Reload users
       const response = await api.get('/users');
       setUsers(response.data);
       console.log('Users reloaded:', response.data.length, 'users');
-      
+
       setShowUserModal(false);
       setNewUserData({
-        username: '',
-        email: '',
         password: '',
         first_name: '',
         last_name: '',
         role: 'user',
-        team_id: ''
       });
     } catch (error: any) {
       console.error('Failed to create user:', error);
@@ -994,34 +984,6 @@ const AdminDashboard: React.FC = () => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Username
-                </label>
-                <input
-                  type="text"
-                  value={newUserData.username}
-                  onChange={(e) => setNewUserData({ ...newUserData, username: e.target.value })}
-                  className="input"
-                  placeholder="johndoe"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  value={newUserData.email}
-                  onChange={(e) => setNewUserData({ ...newUserData, email: e.target.value })}
-                  className="input"
-                  placeholder="john@example.com"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Password
                 </label>
                 <input
@@ -1053,6 +1015,7 @@ const AdminDashboard: React.FC = () => {
               </div>
 
               <p className="text-xs text-gray-500 dark:text-gray-400">
+                Username and email are assigned automatically (voornaam.achternaam@jotihunt-gog.nl).
                 Assign deelgebied(en) after creating the user via Edit.
               </p>
             </div>
@@ -1060,23 +1023,20 @@ const AdminDashboard: React.FC = () => {
             <div className="flex space-x-3 mt-6">
               <button
                 onClick={handleCreateUser}
-                disabled={!newUserData.username || !newUserData.email || !newUserData.password || newUserData.password.length < 6}
+                disabled={!newUserData.first_name || !newUserData.last_name || !newUserData.password || newUserData.password.length < 6}
                 className="btn btn-primary flex-1"
               >
                 Create User
               </button>
-              
+
               <button
                 onClick={() => {
                   setShowUserModal(false);
                   setNewUserData({
-                    username: '',
-                    email: '',
                     password: '',
                     first_name: '',
                     last_name: '',
                     role: 'user',
-                    team_id: ''
                   });
                 }}
                 className="btn btn-secondary flex-1"
@@ -1986,7 +1946,7 @@ const AdminDashboard: React.FC = () => {
                   value={tenantFormData.name}
                   onChange={(e) => setTenantFormData({ ...tenantFormData, name: e.target.value })}
                   className="input"
-                  placeholder="Jotihunt 2024"
+                  placeholder="Jotihunt 2026"
                   required
                 />
               </div>
@@ -2016,7 +1976,7 @@ const AdminDashboard: React.FC = () => {
                   value={tenantFormData.description}
                   onChange={(e) => setTenantFormData({ ...tenantFormData, description: e.target.value })}
                   className="input h-20 resize-none"
-                  placeholder="Official Jotihunt 2024 game instance..."
+                  placeholder="Official Jotihunt 2026 game instance..."
                 />
               </div>
             </div>
@@ -2062,7 +2022,7 @@ const AdminDashboard: React.FC = () => {
                   value={tenantFormData.name}
                   onChange={(e) => setTenantFormData({ ...tenantFormData, name: e.target.value })}
                   className="input"
-                  placeholder="Jotihunt 2024"
+                  placeholder="Jotihunt 2026"
                   required
                 />
               </div>
@@ -2076,7 +2036,7 @@ const AdminDashboard: React.FC = () => {
                   value={tenantFormData.slug}
                   onChange={(e) => setTenantFormData({ ...tenantFormData, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') })}
                   className="input"
-                  placeholder="jotihunt-2024"
+                  placeholder="jotihunt-2026"
                   required
                 />
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
@@ -2092,7 +2052,7 @@ const AdminDashboard: React.FC = () => {
                   value={tenantFormData.description}
                   onChange={(e) => setTenantFormData({ ...tenantFormData, description: e.target.value })}
                   className="input h-20 resize-none"
-                  placeholder="Official Jotihunt 2024 game instance..."
+                  placeholder="Official Jotihunt 2026 game instance..."
                 />
               </div>
             </div>

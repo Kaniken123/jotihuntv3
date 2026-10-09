@@ -59,6 +59,7 @@ Build + deploy in batches, **bugs first**. Full detail in memory `feature-backlo
 | D | Chat popup/toast on new message | ✅ DONE & LIVE. Web in-app ToastHost; mobile REAL PUSH via FCM (firebase-admin, Firebase project jotihunt-a7229, APK v18) — screen-off push confirmed 2026-10-09. Fires only for deelgebied + Announcement. |
 | E | Admin-authored updates + popup | ⬜ planned |
 | H | Beamer/projector full-screen big map (new) | ⬜ planned |
+| J | Add user registration (public signup) to the MOBILE app — mobile currently has no signup screen (hunters sign up on web); add the name+password → derived login flow | ⬜ planned |
 | I | Live planning board (Creatief/Hunt/Foto's/Puzzels, drag-drop) + Hunt-column return timer w/ sound (absorbs the "send hunters back" note) | ⬜ planned |
 
 ### Phase 9 — navigation to a fox (2026-09-09: now hands off to Google Maps)
