@@ -12,6 +12,7 @@ import {
   Alert,
 } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
+import { authService } from '../services/authService';
 import { Ionicons } from '@expo/vector-icons';
 
 interface TenantOption {
@@ -23,11 +24,46 @@ interface TenantOption {
 
 const LoginScreen: React.FC = () => {
   const { login } = useAuth();
+  const [mode, setMode] = useState<'login' | 'register'>('login');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+
+  const handleRegister = async () => {
+    if (!firstName.trim() || !lastName.trim() || !password.trim()) {
+      setError('Vul je voor- en achternaam en een wachtwoord in');
+      return;
+    }
+    if (password.length < 6) {
+      setError('Wachtwoord moet minstens 6 tekens zijn');
+      return;
+    }
+    setIsLoading(true);
+    setError('');
+    try {
+      await authService.register({
+        first_name: firstName.trim(),
+        last_name: lastName.trim(),
+        password,
+      });
+      Alert.alert(
+        'Registratie ingediend',
+        'Een beheerder beoordeelt je account. Je inlognaam en e-mail (naam@jotihunt-gog.nl) zijn automatisch toegewezen. Je kunt inloggen zodra je bent goedgekeurd.'
+      );
+      setMode('login');
+      setPassword('');
+    } catch (err: any) {
+      const msg = err.response?.data?.error || err.message || 'Registratie mislukt';
+      setError(msg);
+      Alert.alert('Registratie mislukt', msg);
+    } finally {
+      setIsLoading(false);
+    }
+  };
   
   // Tenant selection state
   const [showTenantSelection, setShowTenantSelection] = useState(false);
@@ -133,20 +169,50 @@ const LoginScreen: React.FC = () => {
             </View>
           ) : null}
 
-          {/* Username Input */}
-          <View style={styles.inputContainer}>
-            <Ionicons name="person-outline" size={20} color="#6B7280" style={styles.inputIcon} />
-            <TextInput
-              style={styles.input}
-              placeholder="Username"
-              placeholderTextColor="#9CA3AF"
-              value={username}
-              onChangeText={setUsername}
-              autoCapitalize="none"
-              autoCorrect={false}
-              editable={!isLoading}
-            />
-          </View>
+          {mode === 'login' ? (
+            /* Username Input */
+            <View style={styles.inputContainer}>
+              <Ionicons name="person-outline" size={20} color="#6B7280" style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder="Gebruikersnaam"
+                placeholderTextColor="#9CA3AF"
+                value={username}
+                onChangeText={setUsername}
+                autoCapitalize="none"
+                autoCorrect={false}
+                editable={!isLoading}
+              />
+            </View>
+          ) : (
+            <>
+              {/* First + Last name (register) */}
+              <View style={styles.inputContainer}>
+                <Ionicons name="person-outline" size={20} color="#6B7280" style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Voornaam"
+                  placeholderTextColor="#9CA3AF"
+                  value={firstName}
+                  onChangeText={setFirstName}
+                  autoCorrect={false}
+                  editable={!isLoading}
+                />
+              </View>
+              <View style={styles.inputContainer}>
+                <Ionicons name="person-outline" size={20} color="#6B7280" style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Achternaam"
+                  placeholderTextColor="#9CA3AF"
+                  value={lastName}
+                  onChangeText={setLastName}
+                  autoCorrect={false}
+                  editable={!isLoading}
+                />
+              </View>
+            </>
+          )}
 
           {/* Password Input */}
           <View style={styles.inputContainer}>
@@ -174,25 +240,43 @@ const LoginScreen: React.FC = () => {
             </TouchableOpacity>
           </View>
 
-          {/* Login Button */}
+          {/* Primary Button */}
           <TouchableOpacity
             style={[styles.loginButton, isLoading && styles.loginButtonDisabled]}
-            onPress={() => handleLogin()}
+            onPress={() => (mode === 'login' ? handleLogin() : handleRegister())}
             disabled={isLoading}
           >
             {isLoading ? (
               <ActivityIndicator color="#FFFFFF" />
             ) : (
-              <Text style={styles.loginButtonText}>Login</Text>
+              <Text style={styles.loginButtonText}>
+                {mode === 'login' ? 'Inloggen' : 'Account aanmaken'}
+              </Text>
             )}
           </TouchableOpacity>
 
-          {/* Demo Credentials Info */}
-          <View style={styles.demoInfo}>
-            <Text style={styles.demoTitle}>Demo Credentials:</Text>
-            <Text style={styles.demoText}>Admin: admin / admin123</Text>
-            <Text style={styles.demoText}>Hunter: hunter1 / password123</Text>
-          </View>
+          {mode === 'register' && (
+            <Text style={styles.registerNote}>
+              Je inlognaam en e-mail worden automatisch toegewezen (naam@jotihunt-gog.nl).
+              Een beheerder keurt je account goed voordat je kunt inloggen.
+            </Text>
+          )}
+
+          {/* Toggle login / register */}
+          <TouchableOpacity
+            style={styles.toggleButton}
+            onPress={() => {
+              setError('');
+              setMode(mode === 'login' ? 'register' : 'login');
+            }}
+            disabled={isLoading}
+          >
+            <Text style={styles.toggleText}>
+              {mode === 'login'
+                ? 'Nog geen account? Maak er een aan'
+                : 'Heb je al een account? Log in'}
+            </Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -276,6 +360,23 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 18,
     fontWeight: '600',
+  },
+  registerNote: {
+    marginTop: 12,
+    fontSize: 12,
+    color: '#6B7280',
+    textAlign: 'center',
+    lineHeight: 17,
+  },
+  toggleButton: {
+    marginTop: 20,
+    padding: 10,
+    alignItems: 'center',
+  },
+  toggleText: {
+    color: '#1E40AF',
+    fontSize: 15,
+    fontWeight: '500',
   },
   demoInfo: {
     marginTop: 32,

@@ -10,12 +10,10 @@ export interface LoginResponse {
 }
 
 export interface RegisterData {
-  username: string;
-  email: string;
+  // New signup: only name + password; username/email are derived server-side.
+  first_name: string;
+  last_name: string;
   password: string;
-  first_name?: string;
-  last_name?: string;
-  tenant_slug?: string;
 }
 
 export const authService = {
