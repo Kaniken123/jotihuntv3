@@ -2,6 +2,7 @@ import React, { createContext, useContext, useReducer, useEffect, ReactNode } fr
 import { User, Team, Tenant } from '../types';
 import { authService } from '../services/authService';
 import { locationService } from '../services/locationService';
+import { registerForPush, unregisterPush } from '../services/pushService';
 import { getToken } from '../services/api';
 
 interface AuthState {
@@ -136,6 +137,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               token,
             },
           });
+          // Register for remote push (best-effort; no-ops without FCM configured).
+          registerForPush();
           // Start location tracking automatically on app init with valid auth
           console.log('[AuthContext] Starting background location tracking...');
           await locationService.startBackgroundTracking();
@@ -207,6 +210,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         },
       });
 
+      // Register for remote push (best-effort; no-ops without FCM configured).
+      registerForPush();
       // Start location tracking automatically on login
       console.log('[AuthContext] Starting background location tracking...');
       await locationService.startBackgroundTracking();
@@ -239,6 +244,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const logout = async () => {
     try {
+      await unregisterPush();
       await authService.logout();
     } catch (error) {
       console.error('Logout error:', error);

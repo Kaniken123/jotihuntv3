@@ -21,6 +21,7 @@ import rulesRoutes from './routes/rules';
 import adminRoutes from './routes/admin';
 import hintsRoutes from './routes/hints';
 import deelgebiedenRoutes from './routes/deelgebieden';
+import pushRoutes from './routes/push';
 
 const app = express();
 // Behind nginx: trust the first proxy hop so req.ip reflects the real client
@@ -76,6 +77,7 @@ app.use('/api/rules', rulesRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/hints', hintsRoutes);
 app.use('/api/deelgebieden', deelgebiedenRoutes);
+app.use('/api/push', pushRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });

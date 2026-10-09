@@ -5,6 +5,7 @@ import fs from 'fs';
 import { db, extractInsertId } from '../utils/database';
 import { authenticateToken, isAdmin, enforceTenantIsolation } from '../middleware/auth';
 import { getSocketIO } from '../socketManager';
+import { sendPushToUsers } from '../services/pushService';
 
 const router = express.Router();
 
@@ -427,6 +428,41 @@ router.post('/channels/:channel_id/messages', authenticateToken, enforceTenantIs
       channel_name: channel.name,
       admin_post_only: !!channel.admin_post_only,
     });
+
+    // Remote push (FCM) — same whitelist as in-app notifications: deelgebied
+    // channels → members; Announcement (admin_post_only) → everyone. Fire-and-
+    // forget so the HTTP response isn't delayed; no-ops when push isn't configured.
+    void (async () => {
+      try {
+        let recipientIds: number[] = [];
+        if (channel.type === 'deelgebied') {
+          const members = await db('user_deelgebied_memberships')
+            .where({ deelgebied_id: channel.deelgebied_id })
+            .whereNull('left_at')
+            .select('user_id');
+          recipientIds = members.map((m) => m.user_id);
+        } else if (channel.admin_post_only) {
+          const users = await db('users')
+            .where({ tenant_id: tenantId, is_active: true })
+            .select('id');
+          recipientIds = users.map((u) => u.id);
+        }
+        recipientIds = recipientIds.filter((id) => id !== req.user!.id);
+        if (recipientIds.length) {
+          const sender = fullMessage.first_name
+            ? `${fullMessage.first_name} ${fullMessage.last_name || ''}`.trim()
+            : fullMessage.username || 'Iemand';
+          await sendPushToUsers(recipientIds, {
+            title: channel.admin_post_only ? `📣 ${channel.name}` : `💬 ${channel.name}`,
+            body: `${sender}: ${(message || '📎 bijlage').toString().slice(0, 100)}`,
+            data: { type: 'chat', channel_id: String(channel.id) },
+            channelId: 'chat',
+          });
+        }
+      } catch (e) {
+        console.error('chat push error:', (e as Error).message);
+      }
+    })();
 
     res.status(201).json(fullMessage);
   } catch (error) {

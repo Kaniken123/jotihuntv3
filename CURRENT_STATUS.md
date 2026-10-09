@@ -56,7 +56,7 @@ Build + deploy in batches, **bugs first**. Full detail in memory `feature-backlo
 | F | 4 new chat channels: Creatief, Foto's, Puzzels, Announcement (Announcement = admin-post-only). Notifications only fire for deelgebied + Announcement (general & open topics stay silent to avoid spam) | ✅ done (backend+web+mobile v17) |
 | B | Fox-team active/onderweg/inactief on map + popup on status change | ⬜ planned |
 | C | Hunt photo download button | ⬜ planned |
-| D | Chat popup/toast on new message | ✅ web done (in-app ToastHost) — mobile popup still TODO |
+| D | Chat popup/toast on new message | ✅ web (ToastHost). Mobile REAL PUSH (FCM) pipeline built (push_tokens table, /api/push register/unregister, firebase-admin pushService, chat hook: deelgebied members + Announcement→all). ⚠️ BLOCKED on Firebase setup: needs google-services.json (app) + service-account JSON (backend FIREBASE_SERVICE_ACCOUNT_PATH) + Gradle google-services wiring, then APK v18. Backend no-ops until configured. |
 | E | Admin-authored updates + popup | ⬜ planned |
 | H | Beamer/projector full-screen big map (new) | ⬜ planned |
 | I | Live planning board (Creatief/Hunt/Foto's/Puzzels, drag-drop) + Hunt-column return timer w/ sound (absorbs the "send hunters back" note) | ⬜ planned |
