@@ -19,7 +19,7 @@ router.get('/spelregels', authenticateToken, async (req, res) => {
     res.json({
       content: rulesContent,
       last_updated: fs.statSync(rulesPath).mtime,
-      version: '2024'
+      version: '2026'
     });
   } catch (error) {
     console.error('Get rules error:', error);
@@ -32,14 +32,14 @@ router.get('/summary', authenticateToken, async (req, res) => {
   try {
     const summary = {
       event_dates: {
-        start: '2024-10-19T11:00:00',
-        end: '2024-10-20T13:00:00',
-        halftime: '2024-10-20T00:00:00'
+        start: '2026-10-17T10:00:00',
+        end: '2026-10-18T12:00:00',
+        halftime: '2026-10-17T23:00:00'
       },
       key_rules: [
         'Veiligheid gaat voor alles',
         'Reflecterend hesje verplicht tussen zonsondergang en zonsopgang',
-        'Maximaal 4 vossenteams per speelhelft',
+        'Vossenteams worden per groep toegewezen',
         'Hunt codes binnen 30 minuten insturen',
         '1 uur wachttijd na hunt op hetzelfde vossenteam',
         'Niet hunten binnen 500m van scoutinggroep'

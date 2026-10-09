@@ -19,11 +19,11 @@ const Rules: React.FC = () => {
     <div className="space-y-6">
       <div className="card p-6">
         <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">
-          Jotihunt 2025 - Spelregels
+          Jotihunt 2026 - Spelregels
         </h2>
         <div className="prose dark:prose-invert max-w-none">
           <p className="text-lg text-gray-700 dark:text-gray-300 mb-4">
-            Welkom bij de Jotihunt 2025! In dit document vind je alle spelregels voor een eerlijke en veilige Jotihunt.
+            Welkom bij de Jotihunt 2026! In dit document vind je alle spelregels voor een eerlijke en veilige Jotihunt.
           </p>
           
           <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 mb-6">
@@ -46,8 +46,8 @@ const Rules: React.FC = () => {
                 <h3 className="font-semibold">Start & Einde</h3>
               </div>
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                <strong>Start:</strong> Zaterdag 18 oktober 2025, 10:00 uur<br />
-                <strong>Einde:</strong> Zondag 19 oktober 2025, 12:00 uur
+                <strong>Start:</strong> Zaterdag 17 oktober 2026, 10:00 uur<br />
+                <strong>Einde:</strong> Zondag 18 oktober 2026, 12:00 uur
               </p>
             </div>
 
@@ -106,19 +106,19 @@ const Rules: React.FC = () => {
               <div className="space-y-3">
                 <div className="flex justify-between">
                   <span className="font-medium">Start Jotihunt:</span>
-                  <span>Za 18 okt 2025, 10:00</span>
+                  <span>Za 17 okt 2026, 10:00</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="font-medium">Wisseling vossen:</span>
-                  <span>Za 18 okt 2025, 23:00</span>
+                  <span>Za 17 okt 2026, 23:00</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="font-medium">Einde Jotihunt:</span>
-                  <span>Zo 19 okt 2025, 12:00</span>
+                  <span>Zo 18 okt 2026, 12:00</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="font-medium">Sluitingstijd codes:</span>
-                  <span>Zo 19 okt 2025, 12:15</span>
+                  <span>Zo 18 okt 2026, 12:15</span>
                 </div>
               </div>
             </div>
@@ -692,7 +692,7 @@ const Rules: React.FC = () => {
     <div className="max-w-6xl mx-auto p-6">
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">
-          Spelregels Jotihunt 2025
+          Spelregels Jotihunt 2026
         </h1>
         <p className="text-gray-600 dark:text-gray-400">
           Alle regels en informatie die je nodig hebt voor een succesvolle Jotihunt
