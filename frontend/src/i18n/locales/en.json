@@ -265,6 +265,7 @@
     "noMessagesTitle": "No messages yet",
     "beFirst": "Be the first to start the conversation in {{channel}}!",
     "messagePlaceholder": "Message {{channel}}...",
+    "readOnlyChannel": "Only admins can post in this channel.",
     "noChannelsTitle": "No channels available",
     "joinTeam": "Join a team to start chatting!"
   },

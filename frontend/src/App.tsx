@@ -18,6 +18,7 @@ import AdminRouteTracking from './components/AdminRouteTracking';
 import RouteTracker from './components/RouteTracker';
 import LocationSettings from './components/LocationSettings';
 import WelcomeModal from './components/WelcomeModal';
+import ToastHost from './components/ToastHost';
 import { isAdmin } from './utils/roleUtils';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -71,6 +72,7 @@ const AppContent: React.FC = () => {
     <Router>
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
         {state.isAuthenticated && <WelcomeModal />}
+        {state.isAuthenticated && <ToastHost />}
         <Routes>
           <Route
             path="/login"

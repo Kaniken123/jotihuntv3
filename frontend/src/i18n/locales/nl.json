@@ -287,6 +287,7 @@
     "noMessagesTitle": "Nog geen berichten",
     "beFirst": "Wees de eerste die het gesprek begint in {{channel}}!",
     "messagePlaceholder": "Bericht aan {{channel}}...",
+    "readOnlyChannel": "Alleen beheerders kunnen hier berichten plaatsen.",
     "noChannelsTitle": "Geen kanalen beschikbaar",
     "joinTeam": "Word lid van een team om te chatten!"
   },

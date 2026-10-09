@@ -21,6 +21,7 @@ async function currentDeelgebiedIds(userId: number): Promise<number[]> {
 // Socket room a channel broadcasts to.
 function channelRoom(tenantId: number, channel: any): string {
   if (channel.type === 'general') return `tenant-${tenantId}-general-chat`;
+  if (channel.type === 'topic') return `tenant-${tenantId}-topic-${channel.id}`;
   if (channel.type === 'deelgebied') return `tenant-${tenantId}-deelgebied-${channel.deelgebied_id}`;
   return `tenant-${tenantId}-team-${channel.team_id}`; // legacy
 }
@@ -30,6 +31,7 @@ function channelRoom(tenantId: number, channel: any): string {
 // team = member (legacy). Re-run on every send, not just channel open.
 async function canAccessChannel(user: any, channel: any): Promise<boolean> {
   if (channel.type === 'general') return true;
+  if (channel.type === 'topic') return true; // global topic channels: everyone reads
   if (isAdmin(user)) return true;
   if (channel.type === 'deelgebied') {
     const m = await db('user_deelgebied_memberships')
@@ -45,6 +47,13 @@ async function canAccessChannel(user: any, channel: any): Promise<boolean> {
     return !!m;
   }
   return false;
+}
+
+// Whether a user may POST to a channel. Same as read access, except an
+// admin_post_only channel (e.g. Announcement) accepts posts from admins only.
+async function canPostChannel(user: any, channel: any): Promise<boolean> {
+  if (channel.admin_post_only && !isAdmin(user)) return false;
+  return canAccessChannel(user, channel);
 }
 // -----------------------------------------------------------------------------
 
@@ -269,6 +278,7 @@ router.get('/channels', authenticateToken, enforceTenantIsolation, async (req, r
       .where('is_active', true)
       .where(function () {
         this.where('type', 'general');
+        this.orWhere('type', 'topic'); // global topic channels: visible to everyone
         this.orWhere(function () {
           this.where('type', 'deelgebied');
           if (!admin) {
@@ -278,7 +288,7 @@ router.get('/channels', authenticateToken, enforceTenantIsolation, async (req, r
           }
         });
       })
-      .orderBy('type', 'desc') // general first, then deelgebied
+      .orderByRaw("case type when 'general' then 0 when 'topic' then 1 when 'deelgebied' then 2 else 3 end")
       .orderBy('name');
 
     res.json(channels);
@@ -372,8 +382,9 @@ router.post('/channels/:channel_id/messages', authenticateToken, enforceTenantIs
     }
 
     // Membership is re-checked at SEND time (not only at channel open) — a
-    // reassigned hunter whose socket is still attached cannot post here.
-    if (!(await canAccessChannel(req.user!, channel))) {
+    // reassigned hunter whose socket is still attached cannot post here. Also
+    // enforces admin_post_only (Announcement) so hunters can read but not post.
+    if (!(await canPostChannel(req.user!, channel))) {
       return res.status(403).json({ error: 'Access denied' });
     }
 

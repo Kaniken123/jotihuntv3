@@ -5,14 +5,16 @@ import { useWebSocket } from '../contexts/WebSocketContext';
 import { api } from '../services/authService';
 import LoadingSpinner from './LoadingSpinner';
 import { Send, Paperclip, Hash, Users, MoreHorizontal, Search, Phone, Video } from 'lucide-react';
+import { isAdmin } from '../utils/roleUtils';
 
 interface Channel {
   id: number;
   name: string;
-  type: 'general' | 'team' | 'deelgebied';
+  type: 'general' | 'team' | 'deelgebied' | 'topic';
   description?: string;
   team_id?: number;
   deelgebied_id?: number;
+  admin_post_only?: boolean;
   is_active: boolean;
 }
 
@@ -499,7 +501,12 @@ const ModernChat: React.FC = () => {
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Message Input */}
+          {/* Message Input — hidden on read-only channels (Announcement) for non-admins */}
+          {activeChannel.admin_post_only && !isAdmin(state.user) ? (
+          <div className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4 text-center text-sm text-gray-500 dark:text-gray-400">
+            🔒 {t('chat.readOnlyChannel')}
+          </div>
+          ) : (
           <div className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4">
             <form onSubmit={handleSendMessage} className="flex items-end space-x-3">
               <div className="flex-1">
@@ -581,6 +588,7 @@ const ModernChat: React.FC = () => {
               </div>
             </form>
           </div>
+          )}
         </div>
       ) : (
         <div className="flex-1 flex items-center justify-center">

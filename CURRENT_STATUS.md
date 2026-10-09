@@ -53,10 +53,10 @@ Build + deploy in batches, **bugs first**. Full detail in memory `feature-backlo
 | A1 | Mobile GPS stops updating at speed → High accuracy (GPS) + send newest batched fix | ✅ code done, APK **v16** built — needs moving-device test |
 | A2 | Fox trail line fix: confirmed positions only (approved hunts), robust time-window | ✅ code done — deploying |
 | A3 | "API updates draaien" — verify prod auto-sync (`ENABLE_AUTO_SYNC`) | ⏳ awaiting prod `.env` check |
-| F | 3 new chat channels: Creatief, Foto's, Announcement | ⬜ planned |
+| F | 3 new chat channels: Creatief, Foto's, Announcement (Announcement = admin-post-only) | ✅ done (backend+web+mobile v17) — deploying |
 | B | Fox-team active/onderweg/inactief on map + popup on status change | ⬜ planned |
 | C | Hunt photo download button | ⬜ planned |
-| D | Chat popup/toast on new message | ⬜ planned |
+| D | Chat popup/toast on new message | ✅ web done (in-app ToastHost) — mobile popup still TODO |
 | E | Admin-authored updates + popup | ⬜ planned |
 | H | Beamer/projector full-screen big map (new) | ⬜ planned |
 | I | Live planning board (Creatief/Hunt/Foto's/Puzzels, drag-drop) + Hunt-column return timer w/ sound (absorbs the "send hunters back" note) | ⬜ planned |

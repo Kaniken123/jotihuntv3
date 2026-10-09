@@ -136,6 +136,14 @@ export function setupSocket(io: SocketIOServer): void {
       socket.join(`tenant-${u.currentTenantId}-deelgebied-${id}`);
     }
 
+    // Global topic channels (Creatief / Foto's / Announcement) — everyone joins.
+    const topicChannels = await db('chat_channels')
+      .where({ tenant_id: u.currentTenantId, type: 'topic', is_active: true })
+      .select('id');
+    for (const c of topicChannels) {
+      socket.join(`tenant-${u.currentTenantId}-topic-${c.id}`);
+    }
+
     console.log(
       `Socket ${socket.id} authenticated: user ${u.id} (${u.username}), ` +
         `tenant ${u.currentTenantId}, deelgebieden [${deelgebiedIds.join(',')}]`

@@ -104,10 +104,11 @@ export interface UserLocation {
 export interface ChatChannel {
   id: number;
   name: string;
-  type: 'general' | 'deelgebied' | 'team';
+  type: 'general' | 'deelgebied' | 'team' | 'topic';
   description?: string;
   deelgebied_id?: number;
   team_id?: number;
+  admin_post_only?: boolean;
   is_active: boolean;
 }
 

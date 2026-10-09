@@ -27,6 +27,11 @@ const ChatScreen: React.FC = () => {
   const { on, off, isConnected } = useWebSocket();
   const flatListRef = useRef<FlatList>(null);
 
+  // Admins (super/tenant) may post to admin_post_only channels (Announcement); others read-only.
+  const isAdminUser =
+    !!authState.user?.is_super_admin ||
+    (authState.user?.roles || []).some((r) => r.role === 'super_admin' || r.role === 'tenant_admin');
+
   const [channels, setChannels] = useState<ChatChannel[]>([]);
   const [activeChannel, setActiveChannel] = useState<ChatChannel | null>(null);
   const activeChannelRef = useRef<ChatChannel | null>(null);
@@ -241,6 +246,11 @@ const ChatScreen: React.FC = () => {
       />
 
       {/* Input */}
+      {activeChannel?.admin_post_only && !isAdminUser ? (
+        <View style={styles.readOnlyBar}>
+          <Text style={styles.readOnlyText}>🔒 Alleen beheerders kunnen hier berichten plaatsen.</Text>
+        </View>
+      ) : (
       <View style={styles.inputContainer}>
         <TextInput
           style={styles.input}
@@ -266,6 +276,7 @@ const ChatScreen: React.FC = () => {
           )}
         </TouchableOpacity>
       </View>
+      )}
     </KeyboardAvoidingView>
   );
 };
@@ -476,6 +487,18 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
     borderTopColor: '#E5E7EB',
+  },
+  readOnlyBar: {
+    padding: 16,
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+    alignItems: 'center',
+  },
+  readOnlyText: {
+    color: '#6B7280',
+    fontSize: 13,
+    textAlign: 'center',
   },
   input: {
     flex: 1,

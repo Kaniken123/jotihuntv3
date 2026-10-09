@@ -94,6 +94,10 @@ interface NotificationContextType {
   removeNotification: (id: string) => void;
   clearAll: () => void;
   toggleVisibility: () => void;
+  // Ephemeral in-app popups (not persisted) — a short-lived copy of the latest
+  // notifications, rendered by <ToastHost/> and auto-dismissed.
+  toasts: NotificationData[];
+  dismissToast: (id: string) => void;
 }
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
@@ -103,6 +107,9 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const { state: authState } = useAuth();
   const { socket } = useWebSocket();
   const timeoutsRef = useRef<NodeJS.Timeout[]>([]);
+  const [toasts, setToasts] = React.useState<NotificationData[]>([]);
+
+  const dismissToast = (id: string) => setToasts((prev) => prev.filter((t) => t.id !== id));
 
   // Load notifications from localStorage on mount
   useEffect(() => {
@@ -134,12 +141,19 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     if (!socket || !authState.isAuthenticated) return;
 
     const handleNewMessage = (data: any) => {
+      // Don't notify about your own messages.
+      if (data.user_id && authState.user && data.user_id === authState.user.id) return;
+      // Sender fields are top-level on the message payload (not under data.user).
+      const sender = data.first_name
+        ? `${data.first_name} ${data.last_name || ''}`.trim()
+        : data.username || 'Iemand';
+      const preview = (data.message || '').toString().slice(0, 80) || '📎 bijlage';
       addNotification({
         type: 'message',
-        title: 'New Team Message',
-        message: `${data.user?.first_name || data.user?.username || 'Someone'} sent a message`,
+        title: `💬 ${sender}`,
+        message: preview,
         read: false,
-        data
+        data,
       });
     };
 
@@ -252,6 +266,13 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
     dispatch({ type: 'ADD_NOTIFICATION', payload: newNotification });
 
+    // In-app popup: show it as a toast and auto-dismiss after 5s.
+    setToasts((prev) => [newNotification, ...prev].slice(0, 4));
+    const toastTimeout = setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== newNotification.id));
+    }, 5000);
+    timeoutsRef.current.push(toastTimeout);
+
     // Show browser notification if permission is granted
     if ('Notification' in window && Notification.permission === 'granted') {
       try {
@@ -318,6 +339,8 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       removeNotification,
       clearAll,
       toggleVisibility,
+      toasts,
+      dismissToast,
     }}>
       {children}
     </NotificationContext.Provider>
