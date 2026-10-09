@@ -77,17 +77,26 @@ router.get('/areas/:areaId/route', authenticateToken, enforceTenantIsolation, as
     const sinceMs = Date.now() - hoursNum * 60 * 60 * 1000;
     const sinceDate = new Date(sinceMs);
 
-    // 1) Pins + API coords (already in area_locations). Use ms threshold to match
-    //    the column's mixed numeric/iso writes (see jotihunt.ts:'recorded_at').
-    const locs = await db('area_locations')
-      .where('area_id', areaId)
-      .where('recorded_at', '>', sinceMs);
+    // recorded_at may be a number (ms), a numeric string, or an ISO string —
+    // area_locations has mixed numeric/iso writes, so a SQL "recorded_at > <ms>"
+    // compared text rows as always-greater and never aged them out. Fetch all
+    // rows for the area and window them in JS with this normaliser instead.
+    const parseTs = (v: any): number => {
+      if (v == null) return NaN;
+      if (typeof v === 'number') return v;
+      const s = String(v);
+      return /^\d+$/.test(s) ? Number(s) : new Date(s).getTime();
+    };
 
-    // 2) Hunt photos for this fox (matched by name, scoped to tenant).
+    // 1) Pins + API coords (already in area_locations) — windowed in JS (see above).
+    const locs = await db('area_locations').where('area_id', areaId);
+
+    // 2) Hunt photos for this fox — APPROVED only. A pending/unverified hunt is a
+    //    hunter's guess, not a confirmed fox position, so it must not bend the trail.
     const hunts = await db('hunts')
       .where('fox_area', area.name)
       .where('tenant_id', req.tenantId)
-      .whereNot('status', 'rejected')
+      .where('status', 'approved')
       .where('hunt_time', '>=', sinceDate)
       .whereNotNull('hunt_lat');
 
@@ -98,19 +107,21 @@ router.get('/areas/:areaId/route', authenticateToken, enforceTenantIsolation, as
       .where('created_at', '>=', sinceDate)
       .whereNotNull('lat');
 
-    type RoutePoint = { id: string; lat: number; lng: number; recorded_at: string; source: string };
+    type RoutePoint = { id: string; lat: number; lng: number; recorded_at: string; source: string; ts: number };
     const merged: RoutePoint[] = [
       ...locs.map((l: any) => ({
         id: `loc-${l.id}`,
         lat: Number(l.lat),
         lng: Number(l.lng),
-        recorded_at: new Date(l.recorded_at).toISOString(),
+        ts: parseTs(l.recorded_at),
+        recorded_at: new Date(parseTs(l.recorded_at)).toISOString(),
         source: l.source || 'api',
       })),
       ...hunts.map((h: any) => ({
         id: `hunt-${h.id}`,
         lat: Number(h.hunt_lat),
         lng: Number(h.hunt_lng),
+        ts: new Date(h.hunt_time).getTime(),
         recorded_at: new Date(h.hunt_time).toISOString(),
         source: 'hunt',
       })),
@@ -118,12 +129,14 @@ router.get('/areas/:areaId/route', authenticateToken, enforceTenantIsolation, as
         id: `hint-${h.id}`,
         lat: Number(h.lat),
         lng: Number(h.lng),
+        ts: new Date(h.created_at).getTime(),
         recorded_at: new Date(h.created_at).toISOString(),
         source: 'hint',
       })),
     ]
-      .sort((a, b) => new Date(a.recorded_at).getTime() - new Date(b.recorded_at).getTime())
-      .slice(0, limitNum);
+      .filter((p) => Number.isFinite(p.ts) && p.ts >= sinceMs && Number.isFinite(p.lat) && Number.isFinite(p.lng))
+      .sort((a, b) => a.ts - b.ts)
+      .slice(-limitNum); // keep the most recent points, oldest→newest for drawing
 
     res.json({
       area: { id: area.id, name: area.name, fox_team_name: area.fox_team_name },

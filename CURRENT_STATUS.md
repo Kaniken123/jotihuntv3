@@ -44,6 +44,23 @@ ignores `tenant_id`); there is no session store (stateless JWT).
 | 8 | Map filtering by deelgebied | ❌ scrapped (not needed, user 2026-09-08) |
 | 9 | Navigation to a fox → opens Google Maps directions | ✅ web + mobile (APK v13); VERIFY Jotihunt nav-aid rules before event |
 
+## Oct-2026 feature backlog (Nikai + Chris notes, scope clarified 2026-10-09)
+
+Build + deploy in batches, **bugs first**. Full detail in memory `feature-backlog-oct2026`.
+
+| Epic | Scope | Status |
+|---|---|---|
+| A1 | Mobile GPS stops updating at speed → High accuracy (GPS) + send newest batched fix | ✅ code done, APK **v16** built — needs moving-device test |
+| A2 | Fox trail line fix: confirmed positions only (approved hunts), robust time-window | ✅ code done — deploying |
+| A3 | "API updates draaien" — verify prod auto-sync (`ENABLE_AUTO_SYNC`) | ⏳ awaiting prod `.env` check |
+| F | 3 new chat channels: Creatief, Foto's, Announcement | ⬜ planned |
+| B | Fox-team active/onderweg/inactief on map + popup on status change | ⬜ planned |
+| C | Hunt photo download button | ⬜ planned |
+| D | Chat popup/toast on new message | ⬜ planned |
+| E | Admin-authored updates + popup | ⬜ planned |
+| H | Beamer/projector full-screen big map (new) | ⬜ planned |
+| I | Live planning board (Creatief/Hunt/Foto's/Puzzels, drag-drop) + Hunt-column return timer w/ sound (absorbs the "send hunters back" note) | ⬜ planned |
+
 ### Phase 9 — navigation to a fox (2026-09-09: now hands off to Google Maps)
 
 **Current behavior:** the "🧭 Navigate here" button in a fox popup opens **Google Maps**
@@ -222,8 +239,8 @@ OSRM dependency anymore; verify Jotihunt nav-aid rules before an event still app
 - **Prod `.env` runs dev values** (`ENABLE_AUTO_SYNC=false`, `NODE_ENV=development`) —
   must flip to prod values before an event (auto-sync MUST be on). CORS uses
   `origin:true` so `FRONTEND_URL` doesn't matter.
-- **Mobile chat is broken** (calls a non-existent `/chat/team/:id/messages`) and hunt
-  cooldowns are unwired — Phase 6 / MOBILE_TODO.md.
+- ~~Mobile chat broken / hunt cooldowns unwired~~ — **fixed** (Phase 6 shipped; cooldown
+  is now global per fox, 7c).
 - Several game-state socket broadcasts are still global `io.emit` (fox status/location) —
   fine single-tenant; scope when multi-deelgebied lands.
 - Pre-existing dead-room emits (hunt-reviewed `team-${id}`, user-notifications
