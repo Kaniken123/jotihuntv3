@@ -2,7 +2,7 @@
   "expo": {
     "name": "Jotihunt",
     "slug": "jotihunt-mobile",
-    "version": "1.0.19",
+    "version": "1.0.20",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -31,7 +31,7 @@
         "backgroundColor": "#1E40AF"
       },
       "package": "com.jotihunt.mobile",
-      "versionCode": 19,
+      "versionCode": 20,
       "permissions": [
         "ACCESS_COARSE_LOCATION",
         "ACCESS_FINE_LOCATION",

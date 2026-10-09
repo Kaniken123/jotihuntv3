@@ -100,7 +100,7 @@ const AppContent: React.FC = () => {
                 {/* Full-screen projection view: live fox map + 3-state status overlay,
                     no navbar/chrome. Reuses the normal Map (foxes, status, predictions). */}
                 <div className="h-screen w-screen overflow-hidden">
-                  <Map />
+                  <Map beamer />
                 </div>
               </ProtectedRoute>
             }

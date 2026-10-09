@@ -89,14 +89,23 @@ const MapScreen: React.FC = () => {
       );
     };
 
+    // A fox changed status (green/orange/red) — update its marker colour live.
+    const handleFoxStatusChange = (u: any) => {
+      setAreas((prev) =>
+        prev.map((a) => (a.id === u.area_id ? { ...a, api_status: u.new_status } : a))
+      );
+    };
+
     on('location-update', handleLocationUpdate);
     on('area-update', handleAreaUpdate);
     on('fox-location-update', handleFoxLocationUpdate);
+    on('fox-status-change', handleFoxStatusChange);
 
     return () => {
       off('location-update', handleLocationUpdate);
       off('area-update', handleAreaUpdate);
       off('fox-location-update', handleFoxLocationUpdate);
+      off('fox-status-change', handleFoxStatusChange);
     };
   }, [on, off]);
 
@@ -196,15 +205,30 @@ const MapScreen: React.FC = () => {
   };
 
   const updateMapMarkers = () => {
-    const foxMarkers = showFoxes ? areas.filter(a => a.lat && a.lng).map(area => ({
-      type: 'fox',
-      id: area.id,
-      lat: area.lat,
-      lng: area.lng,
-      name: area.name,
-      status: area.status,
-      color: FOX_TEAM_COLORS[area.name]?.primary || '#6B7280',
-    })) : [];
+    // Three-state fox status (actief/onderweg/inactief) from the raw api_status.
+    const foxStatusInfo = (area: Area): { label: string; color: string } => {
+      switch (area.api_status) {
+        case 'green': return { label: 'Actief', color: '#22C55E' };
+        case 'orange': return { label: 'Onderweg', color: '#F97316' };
+        case 'red': return { label: 'Inactief', color: '#6B7280' };
+      }
+      return area.status === 'active'
+        ? { label: 'Actief', color: '#22C55E' }
+        : { label: 'Inactief', color: '#6B7280' };
+    };
+    const foxMarkers = showFoxes ? areas.filter(a => a.lat && a.lng).map(area => {
+      const s = foxStatusInfo(area);
+      return {
+        type: 'fox',
+        id: area.id,
+        lat: area.lat,
+        lng: area.lng,
+        name: area.name,
+        statusLabel: s.label,
+        statusColor: s.color,
+        color: FOX_TEAM_COLORS[area.name]?.primary || '#6B7280',
+      };
+    }) : [];
 
     const hunterMarkers = showHunters ? userLocations
       .filter(loc => loc.user_id !== authState.user?.id)
@@ -312,10 +336,11 @@ const MapScreen: React.FC = () => {
       window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'navigate', lat: lat, lng: lng, name: name }));
     }
     
-    function createFoxIcon(color) {
+    function createFoxIcon(color, statusColor) {
+      var ring = statusColor || 'white';
       return L.divIcon({
         className: 'custom-fox-icon',
-        html: '<div style="background:' + color + ';width:30px;height:30px;border-radius:50%;border:3px solid white;display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:0 2px 6px rgba(0,0,0,0.3);">🦊</div>',
+        html: '<div style="background:' + color + ';width:30px;height:30px;border-radius:50%;border:4px solid ' + ring + ';display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:0 2px 6px rgba(0,0,0,0.3);">🦊</div>',
         iconSize: [30, 30],
         iconAnchor: [15, 15]
       });
@@ -349,9 +374,9 @@ const MapScreen: React.FC = () => {
       
       // Add fox markers
       foxes.forEach(function(fox) {
-        L.marker([fox.lat, fox.lng], { icon: createFoxIcon(fox.color) })
+        L.marker([fox.lat, fox.lng], { icon: createFoxIcon(fox.color, fox.statusColor) })
           .bindPopup(
-            '<b>🦊 ' + fox.name + '</b><br>Status: ' + fox.status +
+            '<b>🦊 ' + fox.name + '</b><br>Status: <b style="color:' + fox.statusColor + '">' + fox.statusLabel + '</b>' +
             '<br><button onclick="navTo(' + fox.lat + ',' + fox.lng + ',\\'' + fox.name + '\\')" ' +
             'style="margin-top:6px;padding:6px 10px;background:#16A34A;color:#fff;border:none;border-radius:6px;font-size:13px;">🧭 Navigate here</button>'
           )

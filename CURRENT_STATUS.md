@@ -54,11 +54,11 @@ Build + deploy in batches, **bugs first**. Full detail in memory `feature-backlo
 | A2 | Fox trail line fix: confirmed positions only (approved hunts), robust time-window | ✅ code done — deploying |
 | A3 | "API updates draaien" — verify prod auto-sync (`ENABLE_AUTO_SYNC`) | ✅ confirmed `ENABLE_AUTO_SYNC=true` in prod `.env` (seen 2026-10-09) |
 | F | 4 new chat channels: Creatief, Foto's, Puzzels, Aankondiging (Aankondiging = admin-post-only). Notifications only fire for deelgebied + Aankondiging (general & open topics stay silent to avoid spam) | ✅ done (backend+web+mobile v17) |
-| B | Fox-team active/onderweg/inactief + popup on status change | ✅ backend + web done (areas.api_status, 3-state FoxStatusOverlay, `fox-status-change` socket → toast). Mobile map status + beamer map (H) still to show it. |
+| B | Fox-team active/onderweg/inactief + popup on status change | ✅ DONE — backend (areas.api_status), web (3-state overlay + toast + admin test buttons), mobile (map marker ring + popup label + live update, v20), FCM push on change. Beamer shows it too. |
 | C | Hunt photo download button (admin hunt-review) | ✅ done — deploying |
 | D | Chat popup/toast on new message | ✅ DONE & LIVE. Web in-app ToastHost; mobile REAL PUSH via FCM (firebase-admin, Firebase project jotihunt-a7229, APK v18) — screen-off push confirmed 2026-10-09. Fires only for deelgebied + Announcement. |
 | E | Admin-authored updates + popup | ⬜ planned |
-| H | Beamer/projector full-screen big map — `/beamer` route (no navbar), reuses live Map + 3-state fox-status overlay; admin link in navbar opens it in a new tab | ✅ v1 done. Polish later: hide hunter-only controls, bigger markers |
+| H | Beamer/projector full-screen big map — `/beamer` route (no navbar), reuses live Map + 3-state fox-status overlay; admin link opens it in a new tab; hunter-only controls hidden via `beamer` prop | ✅ done (bigger markers = optional future polish) |
 | J | User registration on MOBILE — LoginScreen now has a login/registreer toggle; signup takes voornaam+achternaam+wachtwoord, posts /auth/register (derived login, pending approval). Ships in APK v19 | ✅ done (v19) |
 | I | Live planning board (Creatief/Hunt/Foto's/Puzzels, drag-drop) + Hunt-column return timer w/ sound (absorbs the "send hunters back" note) | ⬜ planned |
 

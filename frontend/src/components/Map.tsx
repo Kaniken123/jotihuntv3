@@ -376,7 +376,7 @@ const MapClickHandler: React.FC<MapClickHandlerProps> = ({ onMapClick, isAdminMo
   return null;
 };
 
-const Map: React.FC = () => {
+const Map: React.FC<{ beamer?: boolean }> = ({ beamer = false }) => {
   const [areas, setAreas] = useState<Area[]>([]);
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [userLocations, setUserLocations] = useState<UserLocation[]>([]);
@@ -1108,7 +1108,8 @@ const Map: React.FC = () => {
         </div>
       )}
       
-      {/* Control Panel */}
+      {/* Control Panel — hidden on the beamer/projection view */}
+      {!beamer && (
       <div className="absolute top-4 right-4 z-10 space-y-2">
         {/* Quick Hint Solution Button */}
         <button
@@ -1224,8 +1225,10 @@ const Map: React.FC = () => {
           </div>
         )}
       </div>
+      )}
 
-      {/* Fox Location Buttons */}
+      {/* Fox Location Buttons — hidden on the beamer/projection view */}
+      {!beamer && (
       <div className="absolute bottom-4 right-4 z-10 space-y-2">
         {/* Prediction toggle */}
         <button
@@ -1287,6 +1290,7 @@ const Map: React.FC = () => {
           </div>
         )}
       </div>
+      )}
       
       <MapContainer
         center={center}
