@@ -242,11 +242,33 @@ router.put('/users/:id', authenticateToken, enforceTenantIsolation, async (req, 
 
     await db('users').where({ id, tenant_id: currentTenantId }).update(updateData);
 
-    // Update role if admin and role is provided
-    if (role && isAdmin(req.user!)) {
-      await db('user_roles')
+    // Update role if admin and role is provided. The UI sends 'admin'/'hunter',
+    // but user_roles.role has a CHECK constraint of ('super_admin','tenant_admin',
+    // 'user') — so normalise first (an unmapped value used to crash the update).
+    const roleMap: Record<string, string> = {
+      admin: 'tenant_admin',
+      administrator: 'tenant_admin',
+      tenant_admin: 'tenant_admin',
+      super_admin: 'super_admin',
+      hunter: 'user',
+      user: 'user',
+    };
+    const normalizedRole = role ? roleMap[String(role).toLowerCase()] || 'user' : undefined;
+    if (normalizedRole && isAdmin(req.user!)) {
+      const updated = await db('user_roles')
         .where({ user_id: id, tenant_id: currentTenantId })
-        .update({ role, updated_at: new Date() });
+        .update({ role: normalizedRole as string, is_active: true, updated_at: new Date() });
+      // No existing role row for this user/tenant → create one.
+      if (!updated) {
+        await db('user_roles').insert({
+          user_id: parseInt(id),
+          tenant_id: currentTenantId,
+          role: normalizedRole,
+          is_active: true,
+          created_at: new Date(),
+          updated_at: new Date(),
+        });
+      }
     }
 
     // Handle team assignment if admin is making the request
@@ -271,7 +293,7 @@ router.put('/users/:id', authenticateToken, enforceTenantIsolation, async (req, 
       .where('id', id)
       .first();
 
-    res.json({ ...user, role: role || 'user' });
+    res.json({ ...user, role: normalizedRole || 'user' });
   } catch (error) {
     console.error('Update user error:', error);
     res.status(500).json({ error: 'Failed to update user' });
