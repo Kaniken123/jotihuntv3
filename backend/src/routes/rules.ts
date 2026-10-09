@@ -40,7 +40,7 @@ router.get('/summary', authenticateToken, async (req, res) => {
         'Veiligheid gaat voor alles',
         'Reflecterend hesje verplicht tussen zonsondergang en zonsopgang',
         'Vossenteams worden per groep toegewezen',
-        'Hunt codes binnen 30 minuten insturen',
+        'Hunt codes binnen 15 minuten insturen',
         '1 uur wachttijd na hunt op hetzelfde vossenteam',
         'Niet hunten binnen 500m van scoutinggroep'
       ],

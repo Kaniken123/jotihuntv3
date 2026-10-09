@@ -80,7 +80,7 @@ const Rules: React.FC = () => {
             </li>
             <li className="flex items-start space-x-2">
               <span className="text-primary-600 font-bold">•</span>
-              <span>Hunt codes binnen 30 minuten insturen</span>
+              <span>Hunt codes binnen 15 minuten insturen</span>
             </li>
             <li className="flex items-start space-x-2">
               <span className="text-primary-600 font-bold">•</span>
@@ -256,7 +256,7 @@ const Rules: React.FC = () => {
               <div className="flex items-start space-x-3">
                 <Clock className="w-5 h-5 text-primary-600 mt-1" />
                 <div>
-                  <p className="font-medium">30 minuten om hunt code in te sturen</p>
+                  <p className="font-medium">15 minuten om hunt code in te sturen</p>
                   <p className="text-sm text-gray-600 dark:text-gray-400">
                     Vanaf het moment van contact met het vossenteam
                   </p>
@@ -296,7 +296,7 @@ const Rules: React.FC = () => {
               </div>
               <div className="flex items-center space-x-2">
                 <span className="flex-shrink-0 w-6 h-6 bg-primary-600 text-white rounded-full flex items-center justify-center text-xs font-bold">5</span>
-                <span>Code + tijd + foto binnen 30 min insturen</span>
+                <span>Code + tijd + foto binnen 15 min insturen</span>
               </div>
             </div>
           </div>
