@@ -52,11 +52,11 @@ Build + deploy in batches, **bugs first**. Full detail in memory `feature-backlo
 |---|---|---|
 | A1 | Mobile GPS stops updating at speed → High accuracy (GPS) + send newest batched fix | ✅ code done, APK **v16** built — needs moving-device test |
 | A2 | Fox trail line fix: confirmed positions only (approved hunts), robust time-window | ✅ code done — deploying |
-| A3 | "API updates draaien" — verify prod auto-sync (`ENABLE_AUTO_SYNC`) | ⏳ awaiting prod `.env` check |
-| F | 4 new chat channels: Creatief, Foto's, Puzzels, Announcement (Announcement = admin-post-only). Notifications only fire for deelgebied + Announcement (general & open topics stay silent to avoid spam) | ✅ done (backend+web+mobile v17) |
+| A3 | "API updates draaien" — verify prod auto-sync (`ENABLE_AUTO_SYNC`) | ✅ confirmed `ENABLE_AUTO_SYNC=true` in prod `.env` (seen 2026-10-09) |
+| F | 4 new chat channels: Creatief, Foto's, Puzzels, Aankondiging (Aankondiging = admin-post-only). Notifications only fire for deelgebied + Aankondiging (general & open topics stay silent to avoid spam) | ✅ done (backend+web+mobile v17) |
 | B | Fox-team active/onderweg/inactief on map + popup on status change | ⬜ planned |
 | C | Hunt photo download button | ⬜ planned |
-| D | Chat popup/toast on new message | ✅ web (ToastHost). Mobile REAL PUSH (FCM) pipeline built (push_tokens table, /api/push register/unregister, firebase-admin pushService, chat hook: deelgebied members + Announcement→all). ⚠️ BLOCKED on Firebase setup: needs google-services.json (app) + service-account JSON (backend FIREBASE_SERVICE_ACCOUNT_PATH) + Gradle google-services wiring, then APK v18. Backend no-ops until configured. |
+| D | Chat popup/toast on new message | ✅ DONE & LIVE. Web in-app ToastHost; mobile REAL PUSH via FCM (firebase-admin, Firebase project jotihunt-a7229, APK v18) — screen-off push confirmed 2026-10-09. Fires only for deelgebied + Announcement. |
 | E | Admin-authored updates + popup | ⬜ planned |
 | H | Beamer/projector full-screen big map (new) | ⬜ planned |
 | I | Live planning board (Creatief/Hunt/Foto's/Puzzels, drag-drop) + Hunt-column return timer w/ sound (absorbs the "send hunters back" note) | ⬜ planned |

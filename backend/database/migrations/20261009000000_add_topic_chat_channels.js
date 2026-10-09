@@ -5,7 +5,7 @@
 const TOPICS = [
   { name: 'Creatief', description: 'Creatieve opdrachten', admin_post_only: false },
   { name: "Foto's", description: 'Foto-opdrachten', admin_post_only: false },
-  { name: 'Announcement', description: 'Mededelingen van de organisatie', admin_post_only: true },
+  { name: 'Aankondiging', description: 'Mededelingen van de organisatie', admin_post_only: true },
 ];
 
 exports.up = async function (knex) {
