@@ -17,8 +17,13 @@ TaskManager.defineTask(BACKGROUND_LOCATION_TASK, async ({ data, error }) => {
   if (data) {
     const { locations } = data as { locations: Location.LocationObject[] };
     console.log('[BackgroundLocationTask] Received locations:', locations.length);
-    
-    const location = locations[0];
+
+    // The OS batches fixes and can deliver several at once (common at speed /
+    // after a background gap). Send the NEWEST one so the server never shows a
+    // stale position; locations[0] alone looked "frozen" when a batch arrived.
+    const location = locations
+      .filter((l) => l && l.coords)
+      .sort((a, b) => b.timestamp - a.timestamp)[0];
 
     if (location) {
       try {
@@ -26,8 +31,9 @@ TaskManager.defineTask(BACKGROUND_LOCATION_TASK, async ({ data, error }) => {
           lat: location.coords.latitude,
           lng: location.coords.longitude,
           accuracy: location.coords.accuracy,
+          batch: locations.length,
         });
-        
+
         await api.post('/locations/update', {
           lat: location.coords.latitude,
           lng: location.coords.longitude,
@@ -129,9 +135,13 @@ export const locationService = {
 
       console.log('[LocationService] Starting background location tracking...');
       
-      // Start location updates that will fire every 30 seconds regardless of movement
+      // Start location updates that will fire every 30 seconds regardless of movement.
+      // High accuracy = GPS provider (Balanced used the fused/network provider, which
+      // degraded or stalled while driving with no wifi — the "stopped at speed" bug).
+      // activityType keeps iOS from pausing updates for a moving vehicle.
       await Location.startLocationUpdatesAsync(BACKGROUND_LOCATION_TASK, {
-        accuracy: Location.Accuracy.Balanced,
+        accuracy: Location.Accuracy.High,
+        activityType: Location.ActivityType.AutomotiveNavigation,
         timeInterval: 30000, // Update every 30 seconds
         distanceInterval: 0, // Send update regardless of distance (every 30 seconds)
         showsBackgroundLocationIndicator: true,
@@ -199,7 +209,7 @@ export const locationService = {
   ): Promise<Location.LocationSubscription> {
     return Location.watchPositionAsync(
       {
-        accuracy: options?.accuracy ?? Location.Accuracy.Balanced,
+        accuracy: options?.accuracy ?? Location.Accuracy.High,
         timeInterval: options?.timeInterval ?? 10000,
         distanceInterval: options?.distanceInterval ?? 10,
       },
