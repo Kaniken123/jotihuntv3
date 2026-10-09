@@ -54,7 +54,7 @@ Build + deploy in batches, **bugs first**. Full detail in memory `feature-backlo
 | A2 | Fox trail line fix: confirmed positions only (approved hunts), robust time-window | ✅ code done — deploying |
 | A3 | "API updates draaien" — verify prod auto-sync (`ENABLE_AUTO_SYNC`) | ✅ confirmed `ENABLE_AUTO_SYNC=true` in prod `.env` (seen 2026-10-09) |
 | F | 4 new chat channels: Creatief, Foto's, Puzzels, Aankondiging (Aankondiging = admin-post-only). Notifications only fire for deelgebied + Aankondiging (general & open topics stay silent to avoid spam) | ✅ done (backend+web+mobile v17) |
-| B | Fox-team active/onderweg/inactief on map + popup on status change | ⬜ planned |
+| B | Fox-team active/onderweg/inactief + popup on status change | ✅ backend + web done (areas.api_status, 3-state FoxStatusOverlay, `fox-status-change` socket → toast). Mobile map status + beamer map (H) still to show it. |
 | C | Hunt photo download button (admin hunt-review) | ✅ done — deploying |
 | D | Chat popup/toast on new message | ✅ DONE & LIVE. Web in-app ToastHost; mobile REAL PUSH via FCM (firebase-admin, Firebase project jotihunt-a7229, APK v18) — screen-off push confirmed 2026-10-09. Fires only for deelgebied + Announcement. |
 | E | Admin-authored updates + popup | ⬜ planned |

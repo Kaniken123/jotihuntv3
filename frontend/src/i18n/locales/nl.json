@@ -454,9 +454,11 @@
   "fox": {
     "status": "Vossenstatus",
     "active": "Actief",
+    "onderweg": "Onderweg",
     "hunted": "Gevangen",
     "inactive": "Inactief",
     "unknown": "Onbekend",
+    "statusChanged": "{{fox}} is nu {{status}}",
     "now": "Nu",
     "minutesAgo": "{{n}}m geleden",
     "hoursAgo": "{{n}}u geleden",

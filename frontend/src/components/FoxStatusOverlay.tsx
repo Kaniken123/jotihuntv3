@@ -11,12 +11,23 @@ const FoxStatusOverlay: React.FC<FoxStatusOverlayProps> = ({ areas }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const { t } = useTranslation();
 
+  // Three display states derived from the RAW Jotihunt status (green/orange/red):
+  // actief / onderweg / inactief. Falls back to the collapsed db status.
+  const displayStatus = (area: Area): 'active' | 'onderweg' | 'inactive' => {
+    switch (area.api_status) {
+      case 'green': return 'active';
+      case 'orange': return 'onderweg';
+      case 'red': return 'inactive';
+    }
+    return area.status === 'active' ? 'active' : 'inactive';
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'active':
         return 'bg-green-500';
-      case 'hunted':
-        return 'bg-red-500';
+      case 'onderweg':
+        return 'bg-orange-500';
       case 'inactive':
         return 'bg-gray-500';
       default:
@@ -28,7 +39,7 @@ const FoxStatusOverlay: React.FC<FoxStatusOverlayProps> = ({ areas }) => {
     switch (status) {
       case 'active':
         return <Eye className="w-3 h-3" />;
-      case 'hunted':
+      case 'onderweg':
         return <Target className="w-3 h-3" />;
       case 'inactive':
         return <EyeOff className="w-3 h-3" />;
@@ -41,8 +52,8 @@ const FoxStatusOverlay: React.FC<FoxStatusOverlayProps> = ({ areas }) => {
     switch (status) {
       case 'active':
         return t('fox.active');
-      case 'hunted':
-        return t('fox.hunted');
+      case 'onderweg':
+        return t('fox.onderweg');
       case 'inactive':
         return t('fox.inactive');
       default:
@@ -89,19 +100,19 @@ const FoxStatusOverlay: React.FC<FoxStatusOverlayProps> = ({ areas }) => {
                 <div className="flex items-center space-x-1">
                   <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                   <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
-                    {sortedAreas.filter(a => a.status === 'active').length}
+                    {sortedAreas.filter(a => displayStatus(a) === 'active').length}
                   </span>
                 </div>
                 <div className="flex items-center space-x-1">
-                  <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                  <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
                   <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
-                    {sortedAreas.filter(a => a.status === 'hunted').length}
+                    {sortedAreas.filter(a => displayStatus(a) === 'onderweg').length}
                   </span>
                 </div>
                 <div className="flex items-center space-x-1">
                   <div className="w-2 h-2 bg-gray-500 rounded-full"></div>
                   <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
-                    {sortedAreas.filter(a => a.status === 'inactive').length}
+                    {sortedAreas.filter(a => displayStatus(a) === 'inactive').length}
                   </span>
                 </div>
               </div>
@@ -122,12 +133,12 @@ const FoxStatusOverlay: React.FC<FoxStatusOverlayProps> = ({ areas }) => {
                 <div key={area.id} className="p-2 border-b border-gray-100 dark:border-gray-700 last:border-b-0">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
-                      <div className={`w-3 h-3 rounded-full ${getStatusColor(area.status)}`}></div>
+                      <div className={`w-3 h-3 rounded-full ${getStatusColor(displayStatus(area))}`}></div>
                       <span className="text-xs font-medium text-gray-900 dark:text-gray-100">
                         {area.name}
                       </span>
-                      <span className={`px-1.5 py-0.5 text-xs rounded-full text-white ${getStatusColor(area.status)}`}>
-                        {getStatusText(area.status)}
+                      <span className={`px-1.5 py-0.5 text-xs rounded-full text-white ${getStatusColor(displayStatus(area))}`}>
+                        {getStatusText(displayStatus(area))}
                       </span>
                     </div>
                     <div className="text-xs text-gray-500 dark:text-gray-400">

@@ -57,6 +57,7 @@ export interface Area {
   name: string;
   fox_team_name?: string;
   status: 'active' | 'inactive' | 'hunted';
+  api_status?: 'green' | 'orange' | 'red' | string; // raw Jotihunt status (onderweg = orange)
   lat?: number;
   lng?: number;
   points: number;

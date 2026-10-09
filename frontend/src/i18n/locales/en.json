@@ -432,9 +432,11 @@
   "fox": {
     "status": "Fox Status",
     "active": "Active",
+    "onderweg": "On the move",
     "hunted": "Hunted",
     "inactive": "Inactive",
     "unknown": "Unknown",
+    "statusChanged": "{{fox}} is now {{status}}",
     "now": "Now",
     "minutesAgo": "{{n}}m ago",
     "hoursAgo": "{{n}}h ago",

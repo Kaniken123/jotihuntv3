@@ -162,6 +162,20 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       });
     };
 
+    // A fox team changed status (green→orange→red). Pop a short notice for everyone.
+    const handleFoxStatusChange = (data: any) => {
+      const labels: Record<string, string> = { green: 'actief', orange: 'onderweg', red: 'inactief' };
+      const label = labels[data?.new_status] || data?.new_status || 'onbekend';
+      const fox = data?.fox_team_name || data?.name || 'Een vos';
+      addNotification({
+        type: 'location',
+        title: '🦊 Vossenstatus',
+        message: `${fox} is nu ${label}`,
+        read: false,
+        data,
+      });
+    };
+
     // Admin-only: a new hunt photo was submitted and is waiting for review.
     // The backend broadcasts this on every submit; non-admins ignore it.
     const handleHuntPendingReview = (data: any) => {
@@ -242,6 +256,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     };
 
     socket.on('new-message', handleNewMessage);
+    socket.on('fox-status-change', handleFoxStatusChange);
     socket.on('hunt-pending-review', handleHuntPendingReview);
     socket.on('hunt-reviewed', handleHuntReviewed);
     socket.on('new-assignment', handleNewAssignment);
@@ -252,6 +267,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
     return () => {
       socket.off('new-message', handleNewMessage);
+      socket.off('fox-status-change', handleFoxStatusChange);
       socket.off('hunt-pending-review', handleHuntPendingReview);
       socket.off('hunt-reviewed', handleHuntReviewed);
       socket.off('new-assignment', handleNewAssignment);

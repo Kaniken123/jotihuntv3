@@ -232,11 +232,16 @@ export class JotihuntApiService {
               .first();
 
             if (localArea) {
-              // Check if status changed
-              const statusChanged = localArea.status !== dbStatus;
+              // Detect change on the RAW api status (green/orange/red) so a
+              // green↔orange ("onderweg") transition is caught too — both collapse
+              // to 'active' in db_status and would otherwise look unchanged. On the
+              // very first sync after this column was added, api_status is null;
+              // treat that as a backfill (no popup), not a real change.
+              const prevApi: string | null = localArea.api_status ?? null;
+              const apiStatusChanged = prevApi !== null && prevApi !== area.status;
 
               // If status changed, close the previous status period
-              if (statusChanged) {
+              if (apiStatusChanged) {
                 const now = new Date();
 
                 // Get the current open status record (if any)
@@ -272,18 +277,37 @@ export class JotihuntApiService {
                 });
               }
 
-              // Update existing area
+              // Update existing area (api_status always refreshed — backfills null too)
               await db('areas')
                 .where('id', localArea.id)
                 .update({
                   fox_team_name: area.fox_team_name,
                   status: dbStatus,
+                  api_status: area.status,
                   lat: area.lat,
                   lng: area.lng,
                   last_seen: area.last_seen ? new Date(area.last_seen) : null,
                   synced_at: new Date(),
                   updated_at: new Date()
                 });
+
+              // Notify clients of a real status change (not the first backfill).
+              if (apiStatusChanged) {
+                try {
+                  const { getSocketIO } = require('../socketManager');
+                  getSocketIO().to(`tenant-${tenant.id}`).emit('fox-status-change', {
+                    area_id: localArea.id,
+                    name: area.name,
+                    fox_team_name: area.fox_team_name,
+                    old_status: prevApi,
+                    new_status: area.status, // green | orange | red
+                    lat: area.lat,
+                    lng: area.lng,
+                  });
+                } catch {
+                  /* socket not ready (e.g. a sync during boot) — skip the live ping */
+                }
+              }
 
               // Add location history if coordinates changed
               if (area.lat && area.lng &&
@@ -303,6 +327,7 @@ export class JotihuntApiService {
                 name: area.name,
                 fox_team_name: area.fox_team_name,
                 status: dbStatus,
+                api_status: area.status,
                 lat: area.lat,
                 lng: area.lng,
                 last_seen: area.last_seen ? new Date(area.last_seen) : null,
