@@ -418,9 +418,15 @@ router.post('/channels/:channel_id/messages', authenticateToken, enforceTenantIs
       .where('team_messages.id', messageId)
       .first();
 
-    // Emit to the channel's room (general / deelgebied / legacy team).
+    // Emit to the channel's room. Carry channel metadata so clients can decide
+    // whether to raise a notification (only deelgebied + Announcement do).
     const io = getSocketIO();
-    io.to(channelRoom(tenantId, channel)).emit('new-message', fullMessage);
+    io.to(channelRoom(tenantId, channel)).emit('new-message', {
+      ...fullMessage,
+      channel_type: channel.type,
+      channel_name: channel.name,
+      admin_post_only: !!channel.admin_post_only,
+    });
 
     res.status(201).json(fullMessage);
   } catch (error) {
