@@ -184,6 +184,16 @@ const Navbar: React.FC = () => {
                           <Route className="w-4 h-4" />
                           <span>{t('navbar.routeTracking')}</span>
                         </Link>
+                        <a
+                          href="/beamer"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={() => setIsProfileOpen(false)}
+                          className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center space-x-2"
+                        >
+                          <span>📺</span>
+                          <span>{t('navbar.beamerMap')}</span>
+                        </a>
                       </>
                     )}
                     
