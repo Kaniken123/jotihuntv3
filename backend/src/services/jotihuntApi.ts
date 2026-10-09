@@ -307,6 +307,17 @@ export class JotihuntApiService {
                 } catch {
                   /* socket not ready (e.g. a sync during boot) — skip the live ping */
                 }
+                // Phone push (FCM) for the status change.
+                try {
+                  const { sendPushToTenant } = require('./pushService');
+                  const label = ({ green: 'actief', orange: 'onderweg', red: 'inactief' } as Record<string, string>)[area.status] || area.status;
+                  void sendPushToTenant(tenant.id, {
+                    title: '🦊 Vossenstatus',
+                    body: `${area.fox_team_name || area.name} is nu ${label}`,
+                    data: { type: 'fox-status', area_id: String(localArea.id), status: String(area.status) },
+                    channelId: 'default',
+                  }).catch(() => {});
+                } catch { /* push unavailable — skip */ }
               }
 
               // Add location history if coordinates changed

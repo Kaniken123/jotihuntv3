@@ -2,7 +2,12 @@ import express from 'express';
 import { db } from '../utils/database';
 import { authenticateToken, requireAdmin, enforceTenantIsolation } from '../middleware/auth';
 import { getSocketIO } from '../socketManager';
+import { sendPushToTenant } from '../services/pushService';
 import { JotihuntApiService } from '../services/jotihuntApi';
+
+// Dutch label for a raw fox status (shared by the status endpoints).
+const foxStatusLabelNl = (api: string): string =>
+  ({ green: 'actief', orange: 'onderweg', red: 'inactief' } as Record<string, string>)[api] || api;
 import { getLatestPrediction, predictAllForTenant, triggerPrediction } from '../services/foxPrediction';
 
 const router = express.Router();
@@ -587,6 +592,16 @@ router.put('/areas/:area_id/status', authenticateToken, requireAdmin, async (req
       });
     } catch (socketError) {
       console.error('Socket emission error:', socketError);
+    }
+
+    // Phone push on a real status change (not a no-op re-set).
+    if (before.api_status !== mapped.api) {
+      void sendPushToTenant(area.tenant_id, {
+        title: '🦊 Vossenstatus',
+        body: `${area.fox_team_name || area.name} is nu ${foxStatusLabelNl(mapped.api)}`,
+        data: { type: 'fox-status', area_id: String(area_id), status: mapped.api },
+        channelId: 'default',
+      }).catch((e) => console.error('fox-status push error:', e));
     }
 
     res.json(area);

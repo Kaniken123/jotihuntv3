@@ -49,6 +49,13 @@ export interface PushPayload {
   channelId?: string; // Android notification channel
 }
 
+// Send a push to every active user in a tenant. Safe to call always.
+export async function sendPushToTenant(tenantId: number, payload: PushPayload): Promise<void> {
+  if (!ensureInit()) return;
+  const users = await db('users').where({ tenant_id: tenantId, is_active: true }).select('id');
+  await sendPushToUsers(users.map((u) => u.id), payload);
+}
+
 // Send a push to every registered device of the given users. Invalid/stale
 // tokens are pruned. Safe to call always — no-ops when push is disabled.
 export async function sendPushToUsers(userIds: number[], payload: PushPayload): Promise<void> {
