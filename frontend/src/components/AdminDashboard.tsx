@@ -26,7 +26,8 @@ import {
   Database,
   Bell,
   Send,
-  Home
+  Home,
+  Download
 } from 'lucide-react';
 
 interface DashboardStats {
@@ -216,6 +217,26 @@ const AdminDashboard: React.FC = () => {
       alert(`❌ Failed to reset fox locations: ${error.response?.data?.error || error.message}`);
     } finally {
       setIsResetting(false);
+    }
+  };
+
+  // Download a hunt photo to disk (fetch as blob so it saves instead of navigating).
+  const downloadHuntPhoto = async (url: string, huntId: number, foxArea?: string) => {
+    const ext = (url.split('?')[0].split('.').pop() || 'jpg').toLowerCase();
+    const filename = `hunt-${huntId}${foxArea ? '-' + foxArea : ''}.${ext}`;
+    try {
+      const res = await fetch(url);
+      const blob = await res.blob();
+      const objUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = objUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(objUrl);
+    } catch {
+      window.open(url, '_blank'); // fallback: open in a new tab
     }
   };
 
@@ -709,10 +730,20 @@ const AdminDashboard: React.FC = () => {
 
                 {hunt.photo_url && (
                   <div className="mb-4">
-                    <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Hunt Photo:</p>
-                    <img 
-                      src={hunt.photo_url} 
-                      alt="Hunt proof" 
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Hunt Photo:</p>
+                      <button
+                        onClick={() => downloadHuntPhoto(hunt.photo_url, hunt.id, hunt.fox_area)}
+                        className="btn btn-secondary btn-sm flex items-center space-x-1 text-xs"
+                        title="Download foto"
+                      >
+                        <Download size={14} />
+                        <span>Download</span>
+                      </button>
+                    </div>
+                    <img
+                      src={hunt.photo_url}
+                      alt="Hunt proof"
                       className="max-w-md max-h-64 rounded-lg shadow-sm"
                       onError={(e) => {
                         e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZGRkIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkltYWdlIG5vdCBmb3VuZDwvdGV4dD48L3N2Zz4=';

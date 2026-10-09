@@ -55,10 +55,10 @@ Build + deploy in batches, **bugs first**. Full detail in memory `feature-backlo
 | A3 | "API updates draaien" — verify prod auto-sync (`ENABLE_AUTO_SYNC`) | ✅ confirmed `ENABLE_AUTO_SYNC=true` in prod `.env` (seen 2026-10-09) |
 | F | 4 new chat channels: Creatief, Foto's, Puzzels, Aankondiging (Aankondiging = admin-post-only). Notifications only fire for deelgebied + Aankondiging (general & open topics stay silent to avoid spam) | ✅ done (backend+web+mobile v17) |
 | B | Fox-team active/onderweg/inactief on map + popup on status change | ⬜ planned |
-| C | Hunt photo download button | ⬜ planned |
+| C | Hunt photo download button (admin hunt-review) | ✅ done — deploying |
 | D | Chat popup/toast on new message | ✅ DONE & LIVE. Web in-app ToastHost; mobile REAL PUSH via FCM (firebase-admin, Firebase project jotihunt-a7229, APK v18) — screen-off push confirmed 2026-10-09. Fires only for deelgebied + Announcement. |
 | E | Admin-authored updates + popup | ⬜ planned |
-| H | Beamer/projector full-screen big map (new) | ⬜ planned |
+| H | Beamer/projector full-screen big map (new) — **must show fox-team status (Epic B) on it** (user 2026-10-09) | ⬜ planned |
 | J | Add user registration (public signup) to the MOBILE app — mobile currently has no signup screen (hunters sign up on web); add the name+password → derived login flow | ⬜ planned |
 | I | Live planning board (Creatief/Hunt/Foto's/Puzzels, drag-drop) + Hunt-column return timer w/ sound (absorbs the "send hunters back" note) | ⬜ planned |
 
