@@ -60,7 +60,48 @@ Build + deploy in batches, **bugs first**. Full detail in memory `feature-backlo
 | E | Admin-authored updates + popup | ⬜ planned |
 | H | Beamer/projector full-screen big map — `/beamer` route (no navbar), reuses live Map + 3-state fox-status overlay; admin link opens it in a new tab; hunter-only controls hidden via `beamer` prop | ✅ done (bigger markers = optional future polish) |
 | J | User registration on MOBILE — LoginScreen now has a login/registreer toggle; signup takes voornaam+achternaam+wachtwoord, posts /auth/register (derived login, pending approval). Ships in APK v19 | ✅ done (v19) |
-| I | Live planning board (Creatief/Hunt/Foto's/Puzzels, drag-drop) + Hunt-column return timer w/ sound (absorbs the "send hunters back" note) | ⬜ planned |
+| I | **Live planning board — NEXT UP (resume 2026-10-11)** — see detailed spec + open questions below | ⬜ planned |
+
+### Epic I — Live planning board (detailed spec — NEXT UP, resume 2026-10-11)
+
+The next build. Epic G ("send hunters back") is folded in here. All other epics
+(A–H, J) are done & deployed; Epic E (admin-authored updates + popup) is the only
+*other* still-open item and is lower priority.
+
+**What the user wants (2026-10-09):**
+- A board with **columns = activities: Creatief, Hunt, Foto's, Puzzels.**
+- Shows all **active users** as cards; the admin can also **manually add names**
+  (ad-hoc entries, not necessarily linked to an account).
+- **Drag** people between columns to log who is doing what.
+- In the **Hunt** column, each person shows **time-on-the-road**:
+  - Admin presses a **leave ("vertrokken")** button when they leave → starts that
+    person's timer.
+  - When the timer passes a **threshold**, the **admin** gets a notification that
+    their time is up.
+  - Admin can then press a button to send the hunter a **notification WITH SOUND**
+    to return — reuse the FCM push already built (mobile `alerts` channel = MAX
+    importance + sound; `sendPushToUsers([userId], { channelId: 'alerts', ... })`).
+  - A **return ("terug")** button can be pressed at any time (before/after the
+    threshold) — stops/clears that timer.
+  - Admin can **stop** the timer at any time.
+  - Timer is **admin-button-driven, NOT GPS-based.**
+
+**Open design questions to ask before building:**
+1. Audience — web admin-only (likely, HQ tool) or visible to all?
+2. Persistence/sync — must board state + running timers persist across reloads and
+   sync live across devices/HQ screens? (Almost certainly yes → backend table +
+   socket broadcast, not just client state.)
+3. Timer threshold — fixed default (e.g. 3h) or per-person/configurable?
+4. Admin overrun alert — in-app only, or also push to the admin's phone?
+5. Manually-added names — label only, or also timer-eligible (no account = no push)?
+6. Should the board also show on the beamer view?
+
+**Likely build shape:** backend `planning_entries` table (user ref or free name,
+column, timer_started_at, threshold, left_at/returned_at) + CRUD + socket events;
+threshold-overrun check (server cron/interval or client poll) → notify admin;
+"send back" action → `sendPushToUsers([hunterUserId], { channelId: 'alerts', … })`.
+Web: drag-and-drop board (dnd-kit or HTML5 DnD) in the admin area. Mobile: not
+needed for v1 — admins drive it from the web; hunters only receive the return push.
 
 ### Phase 9 — navigation to a fox (2026-09-09: now hands off to Google Maps)
 
