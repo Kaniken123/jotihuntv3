@@ -5,7 +5,7 @@ import { X } from 'lucide-react';
 // Bump this key to re-show the popup for a future release/beta.
 const SEEN_KEY = 'jh_welcome_v15';
 // Latest mobile build offered for download (keep in sync with mobile app.json).
-const APK_VERSION = 'v15';
+const APK_VERSION = 'v20';
 const CONTACT_EMAIL = 'contact @ kaniken.nl';
 const CONTACT_PHONE_DISPLAY = '+31 6 33013211';
 const CONTACT_PHONE_TEL = '+31633013211';

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
-import { Map, MessageSquare, Camera, FileText, Book, Shield, Route, Menu, X, Target } from 'lucide-react';
+import { Map, MessageSquare, Camera, FileText, Book, Shield, Route, Menu, X, Target, Download } from 'lucide-react';
 import NotificationCenter from './NotificationCenter';
 import LanguageSwitcher from './LanguageSwitcher';
 import { isAdmin } from '../utils/roleUtils';
@@ -100,6 +100,17 @@ const Navbar: React.FC = () => {
                 )}
               </button>
             </div>
+
+            {/* Android app download — available to everyone */}
+            <a
+              href="/jotihunt-app.apk?v=v20"
+              download="jotihunt-release-v20.apk"
+              className="hidden sm:inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-md text-sm font-medium bg-primary-600 hover:bg-primary-700 text-white transition-colors"
+              title="Download de Android-app (v20)"
+            >
+              <Download size={16} />
+              <span>App</span>
+            </a>
 
             {/* Language switcher */}
             <div className="hidden sm:block">
@@ -232,6 +243,17 @@ const Navbar: React.FC = () => {
                   </Link>
                 );
               })}
+
+              {/* Android app download — available to everyone */}
+              <a
+                href="/jotihunt-app.apk?v=v20"
+                download="jotihunt-release-v20.apk"
+                onClick={closeMobileMenu}
+                className="flex items-center space-x-3 px-3 py-2 rounded-md text-base font-medium text-white bg-primary-600 hover:bg-primary-700 transition-colors"
+              >
+                <Download size={20} />
+                <span>Download app (v20)</span>
+              </a>
 
               {/* User info and actions in mobile */}
               <div className="px-3 py-2 border-t border-gray-200 dark:border-gray-700 mt-3 pt-3">
