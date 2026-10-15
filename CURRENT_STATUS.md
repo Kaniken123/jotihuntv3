@@ -68,6 +68,21 @@ Build + deploy in batches, **bugs first**. Full detail in memory `feature-backlo
 | N | Activity-channel membership (Creatief/Foto's/Puzzels members-only, Aankondiging open) — assign in the User Management edit modal | ✅ done |
 | O | Chat photos — mobile upload (image picker) + save-to-gallery; download button on web | ✅ done (APK v21) |
 
+| P | Hunt photo sent uncropped (removed allowsEditing/aspect, quality 1) — dashboard shows the full frame | ✅ done (APK v23) |
+| Q | Approved hunts stay visible — admin `GET /hunts/reviewed` + 'Goedgekeurde hunts' panel with photo + Download | ✅ done |
+| R | Points removed from hunt approval (message + admin card). DB value kept so stats/leaderboard still work | ✅ done |
+| S | Hunt-time overrun alert reaches admins app-wide (bell + toast + browser notification + push), not only on the planning page | ✅ done |
+| T | GOG logo instead of the location pin on the mobile login screen | ✅ done (APK v22+) |
+
+
+## Openstaande acties (niet-code)
+
+- **Activiteitenkanalen zijn leeg**: Creatief / Foto's / Puzzels zijn members-only en
+  starten zonder leden, dus ze zijn voor niemand zichtbaar tot je mensen toewijst via
+  User Management → Edit → Activiteiten. Aankondiging + deelgebiedkanalen zijn ongemoeid.
+- **APK v23 uitrollen** naar de telefoons (bevat ongecropte huntfoto, chatfoto's, logo).
+- **GPS-fix op snelheid (A1) nog niet bevestigd** met een echte rijdende test.
+- Voor een event: controleer of Jotihunt navigatiehulpmiddelen toestaat (Google Maps-knop).
 ### Epic I — Live planning board (detailed spec — NEXT UP, resume 2026-10-11)
 
 The next build. Epic G ("send hunters back") is folded in here. All other epics
