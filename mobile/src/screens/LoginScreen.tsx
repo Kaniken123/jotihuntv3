@@ -8,6 +8,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Image,
   ActivityIndicator,
   Alert,
 } from 'react-native';
@@ -156,7 +157,7 @@ const LoginScreen: React.FC = () => {
         <View style={styles.formContainer}>
           {/* Logo/Title */}
           <View style={styles.header}>
-            <Ionicons name="location" size={64} color="#1E40AF" />
+            <Image source={require('../../assets/icon.png')} style={styles.logo} resizeMode="contain" />
             <Text style={styles.title}>Jotihunt</Text>
             <Text style={styles.subtitle}>Hunter Mobile App</Text>
           </View>
@@ -301,6 +302,11 @@ const styles = StyleSheet.create({
   header: {
     alignItems: 'center',
     marginBottom: 32,
+  },
+  logo: {
+    width: 96,
+    height: 96,
+    borderRadius: 20,
   },
   title: {
     fontSize: 32,

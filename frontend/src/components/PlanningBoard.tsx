@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '../services/authService';
 import { useWebSocket } from '../contexts/WebSocketContext';
-import { useNotifications } from '../contexts/NotificationContext';
 import LoadingSpinner from './LoadingSpinner';
 import { Plus, Trash2, LogOut, CheckCircle, BellRing, Clock } from 'lucide-react';
 
@@ -51,7 +50,6 @@ const PlanningBoard: React.FC = () => {
   const dragId = useRef<number | null>(null);
 
   const { socket } = useWebSocket();
-  const { addNotification } = useNotifications();
 
   const load = useCallback(async () => {
     try {
@@ -76,14 +74,9 @@ const PlanningBoard: React.FC = () => {
   useEffect(() => {
     if (!socket) return;
     const onUpdate = () => load();
-    const onOverrun = (data: any) => {
-      addNotification({
-        type: 'system',
-        title: '⏰ Hunttijd verstreken',
-        message: `${data?.name || 'Een hunter'} is langer dan ${data?.threshold_minutes} min onderweg.`,
-        read: false,
-        data,
-      });
+    const onOverrun = () => {
+      // The notification itself is raised globally in NotificationContext so
+      // admins see it anywhere in the app; here we only refresh the board.
       load();
     };
     socket.on('planning-updated', onUpdate);
@@ -92,7 +85,7 @@ const PlanningBoard: React.FC = () => {
       socket.off('planning-updated', onUpdate);
       socket.off('planning-overrun', onOverrun);
     };
-  }, [socket, load, addNotification]);
+  }, [socket, load]);
 
   const move = async (id: number, activity: string) => {
     setEntries((prev) => prev.map((e) => (e.id === id ? { ...e, activity } : e))); // optimistic

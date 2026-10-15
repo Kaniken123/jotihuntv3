@@ -176,6 +176,19 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       });
     };
 
+    // A hunter's time on the road ran out — admins only, so it can't be missed:
+    // this lands in the bell list, pops a toast, and (if allowed) a browser notification.
+    const handlePlanningOverrun = (data: any) => {
+      if (!isAdmin(authState.user)) return;
+      addNotification({
+        type: 'system',
+        title: '⏰ Hunttijd verstreken',
+        message: `${data?.name || 'Een hunter'} is langer dan ${data?.threshold_minutes ?? ''} min onderweg.`,
+        read: false,
+        data,
+      });
+    };
+
     // An admin posted an update — everyone gets a popup.
     const handleNewUpdate = (data: any) => {
       addNotification({
@@ -269,6 +282,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     socket.on('new-message', handleNewMessage);
     socket.on('fox-status-change', handleFoxStatusChange);
     socket.on('new-update', handleNewUpdate);
+    socket.on('planning-overrun', handlePlanningOverrun);
     socket.on('hunt-pending-review', handleHuntPendingReview);
     socket.on('hunt-reviewed', handleHuntReviewed);
     socket.on('new-assignment', handleNewAssignment);
@@ -281,6 +295,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       socket.off('new-message', handleNewMessage);
       socket.off('fox-status-change', handleFoxStatusChange);
       socket.off('new-update', handleNewUpdate);
+      socket.off('planning-overrun', handlePlanningOverrun);
       socket.off('hunt-pending-review', handleHuntPendingReview);
       socket.off('hunt-reviewed', handleHuntReviewed);
       socket.off('new-assignment', handleNewAssignment);
