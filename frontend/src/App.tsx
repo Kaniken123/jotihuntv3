@@ -15,6 +15,8 @@ import UpdateDetail from './components/UpdateDetail';
 import Rules from './components/Rules';
 import AdminDashboard from './components/AdminDashboard';
 import AdminRouteTracking from './components/AdminRouteTracking';
+import PlanningBoard from './components/PlanningBoard';
+import AdminUpdateComposer from './components/AdminUpdateComposer';
 import RouteTracker from './components/RouteTracker';
 import LocationSettings from './components/LocationSettings';
 import WelcomeModal from './components/WelcomeModal';
@@ -183,6 +185,36 @@ const AppContent: React.FC = () => {
               </AdminRoute>
             }
           />
+          <Route
+            path="/admin/updates"
+            element={
+              <AdminRoute>
+                <div className="flex flex-col h-screen">
+                  <Navbar />
+                  <div className="flex-1 overflow-y-auto">
+                    <AdminUpdateComposer />
+                  </div>
+                </div>
+              </AdminRoute>
+            }
+
+          />
+
+          <Route
+            path="/admin/planning"
+            element={
+              <AdminRoute>
+                <div className="flex flex-col h-screen">
+                  <Navbar />
+                  <div className="flex-1 overflow-y-auto">
+                    <PlanningBoard />
+                  </div>
+                </div>
+              </AdminRoute>
+            }
+
+          />
+
           <Route
             path="/admin/routes"
             element={

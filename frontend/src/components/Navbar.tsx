@@ -195,6 +195,22 @@ const Navbar: React.FC = () => {
                           <Route className="w-4 h-4" />
                           <span>{t('navbar.routeTracking')}</span>
                         </Link>
+                        <Link
+                          to="/admin/planning"
+                          onClick={() => setIsProfileOpen(false)}
+                          className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center space-x-2"
+                        >
+                          <span>🗂️</span>
+                          <span>Planning</span>
+                        </Link>
+                        <Link
+                          to="/admin/updates"
+                          onClick={() => setIsProfileOpen(false)}
+                          className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center space-x-2"
+                        >
+                          <span>📣</span>
+                          <span>Update plaatsen</span>
+                        </Link>
                         <a
                           href="/beamer"
                           target="_blank"

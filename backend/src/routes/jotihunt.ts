@@ -1,5 +1,5 @@
 import express from 'express';
-import { db } from '../utils/database';
+import { db, extractInsertId } from '../utils/database';
 import { authenticateToken, requireAdmin, enforceTenantIsolation } from '../middleware/auth';
 import { getSocketIO } from '../socketManager';
 import { sendPushToTenant } from '../services/pushService';
@@ -1132,6 +1132,59 @@ router.post('/admin/reset', authenticateToken, requireAdmin, enforceTenantIsolat
   } catch (error: any) {
     console.error('Admin reset error:', error);
     res.status(500).json({ error: 'Reset failed: ' + (error.message || 'unknown') });
+  }
+});
+
+
+// Epic E — an admin writes their own update (the rest come from the Jotihunt
+// API sync). Locally authored articles have no external_id. Everyone gets a
+// live popup + a push.
+router.post('/articles', authenticateToken, requireAdmin, enforceTenantIsolation, async (req, res) => {
+  try {
+    const title = String(req.body?.title || '').trim();
+    const content = String(req.body?.content || '').trim();
+    const type = String(req.body?.type || 'news');
+    const area = req.body?.area ? String(req.body.area) : null;
+    if (!title || !content) return res.status(400).json({ error: 'Titel en bericht zijn verplicht' });
+    if (!['news', 'hint', 'assignment'].includes(type)) return res.status(400).json({ error: 'Invalid type' });
+
+    const now = new Date();
+    const id = extractInsertId(await db('articles').insert({
+      title,
+      content,
+      type,
+      area,
+      published_at: now,
+      is_active: true,
+      tenant_id: req.tenantId!,
+      created_at: now,
+      updated_at: now,
+    }).returning('id'));
+
+    const article = await db('articles').where({ id }).first();
+
+    // Live popup for everyone currently online.
+    try {
+      getSocketIO().to(`tenant-${req.tenantId}`).emit('new-update', {
+        id,
+        title,
+        type,
+        area,
+      });
+    } catch { /* socket not ready */ }
+
+    // And a push for phones.
+    void sendPushToTenant(req.tenantId!, {
+      title: '📣 Nieuwe update',
+      body: title,
+      data: { type: 'update', article_id: String(id) },
+      channelId: 'default',
+    }).catch((e) => console.error('update push error:', e));
+
+    res.status(201).json(article);
+  } catch (error) {
+    console.error('Create article error:', error);
+    res.status(500).json({ error: 'Failed to create update' });
   }
 });
 

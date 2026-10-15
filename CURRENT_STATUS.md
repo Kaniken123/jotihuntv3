@@ -57,10 +57,16 @@ Build + deploy in batches, **bugs first**. Full detail in memory `feature-backlo
 | B | Fox-team active/onderweg/inactief + popup on status change | ✅ DONE — backend (areas.api_status), web (3-state overlay + toast + admin test buttons), mobile (map marker ring + popup label + live update, v20), FCM push on change. Beamer shows it too. |
 | C | Hunt photo download button (admin hunt-review) | ✅ done — deploying |
 | D | Chat popup/toast on new message | ✅ DONE & LIVE. Web in-app ToastHost; mobile REAL PUSH via FCM (firebase-admin, Firebase project jotihunt-a7229, APK v18) — screen-off push confirmed 2026-10-09. Fires only for deelgebied + Announcement. |
-| E | Admin-authored updates + popup | ⬜ planned |
+| E | Admin-authored updates + popup | ✅ done — `POST /jotihunt/articles` (admin) + `/admin/updates` composer page; everyone gets a live popup (`new-update`) and a push |
 | H | Beamer/projector full-screen big map — `/beamer` route (no navbar), reuses live Map + 3-state fox-status overlay; admin link opens it in a new tab; hunter-only controls hidden via `beamer` prop | ✅ done (bigger markers = optional future polish) |
 | J | User registration on MOBILE — LoginScreen now has a login/registreer toggle; signup takes voornaam+achternaam+wachtwoord, posts /auth/register (derived login, pending approval). Ships in APK v19 | ✅ done (v19) |
-| I | **Live planning board — NEXT UP (resume 2026-10-11)** — see detailed spec + open questions below | ⬜ planned |
+| I | **Live planning board** — `/admin/planning`: columns Niet ingedeeld/Hunt/Creatief/Foto's/Puzzels, drag & drop (+ dropdown fallback), auto-roster of all approved users, manual names, Hunt timer (vertrokken → overrun alert → 'Roep terug' push with sound → terug/stop), live-synced across admins | ✅ done |
+
+| K | Kenteken per hunter — `users.license_plate`; hunter sets it on /settings, admin in User Management; shown on planning cards | ✅ done |
+| L | Login pages (web + mobile) state the username is voornaam.achternaam | ✅ done |
+| M | Mobile-web chat layout — sidebar hidden below md, channel dropdown instead | ✅ done |
+| N | Activity-channel membership (Creatief/Foto's/Puzzels members-only, Aankondiging open) — assign in the User Management edit modal | ✅ done |
+| O | Chat photos — mobile upload (image picker) + save-to-gallery; download button on web | ✅ done (APK v21) |
 
 ### Epic I — Live planning board (detailed spec — NEXT UP, resume 2026-10-11)
 

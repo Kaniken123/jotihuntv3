@@ -176,6 +176,17 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       });
     };
 
+    // An admin posted an update — everyone gets a popup.
+    const handleNewUpdate = (data: any) => {
+      addNotification({
+        type: 'system',
+        title: '📣 Nieuwe update',
+        message: data?.title || 'Er is een nieuwe update geplaatst',
+        read: false,
+        data,
+      });
+    };
+
     // Admin-only: a new hunt photo was submitted and is waiting for review.
     // The backend broadcasts this on every submit; non-admins ignore it.
     const handleHuntPendingReview = (data: any) => {
@@ -257,6 +268,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
     socket.on('new-message', handleNewMessage);
     socket.on('fox-status-change', handleFoxStatusChange);
+    socket.on('new-update', handleNewUpdate);
     socket.on('hunt-pending-review', handleHuntPendingReview);
     socket.on('hunt-reviewed', handleHuntReviewed);
     socket.on('new-assignment', handleNewAssignment);
@@ -268,6 +280,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     return () => {
       socket.off('new-message', handleNewMessage);
       socket.off('fox-status-change', handleFoxStatusChange);
+      socket.off('new-update', handleNewUpdate);
       socket.off('hunt-pending-review', handleHuntPendingReview);
       socket.off('hunt-reviewed', handleHuntReviewed);
       socket.off('new-assignment', handleNewAssignment);

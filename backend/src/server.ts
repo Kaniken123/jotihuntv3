@@ -22,6 +22,7 @@ import adminRoutes from './routes/admin';
 import hintsRoutes from './routes/hints';
 import deelgebiedenRoutes from './routes/deelgebieden';
 import pushRoutes from './routes/push';
+import planningRoutes, { startPlanningOverrunWatcher } from './routes/planning';
 
 const app = express();
 // Behind nginx: trust the first proxy hop so req.ip reflects the real client
@@ -78,6 +79,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/hints', hintsRoutes);
 app.use('/api/deelgebieden', deelgebiedenRoutes);
 app.use('/api/push', pushRoutes);
+app.use('/api/planning', planningRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
@@ -150,6 +152,8 @@ const startServer = async () => {
     
     server.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
+      // Planning board: flag hunters whose time-on-the-road ran out.
+      startPlanningOverrunWatcher();
       console.log(`Health check: http://localhost:${PORT}/api/health`);
       if (enableAutoSync) {
         console.log(`🔄 Auto-sync: Every 3 minutes (1 call/minute safe)`);
