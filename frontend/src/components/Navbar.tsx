@@ -103,10 +103,10 @@ const Navbar: React.FC = () => {
 
             {/* Android app download — available to everyone */}
             <a
-              href="/jotihunt-app.apk?v=v20"
-              download="jotihunt-release-v20.apk"
+              href="/jotihunt-app.apk?v=v23"
+              download="jotihunt.apk"
               className="hidden sm:inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-md text-sm font-medium bg-primary-600 hover:bg-primary-700 text-white transition-colors"
-              title="Download de Android-app (v20)"
+              title="Download de Android-app (v23)"
             >
               <Download size={16} />
               <span>App</span>
@@ -262,13 +262,13 @@ const Navbar: React.FC = () => {
 
               {/* Android app download — available to everyone */}
               <a
-                href="/jotihunt-app.apk?v=v20"
-                download="jotihunt-release-v20.apk"
+                href="/jotihunt-app.apk?v=v23"
+                download="jotihunt.apk"
                 onClick={closeMobileMenu}
                 className="flex items-center space-x-3 px-3 py-2 rounded-md text-base font-medium text-white bg-primary-600 hover:bg-primary-700 transition-colors"
               >
                 <Download size={20} />
-                <span>Download app (v20)</span>
+                <span>Download app (v23)</span>
               </a>
 
               {/* User info and actions in mobile */}

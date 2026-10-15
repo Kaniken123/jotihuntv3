@@ -5,7 +5,7 @@ import { X } from 'lucide-react';
 // Bump this key to re-show the popup for a future release/beta.
 const SEEN_KEY = 'jh_welcome_v15';
 // Latest mobile build offered for download (keep in sync with mobile app.json).
-const APK_VERSION = 'v20';
+const APK_VERSION = 'v23';
 const CONTACT_EMAIL = 'contact @ kaniken.nl';
 const CONTACT_PHONE_DISPLAY = '+31 6 33013211';
 const CONTACT_PHONE_TEL = '+31633013211';
@@ -95,7 +95,7 @@ const WelcomeModal: React.FC = () => {
             </p>
             <a
               href={`/jotihunt-app.apk?v=${APK_VERSION}`}
-              download={`jotihunt-release-${APK_VERSION}.apk`}
+              download="jotihunt.apk"
               className="mt-3 inline-flex items-center justify-center w-full rounded-lg bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold px-4 py-2 transition-colors"
             >
               {t('welcome.downloadApp')}
