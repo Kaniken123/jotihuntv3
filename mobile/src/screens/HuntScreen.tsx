@@ -99,9 +99,9 @@ const HuntScreen: React.FC = () => {
 
     const result = await ImagePicker.launchCameraAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [4, 3],
-      quality: 0.8,
+      // No allowsEditing/aspect: the photo is sent exactly as taken (no crop),
+      // so admins see the full frame on the dashboard.
+      quality: 1,
     });
 
     if (!result.canceled && result.assets[0]) {
@@ -118,9 +118,9 @@ const HuntScreen: React.FC = () => {
 
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [4, 3],
-      quality: 0.8,
+      // No allowsEditing/aspect: the photo is sent exactly as taken (no crop),
+      // so admins see the full frame on the dashboard.
+      quality: 1,
     });
 
     if (!result.canceled && result.assets[0]) {

@@ -43,6 +43,8 @@ const AdminDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState('overview');
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [pendingHunts, setPendingHunts] = useState<Hunt[]>([]);
+  const [approvedHunts, setApprovedHunts] = useState<Hunt[]>([]);
+  const [showApproved, setShowApproved] = useState(false);
   const [users, setUsers] = useState<User[]>([]);
   const [areas, setAreas] = useState<Area[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -137,6 +139,7 @@ const AdminDashboard: React.FC = () => {
 
       setStats(statsRes.data);
       setPendingHunts(huntsRes.data);
+      loadApprovedHunts();
       setUsers(usersRes.data);
       setAreas(areasRes.data);
       setAvailableTeams(teamsRes.data);
@@ -166,6 +169,7 @@ const AdminDashboard: React.FC = () => {
 
       // Reload pending hunts
       const response = await api.get('/hunts/pending');
+      loadApprovedHunts();
       setPendingHunts(response.data);
       
       setSelectedHunt(null);
@@ -245,6 +249,16 @@ const AdminDashboard: React.FC = () => {
       URL.revokeObjectURL(objUrl);
     } catch {
       window.open(url, '_blank'); // fallback: open in a new tab
+    }
+  };
+
+  // Approved hunts stay available after review (photos included).
+  const loadApprovedHunts = async () => {
+    try {
+      const res = await api.get('/hunts/reviewed?status=approved');
+      setApprovedHunts(res.data || []);
+    } catch (e) {
+      console.error('Failed to load approved hunts', e);
     }
   };
 
@@ -744,7 +758,6 @@ const AdminDashboard: React.FC = () => {
                       </div>
                       <div>
                         <p><strong>Location:</strong> {hunt.hunt_lat.toFixed(6)}, {hunt.hunt_lng.toFixed(6)}</p>
-                        <p><strong>Potential Points:</strong> {hunt.points_awarded}</p>
                       </div>
                     </div>
                   </div>
@@ -847,6 +860,54 @@ const AdminDashboard: React.FC = () => {
           </div>
         </div>
       )}
+
+      <div className="card p-6">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+            Goedgekeurde hunts ({approvedHunts.length})
+          </h3>
+          <button onClick={() => setShowApproved(!showApproved)} className="btn btn-secondary text-sm">
+            {showApproved ? 'Verbergen' : 'Tonen'}
+          </button>
+        </div>
+
+        {showApproved && (
+          <div className="mt-4 space-y-3">
+            {approvedHunts.length === 0 && (
+              <p className="text-sm text-gray-500 dark:text-gray-400">Nog geen goedgekeurde hunts.</p>
+            )}
+            {approvedHunts.map((hunt: any) => (
+              <div key={hunt.id} className="flex items-start gap-4 border border-gray-200 dark:border-gray-700 rounded-lg p-3">
+                {hunt.photo_url && (
+                  <img
+                    src={hunt.photo_url}
+                    alt="Hunt"
+                    className="w-28 h-20 object-cover rounded-md shrink-0"
+                  />
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-gray-900 dark:text-gray-100">
+                    🦊 {hunt.fox_area}
+                  </p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    {hunt.first_name || hunt.username}{hunt.last_name ? ' ' + hunt.last_name : ''}
+                    {hunt.hunt_time ? ' · ' + new Date(hunt.hunt_time).toLocaleString() : ''}
+                  </p>
+                </div>
+                {hunt.photo_url && (
+                  <button
+                    onClick={() => downloadHuntPhoto(hunt.photo_url, hunt.id, hunt.fox_area)}
+                    className="btn btn-secondary btn-sm flex items-center space-x-1 text-xs shrink-0"
+                  >
+                    <Download size={14} />
+                    <span>Download</span>
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 

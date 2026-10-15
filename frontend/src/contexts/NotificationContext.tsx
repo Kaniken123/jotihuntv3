@@ -222,7 +222,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         type: 'hunt',
         title: isApproved ? 'Hunt Approved!' : 'Hunt Rejected',
         message: isApproved 
-          ? `Your ${data.fox_area} hunt was approved for ${data.points_awarded} points!`
+          ? `Je hunt op ${data.fox_area} is goedgekeurd!`
           : `Your ${data.fox_area} hunt was rejected: ${data.rejection_reason}`,
         read: false,
         data

@@ -291,6 +291,38 @@ router.get('/pending', authenticateToken, requireAdmin, enforceTenantIsolation, 
   }
 });
 
+// Admin: reviewed hunts (approved by default) — kept visible after review so
+// the photos stay available to look back at and download.
+router.get('/reviewed', authenticateToken, requireAdmin, enforceTenantIsolation, async (req, res) => {
+  try {
+    const status = String(req.query.status || 'approved');
+    if (!['approved', 'rejected'].includes(status)) {
+      return res.status(400).json({ error: 'Invalid status' });
+    }
+    const limit = Math.min(Number(req.query.limit) || 200, 500);
+
+    const hunts = await db('hunts')
+      .select(
+        'hunts.*',
+        'users.username',
+        'users.first_name',
+        'users.last_name',
+        'teams.name as team_name'
+      )
+      .join('users', 'hunts.hunter_user_id', 'users.id')
+      .leftJoin('teams', 'hunts.hunter_team_id', 'teams.id')
+      .where('hunts.status', status)
+      .where('hunts.tenant_id', req.tenantId)
+      .orderBy('hunts.hunt_time', 'desc')
+      .limit(limit);
+
+    res.json(hunts);
+  } catch (error) {
+    console.error('Get reviewed hunts error:', error);
+    res.status(500).json({ error: 'Failed to get reviewed hunts' });
+  }
+});
+
 // Admin: Approve/Reject hunt
 router.put('/:hunt_id/review', authenticateToken, requireAdmin, enforceTenantIsolation, async (req, res) => {
   try {
