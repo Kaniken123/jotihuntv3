@@ -53,6 +53,22 @@ router.post('/settings', authenticateToken, enforceTenantIsolation, async (req, 
   }
 });
 
+// Should this device send its location at all? Driven by the per-person
+// switch on the planning board, so a phone that is not being tracked can
+// stop transmitting entirely instead of pinging into the void.
+router.get('/should-track', authenticateToken, enforceTenantIsolation, async (req, res) => {
+  try {
+    const entry = await db('planning_entries')
+      .where({ user_id: req.user!.id, tenant_id: req.tenantId })
+      .first();
+    res.json({ track: !!(entry && entry.track_location) });
+  } catch (error) {
+    console.error('should-track error:', error);
+    // Fail closed: if we cannot tell, do not start tracking someone.
+    res.json({ track: false });
+  }
+});
+
 router.post('/update', authenticateToken, enforceTenantIsolation, async (req, res) => {
   try {
     const { lat, lng, accuracy } = req.body;
@@ -61,14 +77,13 @@ router.post('/update', authenticateToken, enforceTenantIsolation, async (req, re
       return res.status(400).json({ error: 'Latitude and longitude required' });
     }
 
-    // Only hunters who are actually out hunting are tracked: the person must
-    // sit in the planning board's Hunt column. Everyone else's pings are
-    // accepted and dropped, so no location history is kept for them.
-    const onHunt = await db('planning_entries')
-      .where({ user_id: req.user!.id, tenant_id: req.tenantId, activity: 'hunt' })
+    // Tracking is switched per person on the planning board. If it is off for
+    // this user the ping is accepted and dropped: nothing stored, nothing shown.
+    const entry = await db('planning_entries')
+      .where({ user_id: req.user!.id, tenant_id: req.tenantId })
       .first();
-    if (!onHunt) {
-      return res.json({ tracked: false, reason: 'not_on_hunt' });
+    if (!entry || !entry.track_location) {
+      return res.json({ tracked: false, reason: 'tracking_off' });
     }
 
     // Check location sharing settings - create defaults if not exist

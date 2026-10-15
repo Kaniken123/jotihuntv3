@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
 import { User, Team, Tenant } from '../types';
 import { authService } from '../services/authService';
+import { AppState } from 'react-native';
 import { locationService } from '../services/locationService';
 import { registerForPush, unregisterPush } from '../services/pushService';
 import { getToken } from '../services/api';
@@ -141,7 +142,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           registerForPush();
           // Start location tracking automatically on app init with valid auth
           console.log('[AuthContext] Starting background location tracking...');
-          await locationService.startBackgroundTracking();
+          await locationService.syncTrackingWithServer();
 
           // Send initial location immediately
           console.log('[AuthContext] Sending initial location...');
@@ -170,6 +171,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     };
 
     initAuth();
+
+    // Re-check tracking whenever the app comes back to the foreground: an
+    // admin may have switched it on or off while we were away.
+    const sub = AppState.addEventListener('change', (next) => {
+      if (next === 'active') locationService.syncTrackingWithServer();
+    });
+    return () => sub.remove();
   }, []);
 
   const login = async (
@@ -214,7 +222,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       registerForPush();
       // Start location tracking automatically on login
       console.log('[AuthContext] Starting background location tracking...');
-      await locationService.startBackgroundTracking();
+      await locationService.syncTrackingWithServer();
 
       // Send initial location immediately
       console.log('[AuthContext] Sending initial location...');

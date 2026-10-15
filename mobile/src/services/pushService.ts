@@ -17,6 +17,20 @@ Notifications.setNotificationHandler({
 
 let registeredToken: string | null = null;
 
+// A "tracking on" push means an admin just switched location sharing on for
+// this person: start tracking without waiting for them to open the app.
+Notifications.addNotificationReceivedListener((n) => {
+  try {
+    const data: any = n?.request?.content?.data || {};
+    if (data.type === 'tracking-on') {
+      const { locationService } = require('./locationService');
+      locationService.syncTrackingWithServer();
+    }
+  } catch {
+    /* ignore */
+  }
+});
+
 async function ensureAndroidChannels(): Promise<void> {
   if (Platform.OS !== 'android') return;
   // Normal chat/deelgebied/announcement notifications.

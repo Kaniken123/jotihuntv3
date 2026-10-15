@@ -9,6 +9,7 @@ interface Entry {
   user_id: number | null;
   display_name: string | null;
   activity: string;
+  track_location?: boolean;
   timer_started_at: string | null;
   threshold_minutes: number;
   overrun_notified: boolean;
@@ -90,6 +91,12 @@ const PlanningBoard: React.FC = () => {
   const move = async (id: number, activity: string) => {
     setEntries((prev) => prev.map((e) => (e.id === id ? { ...e, activity } : e))); // optimistic
     try { await api.patch(`/planning/${id}`, { activity }); } catch { load(); }
+  };
+
+  // Location tracking is switched per person, independent of their column.
+  const setTracking = async (id: number, on: boolean) => {
+    setEntries((prev) => prev.map((e) => (e.id === id ? { ...e, track_location: on } : e)));
+    try { await api.patch(`/planning/${id}`, { track_location: on }); } catch { load(); }
   };
 
   const addPerson = async () => {
@@ -226,6 +233,19 @@ const PlanningBoard: React.FC = () => {
                           <option key={c.key} value={c.key}>{c.label}</option>
                         ))}
                       </select>
+
+                      <label className="mt-2 flex items-center gap-2 text-[11px] text-gray-600 dark:text-gray-300 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={!!e.track_location}
+                          onChange={(ev) => setTracking(e.id, ev.target.checked)}
+                          disabled={!e.user_id}
+                        />
+                        <span>📍 Locatie volgen</span>
+                      </label>
+                      {!e.user_id && (
+                        <p className="text-[10px] text-gray-400">geen account, dus geen locatie</p>
+                      )}
 
                       {col.key === 'hunt' && (
                         <div className="mt-2 border-t border-gray-100 dark:border-gray-600 pt-2">

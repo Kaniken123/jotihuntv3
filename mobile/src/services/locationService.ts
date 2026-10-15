@@ -34,11 +34,24 @@ TaskManager.defineTask(BACKGROUND_LOCATION_TASK, async ({ data, error }) => {
           batch: locations.length,
         });
 
-        await api.post('/locations/update', {
+        const resp = await api.post('/locations/update', {
           lat: location.coords.latitude,
           lng: location.coords.longitude,
           accuracy: location.coords.accuracy,
         });
+        // The server switches tracking per person on the planning board. When
+        // it says we are not tracked, stop transmitting instead of pinging on.
+        if (resp?.data?.tracked === false) {
+          console.log('[BackgroundLocationTask] Tracking is off for this user — stopping');
+          try {
+            if (await Location.hasStartedLocationUpdatesAsync(BACKGROUND_LOCATION_TASK)) {
+              await Location.stopLocationUpdatesAsync(BACKGROUND_LOCATION_TASK);
+            }
+          } catch (e) {
+            console.warn('[BackgroundLocationTask] Could not stop updates', e);
+          }
+          return;
+        }
         console.log('[BackgroundLocationTask] Location sent successfully');
       } catch (error) {
         console.error('[BackgroundLocationTask] Failed to update location:', error);
@@ -157,6 +170,25 @@ export const locationService = {
       return true;
     } catch (error) {
       console.error('[LocationService] Error starting background tracking:', error);
+      return false;
+    }
+  },
+
+  // Ask the server whether this person should be tracked right now (the admin
+  // switches it per person on the planning board) and start or stop to match.
+  async syncTrackingWithServer(): Promise<boolean> {
+    try {
+      const res = await api.get('/locations/should-track');
+      const shouldTrack = !!res?.data?.track;
+      const running = await this.isBackgroundTrackingRunning();
+      if (shouldTrack && !running) {
+        await this.startBackgroundTracking();
+      } else if (!shouldTrack && running) {
+        await this.stopBackgroundTracking();
+      }
+      return shouldTrack;
+    } catch (e: any) {
+      console.log('[LocationService] should-track check failed:', e?.message || e);
       return false;
     }
   },

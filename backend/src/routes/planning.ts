@@ -28,6 +28,7 @@ async function listEntries(tenantId: number) {
       'p.user_id',
       'p.display_name',
       'p.activity',
+      'p.track_location',
       'p.timer_started_at',
       'p.threshold_minutes',
       'p.overrun_notified',
@@ -110,12 +111,29 @@ router.patch('/:id', authenticateToken, requireAdmin, enforceTenantIsolation, as
       patch.activity = req.body.activity;
     }
     if (req.body?.display_name !== undefined) patch.display_name = String(req.body.display_name).trim();
+    if (req.body?.track_location !== undefined) patch.track_location = !!req.body.track_location;
+
+    const before = await db('planning_entries')
+      .where({ id: Number(req.params.id), tenant_id: req.tenantId! })
+      .first();
 
     const n = await db('planning_entries')
       .where({ id: Number(req.params.id), tenant_id: req.tenantId! })
       .update(patch);
     if (!n) return res.status(404).json({ error: 'Entry not found' });
     broadcast(req.tenantId!);
+
+    // Switching tracking ON nudges that phone so it starts sending again,
+    // even when the app is sitting in the background.
+    if (before && before.user_id && patch.track_location === true && !before.track_location) {
+      void sendPushToUsers([before.user_id], {
+        title: '📍 Locatie delen staat aan',
+        body: 'Het clubhuis volgt je locatie zolang je onderweg bent.',
+        data: { type: 'tracking-on' },
+        channelId: 'default',
+      }).catch((e) => console.error('tracking push error:', e));
+    }
+
     res.json({ ok: true });
   } catch (error) {
     console.error('Update planning entry error:', error);
