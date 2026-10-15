@@ -75,6 +75,7 @@ const AdminDashboard: React.FC = () => {
   const [availableTeams, setAvailableTeams] = useState<any[]>([]);
   const [availableUsers, setAvailableUsers] = useState<any[]>([]);
   const [deelgebieden, setDeelgebieden] = useState<any[]>([]);
+  const [activityChannels, setActivityChannels] = useState<any[]>([]);
   const [busyUserId, setBusyUserId] = useState<number | null>(null);
   const [sendingNotification, setSendingNotification] = useState(false);
   
@@ -89,6 +90,7 @@ const AdminDashboard: React.FC = () => {
     role: 'user',
     team_id: '',
     deelgebied_ids: [] as number[],
+    channel_ids: [] as number[],
     license_plate: '',
     is_active: true
   });
@@ -140,6 +142,11 @@ const AdminDashboard: React.FC = () => {
       setAvailableTeams(teamsRes.data);
       setAvailableUsers(usersForNotificationsRes.data);
       setDeelgebieden(deelgebiedenRes.data);
+      // Activity channels an admin can assign people to (members-only topics).
+      try {
+        const chRes = await api.get('/chat/channels');
+        setActivityChannels((chRes.data || []).filter((c: any) => c.type === 'topic' && c.members_only));
+      } catch { /* non-fatal */ }
     } catch (error: any) {
       console.error('Failed to load dashboard data:', error);
       if (error.response) {
@@ -349,6 +356,7 @@ const AdminDashboard: React.FC = () => {
       team_id: user.team ? availableTeams.find(t => t.name === user.team?.name)?.id?.toString() || '' : '',
       deelgebied_ids: ((user as any).deelgebieden || []).map((d: any) => d.id),
       license_plate: (user as any).license_plate || "",
+      channel_ids: ((user as any).channels || []).map((c: any) => c.id),
       is_active: user.is_active
     });
     setShowEditUserModal(true);
@@ -382,6 +390,16 @@ const AdminDashboard: React.FC = () => {
         ...toRemove.map((id) => api.delete(`/deelgebieden/${id}/members/${editingUser.id}`)),
       ]);
 
+      // Sync activity-channel memberships (Creatief / Foto's / Puzzels).
+      const curCh: number[] = ((editingUser as any).channels || []).map((c: any) => c.id);
+      const selCh = editUserData.channel_ids;
+      const chAdd = selCh.filter((id) => !curCh.includes(id));
+      const chRemove = curCh.filter((id) => !selCh.includes(id));
+      await Promise.all([
+        ...chAdd.map((id) => api.post(`/chat/channels/${id}/members`, { user_id: editingUser.id })),
+        ...chRemove.map((id) => api.delete(`/chat/channels/${id}/members/${editingUser.id}`)),
+      ]);
+
       // Reload users
       const usersResponse = await api.get('/users');
       setUsers(usersResponse.data);
@@ -396,6 +414,7 @@ const AdminDashboard: React.FC = () => {
         role: 'user',
         team_id: '',
         deelgebied_ids: [],
+        channel_ids: [],
         is_active: true
       });
       
@@ -1222,6 +1241,40 @@ const AdminDashboard: React.FC = () => {
                   Select the deelgebied(en) this user belongs to. They'll be added to the matching chat channel.
                 </p>
               </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Activiteiten (Creatief / Foto's / Puzzels)
+                </label>
+                <div className="grid grid-cols-2 gap-2 p-2 rounded-lg border border-gray-200 dark:border-gray-700 max-h-48 overflow-y-auto">
+                  {activityChannels.length === 0 && (
+                    <span className="text-xs text-gray-400 col-span-2">Geen activiteitenkanalen</span>
+                  )}
+                  {activityChannels.map((c) => {
+                    const checked = editUserData.channel_ids.includes(c.id);
+                    return (
+                      <label key={c.id} className="flex items-center gap-2 text-sm text-gray-800 dark:text-gray-200 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={(e) =>
+                            setEditUserData({
+                              ...editUserData,
+                              channel_ids: e.target.checked
+                                ? [...editUserData.channel_ids, c.id]
+                                : editUserData.channel_ids.filter((id) => id !== c.id),
+                            })
+                          }
+                        />
+                        {c.name}
+                      </label>
+                    );
+                  })}
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Alleen leden zien deze kanalen. Aankondiging is voor iedereen zichtbaar.
+                </p>
+              </div>
             </div>
 
             <div className="flex space-x-3 mt-6">
@@ -1245,6 +1298,7 @@ const AdminDashboard: React.FC = () => {
                     role: 'user',
                     team_id: '',
                     deelgebied_ids: [],
+        channel_ids: [],
                     is_active: true
                   });
                 }}

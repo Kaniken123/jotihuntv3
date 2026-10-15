@@ -136,11 +136,19 @@ export function setupSocket(io: SocketIOServer): void {
       socket.join(`tenant-${u.currentTenantId}-deelgebied-${id}`);
     }
 
-    // Global topic channels (Creatief / Foto's / Announcement) — everyone joins.
+    // Topic channels: open ones (e.g. Aankondiging) for everyone; members-only
+    // ones (Creatief/Foto's/Puzzels) only for actual members. Admins get all.
     const topicChannels = await db('chat_channels')
       .where({ tenant_id: u.currentTenantId, type: 'topic', is_active: true })
-      .select('id');
+      .select('id', 'members_only');
+    const myChannelIds: number[] = u.isAdmin
+      ? []
+      : (await db('user_channel_memberships')
+          .where({ user_id: u.id })
+          .whereNull('left_at')
+          .select('channel_id')).map((r) => r.channel_id);
     for (const c of topicChannels) {
+      if (c.members_only && !u.isAdmin && !myChannelIds.includes(c.id)) continue;
       socket.join(`tenant-${u.currentTenantId}-topic-${c.id}`);
     }
 

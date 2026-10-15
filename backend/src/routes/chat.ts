@@ -3,7 +3,7 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import { db, extractInsertId } from '../utils/database';
-import { authenticateToken, isAdmin, enforceTenantIsolation } from '../middleware/auth';
+import { authenticateToken, isAdmin, requireAdmin, enforceTenantIsolation } from '../middleware/auth';
 import { getSocketIO } from '../socketManager';
 import { sendPushToUsers } from '../services/pushService';
 
@@ -19,6 +19,15 @@ async function currentDeelgebiedIds(userId: number): Promise<number[]> {
   return rows.map((r) => r.deelgebied_id);
 }
 
+// A user's current topic-channel ids (membership not yet ended).
+async function currentChannelIds(userId: number): Promise<number[]> {
+  const rows = await db('user_channel_memberships')
+    .where({ user_id: userId })
+    .whereNull('left_at')
+    .select('channel_id');
+  return rows.map((r) => r.channel_id);
+}
+
 // Socket room a channel broadcasts to.
 function channelRoom(tenantId: number, channel: any): string {
   if (channel.type === 'general') return `tenant-${tenantId}-general-chat`;
@@ -32,7 +41,17 @@ function channelRoom(tenantId: number, channel: any): string {
 // team = member (legacy). Re-run on every send, not just channel open.
 async function canAccessChannel(user: any, channel: any): Promise<boolean> {
   if (channel.type === 'general') return true;
-  if (channel.type === 'topic') return true; // global topic channels: everyone reads
+  if (channel.type === 'topic') {
+    // Open topic channels (e.g. Aankondiging) are readable by everyone;
+    // members-only ones (Creatief/Foto's/Puzzels) need an active membership.
+    if (!channel.members_only) return true;
+    if (isAdmin(user)) return true;
+    const m = await db('user_channel_memberships')
+      .where({ user_id: user.id, channel_id: channel.id })
+      .whereNull('left_at')
+      .first();
+    return !!m;
+  }
   if (isAdmin(user)) return true;
   if (channel.type === 'deelgebied') {
     const m = await db('user_deelgebied_memberships')
@@ -272,6 +291,7 @@ router.get('/channels', authenticateToken, enforceTenantIsolation, async (req, r
     // channel; everyone sees the global general channel.
     const admin = isAdmin(req.user!);
     const myDeelgebiedIds = admin ? [] : await currentDeelgebiedIds(req.user!.id);
+    const myChannelIds = admin ? [] : await currentChannelIds(req.user!.id);
 
     const channels = await db('chat_channels')
       .select('*')
@@ -279,7 +299,16 @@ router.get('/channels', authenticateToken, enforceTenantIsolation, async (req, r
       .where('is_active', true)
       .where(function () {
         this.where('type', 'general');
-        this.orWhere('type', 'topic'); // global topic channels: visible to everyone
+        this.orWhere(function () {
+          this.where('type', 'topic');
+          if (!admin) {
+            // open channels, plus any members-only channel this user belongs to
+            this.andWhere(function () {
+              this.where('members_only', false)
+                .orWhereIn('id', myChannelIds.length ? myChannelIds : [-1]);
+            });
+          }
+        });
         this.orWhere(function () {
           this.where('type', 'deelgebied');
           if (!admin) {
@@ -566,6 +595,65 @@ router.delete('/messages/:message_id/reactions/:emoji', authenticateToken, async
   } catch (error) {
     console.error('Remove reaction error:', error);
     res.status(500).json({ error: 'Failed to remove reaction' });
+  }
+});
+
+
+// --- Channel membership (admin) — mirrors the deelgebieden member endpoints. ---
+router.get('/channels/:id/members', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const rows = await db('user_channel_memberships as m')
+      .join('users as u', 'm.user_id', 'u.id')
+      .where('m.channel_id', req.params.id)
+      .whereNull('m.left_at')
+      .orderBy('u.username')
+      .select('u.id', 'u.username', 'u.first_name', 'u.last_name', 'm.joined_at');
+    res.json(rows);
+  } catch (error) {
+    console.error('List channel members error:', error);
+    res.status(500).json({ error: 'Failed to list channel members' });
+  }
+});
+
+router.post('/channels/:id/members', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const channelId = Number(req.params.id);
+    const userId = Number(req.body?.user_id);
+    if (!userId) return res.status(400).json({ error: 'user_id is required' });
+
+    const channel = await db('chat_channels').where({ id: channelId, is_active: true }).first();
+    if (!channel) return res.status(404).json({ error: 'Channel not found' });
+    const user = await db('users').where({ id: userId }).first();
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const existing = await db('user_channel_memberships')
+      .where({ user_id: userId, channel_id: channelId })
+      .whereNull('left_at')
+      .first();
+    if (existing) return res.status(409).json({ error: 'User is already a member of this channel' });
+
+    await db('user_channel_memberships').insert({
+      user_id: userId,
+      channel_id: channelId,
+      joined_at: db.fn.now(),
+    });
+    res.status(201).json({ channel_id: channelId, user_id: userId });
+  } catch (error) {
+    console.error('Add channel member error:', error);
+    res.status(500).json({ error: 'Failed to add channel member' });
+  }
+});
+
+router.delete('/channels/:id/members/:userId', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const ended = await db('user_channel_memberships')
+      .where({ channel_id: Number(req.params.id), user_id: Number(req.params.userId) })
+      .whereNull('left_at')
+      .update({ left_at: db.fn.now() });
+    res.json({ ended });
+  } catch (error) {
+    console.error('End channel membership error:', error);
+    res.status(500).json({ error: 'Failed to end channel membership' });
   }
 });
 

@@ -73,12 +73,37 @@ router.get('/users', authenticateToken, requireAdmin, enforceTenantIsolation, as
           .orderBy('d.name')
           .select('d.id', 'd.name');
 
+        // Current activity-channel memberships (Creatief / Foto's / Puzzels).
+
+
+        const channels = await db('user_channel_memberships as m')
+
+
+          .join('chat_channels as c', 'm.channel_id', 'c.id')
+
+
+          .where('m.user_id', user.id)
+
+
+          .whereNull('m.left_at')
+
+
+          .orderBy('c.name')
+
+
+          .select('c.id', 'c.name');
+
+
+
         return {
           ...user,
           role: primaryRole,
           roles: roles,
           team: teamMembership,
-          deelgebieden
+          deelgebieden,
+          channels
+
+
         };
       })
     );
