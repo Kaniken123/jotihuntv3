@@ -61,6 +61,16 @@ router.post('/update', authenticateToken, enforceTenantIsolation, async (req, re
       return res.status(400).json({ error: 'Latitude and longitude required' });
     }
 
+    // Only hunters who are actually out hunting are tracked: the person must
+    // sit in the planning board's Hunt column. Everyone else's pings are
+    // accepted and dropped, so no location history is kept for them.
+    const onHunt = await db('planning_entries')
+      .where({ user_id: req.user!.id, tenant_id: req.tenantId, activity: 'hunt' })
+      .first();
+    if (!onHunt) {
+      return res.json({ tracked: false, reason: 'not_on_hunt' });
+    }
+
     // Check location sharing settings - create defaults if not exist
     let settings = await db('location_settings')
       .where('user_id', req.user!.id)

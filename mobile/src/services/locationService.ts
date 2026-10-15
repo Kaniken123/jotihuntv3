@@ -142,8 +142,8 @@ export const locationService = {
       await Location.startLocationUpdatesAsync(BACKGROUND_LOCATION_TASK, {
         accuracy: Location.Accuracy.High,
         activityType: Location.ActivityType.AutomotiveNavigation,
-        timeInterval: 30000, // Update every 30 seconds
-        distanceInterval: 0, // Send update regardless of distance (every 30 seconds)
+        timeInterval: 60000, // Update every 60 seconds
+        distanceInterval: 0, // Send update regardless of distance (every minute)
         showsBackgroundLocationIndicator: true,
         foregroundService: {
           notificationTitle: 'Jotihunt Location Tracking',
