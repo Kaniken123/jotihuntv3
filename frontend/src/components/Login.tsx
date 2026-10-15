@@ -169,6 +169,7 @@ const Login: React.FC = () => {
                     onChange={(e) => setUsername(e.target.value)}
                     disabled={isLoading}
                   />
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{t("login.usernameHint")}</p>
                 </div>
               )}
 

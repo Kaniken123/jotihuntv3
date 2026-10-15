@@ -39,6 +39,7 @@
     "emailPlaceholder": "your.email@example.com",
     "scoutingGroupPlaceholder": "Your scouting group",
     "usernamePlaceholder": "Choose a username",
+    "usernameHint": "Your username is firstname.lastname",
     "passwordPlaceholder": "Enter your password",
     "passwordCreatePlaceholder": "Choose a secure password",
     "passwordHint": "Password must be at least 6 characters long",
@@ -266,6 +267,7 @@
     "noMessagesTitle": "No messages yet",
     "beFirst": "Be the first to start the conversation in {{channel}}!",
     "messagePlaceholder": "Message {{channel}}...",
+    "download": "Download",
     "readOnlyChannel": "Only admins can post in this channel.",
     "noChannelsTitle": "No channels available",
     "joinTeam": "Join a team to start chatting!"

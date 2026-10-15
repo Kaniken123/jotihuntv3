@@ -28,6 +28,24 @@ const LocationSettings: React.FC = () => {
   const [locationHistory, setLocationHistory] = useState<any[]>([]);
 
   const { state } = useAuth();
+  const [licensePlate, setLicensePlate] = useState<string>((state.user as any)?.license_plate || "");
+  const [savingPlate, setSavingPlate] = useState(false);
+  const [plateSaved, setPlateSaved] = useState(false);
+
+  // Hunters set their own kenteken here; admins can also set it in User Management.
+  const saveLicensePlate = async () => {
+    if (!state.user?.id) return;
+    setSavingPlate(true); setPlateSaved(false);
+    try {
+      await api.put("/users/" + state.user.id, { license_plate: licensePlate.trim().toUpperCase() });
+      setPlateSaved(true);
+      setTimeout(() => setPlateSaved(false), 3000);
+    } catch (e: any) {
+      setError(e.response?.data?.error || "Kenteken opslaan mislukt");
+    } finally {
+      setSavingPlate(false);
+    }
+  };
   const { t } = useTranslation();
 
   useEffect(() => {
@@ -155,6 +173,27 @@ const LocationSettings: React.FC = () => {
 
   return (
     <div className="max-w-4xl mx-auto p-6 space-y-6">
+      {/* Kenteken (licence plate) — the hunter can set their own */}
+      <div className="card p-6">
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">Mijn kenteken</h2>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
+          Vul het kenteken in van het voertuig waarmee je hunt. Laat leeg als je te voet of op de fiets bent.
+        </p>
+        <div className="flex flex-wrap items-center gap-3">
+          <input
+            type="text"
+            value={licensePlate}
+            onChange={(e) => setLicensePlate(e.target.value.toUpperCase())}
+            placeholder="XX-123-X"
+            className="input flex-1 max-w-xs"
+          />
+          <button onClick={saveLicensePlate} disabled={savingPlate} className="btn btn-primary">
+            {savingPlate ? "Opslaan..." : "Opslaan"}
+          </button>
+          {plateSaved && <span className="text-sm text-green-600 dark:text-green-400">Opgeslagen</span>}
+        </div>
+      </div>
+
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
           {t('locationSettings.pageTitle')}

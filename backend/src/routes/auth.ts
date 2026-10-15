@@ -269,6 +269,9 @@ router.post('/register', registerLimiter, async (req, res) => {
 router.get('/me', authenticateToken, async (req, res) => {
   try {
     const user = req.user!;
+
+    // license_plate is not on the JWT-derived user object — read it fresh.
+    const profile = await db("users").where({ id: user.id }).select("license_plate").first();
     
     // Get team membership for current tenant
     const teamMembership = await db('team_members')
@@ -296,6 +299,7 @@ router.get('/me', authenticateToken, async (req, res) => {
         email: user.email,
         first_name: user.first_name,
         last_name: user.last_name,
+        license_plate: profile?.license_plate || null,
         is_active: user.is_active,
         tenant: user.tenant,
         current_tenant: req.tenant,

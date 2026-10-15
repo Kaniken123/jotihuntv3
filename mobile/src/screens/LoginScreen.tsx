@@ -170,7 +170,8 @@ const LoginScreen: React.FC = () => {
           ) : null}
 
           {mode === 'login' ? (
-            /* Username Input */
+            <>
+            {/* Username Input */}
             <View style={styles.inputContainer}>
               <Ionicons name="person-outline" size={20} color="#6B7280" style={styles.inputIcon} />
               <TextInput
@@ -184,6 +185,8 @@ const LoginScreen: React.FC = () => {
                 editable={!isLoading}
               />
             </View>
+            <Text style={styles.loginHint}>Je gebruikersnaam is voornaam.achternaam</Text>
+            </>
           ) : (
             <>
               {/* First + Last name (register) */}
@@ -360,6 +363,13 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 18,
     fontWeight: '600',
+  },
+  loginHint: {
+    marginTop: -6,
+    marginBottom: 14,
+    fontSize: 12,
+    color: "#6B7280",
+    textAlign: "center",
   },
   registerNote: {
     marginTop: 12,

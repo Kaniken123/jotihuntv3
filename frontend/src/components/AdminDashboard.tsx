@@ -89,6 +89,7 @@ const AdminDashboard: React.FC = () => {
     role: 'user',
     team_id: '',
     deelgebied_ids: [] as number[],
+    license_plate: '',
     is_active: true
   });
 
@@ -347,6 +348,7 @@ const AdminDashboard: React.FC = () => {
       role: user.role,
       team_id: user.team ? availableTeams.find(t => t.name === user.team?.name)?.id?.toString() || '' : '',
       deelgebied_ids: ((user as any).deelgebieden || []).map((d: any) => d.id),
+      license_plate: (user as any).license_plate || "",
       is_active: user.is_active
     });
     setShowEditUserModal(true);
@@ -363,6 +365,7 @@ const AdminDashboard: React.FC = () => {
         last_name: editUserData.last_name,
         role: editUserData.role,
         team_id: editUserData.team_id ? parseInt(editUserData.team_id) : null,
+        license_plate: editUserData.license_plate,
         is_active: editUserData.is_active
       };
 
@@ -1140,6 +1143,19 @@ const AdminDashboard: React.FC = () => {
                   className="input"
                   placeholder="john@example.com"
                   required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Kenteken
+                </label>
+                <input
+                  type="text"
+                  value={editUserData.license_plate}
+                  onChange={(e) => setEditUserData({ ...editUserData, license_plate: e.target.value.toUpperCase() })}
+                  className="input"
+                  placeholder="XX-123-X"
                 />
               </div>
 

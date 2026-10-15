@@ -61,6 +61,7 @@
     "emailPlaceholder": "jouw.email@voorbeeld.nl",
     "scoutingGroupPlaceholder": "Je scoutinggroep",
     "usernamePlaceholder": "Kies een gebruikersnaam",
+    "usernameHint": "Je gebruikersnaam is voornaam.achternaam",
     "passwordPlaceholder": "Voer je wachtwoord in",
     "passwordCreatePlaceholder": "Kies een veilig wachtwoord",
     "passwordHint": "Wachtwoord moet minstens 6 tekens lang zijn",
@@ -288,6 +289,7 @@
     "noMessagesTitle": "Nog geen berichten",
     "beFirst": "Wees de eerste die het gesprek begint in {{channel}}!",
     "messagePlaceholder": "Bericht aan {{channel}}...",
+    "download": "Downloaden",
     "readOnlyChannel": "Alleen beheerders kunnen hier berichten plaatsen.",
     "noChannelsTitle": "Geen kanalen beschikbaar",
     "joinTeam": "Word lid van een team om te chatten!"

@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useWebSocket } from '../contexts/WebSocketContext';
 import { api } from '../services/authService';
 import LoadingSpinner from './LoadingSpinner';
-import { Send, Paperclip, Hash, Users, MoreHorizontal, Search, Phone, Video } from 'lucide-react';
+import { Send, Paperclip, Hash, Users, MoreHorizontal, Search, Phone, Video, Download } from "lucide-react";
 import { isAdmin } from '../utils/roleUtils';
 
 interface Channel {
@@ -138,6 +138,38 @@ const ModernChat: React.FC = () => {
     ));
   };
 
+  // Download a chat attachment to disk (blob so it saves instead of navigating).
+
+  const downloadAttachment = async (url: string) => {
+
+    const name = url.split("/").pop() || "bijlage";
+
+    try {
+
+      const res = await fetch(url);
+
+      const blob = await res.blob();
+
+      const objUrl = URL.createObjectURL(blob);
+
+      const a = document.createElement("a");
+
+      a.href = objUrl; a.download = name;
+
+      document.body.appendChild(a); a.click(); a.remove();
+
+      URL.revokeObjectURL(objUrl);
+
+    } catch {
+
+      window.open(url, "_blank");
+
+    }
+
+  };
+
+  
+
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if ((!newMessage.trim() && !selectedFile) || !activeChannel || isSending) return;
@@ -253,7 +285,7 @@ const ModernChat: React.FC = () => {
   return (
     <div className="h-full flex bg-white dark:bg-gray-900">
       {/* Sidebar - Channels */}
-      <div className="w-64 bg-gray-50 dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col">
+      <div className="hidden md:flex w-64 bg-gray-50 dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex-col">
         {/* Header */}
         <div className="p-4 border-b border-gray-200 dark:border-gray-700">
           <h1 className="text-lg font-semibold text-gray-900 dark:text-white">
@@ -304,7 +336,20 @@ const ModernChat: React.FC = () => {
 
       {/* Main Chat Area */}
       {activeChannel ? (
-        <div className="flex-1 flex flex-col">
+        <div className="flex-1 flex flex-col min-w-0">
+          {/* Mobile channel selector — the sidebar is hidden below md */}
+          <div data-testid="mobile-channel-select" className="md:hidden p-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+            <select
+              value={activeChannel.id}
+              onChange={(e) => {
+                const ch = channels.find(c => c.id === Number(e.target.value));
+                if (ch) setActiveChannel(ch);
+              }}
+              className="w-full px-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+            >
+              {channels.map(c => (<option key={c.id} value={c.id}>{c.name}</option>))}
+            </select>
+          </div>
           {/* Chat Header */}
           <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4">
             <div className="flex items-center justify-between">
@@ -441,6 +486,9 @@ const ModernChat: React.FC = () => {
                                   <span className="text-sm">{t('chat.viewAttachment')}</span>
                                 </a>
                               )}
+                            <button onClick={() => downloadAttachment(message.attachment_url!)} className="mt-1 flex items-center space-x-1 text-xs opacity-80 hover:opacity-100 underline">
+                              <Download size={12} /><span>{t("chat.download")}</span>
+                            </button>
                             </div>
                           )}
 

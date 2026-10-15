@@ -44,7 +44,7 @@ router.get('/users', authenticateToken, requireAdmin, enforceTenantIsolation, as
     
     // Get users with their roles for current tenant
     const users = await db('users')
-      .select('users.id', 'users.username', 'users.email', 'users.first_name', 'users.last_name', 'users.is_active', 'users.status', 'users.scouting_group', 'users.created_at')
+      .select('users.id', 'users.username', 'users.email', 'users.first_name', 'users.last_name', 'users.is_active', 'users.status', 'users.scouting_group', 'users.license_plate', 'users.created_at')
       .where('users.tenant_id', currentTenantId)
       .orderBy('users.username');
 
@@ -206,7 +206,7 @@ router.post('/users', authenticateToken, requireAdmin, enforceTenantIsolation, a
 
     // Get the newly created user
     const user = await db('users')
-      .select('id', 'username', 'email', 'first_name', 'last_name', 'status', 'is_active', 'created_at')
+      .select('id', 'username', 'email', 'first_name', 'last_name', 'status', 'is_active', 'license_plate', 'created_at')
       .where({ id: userId, tenant_id: currentTenantId })
       .first();
 
@@ -227,7 +227,7 @@ router.post('/users', authenticateToken, requireAdmin, enforceTenantIsolation, a
 router.put('/users/:id', authenticateToken, enforceTenantIsolation, async (req, res) => {
   try {
     const { id } = req.params;
-    const { username, email, first_name, last_name, role, team_id, is_active } = req.body;
+    const { username, email, first_name, last_name, role, team_id, is_active, license_plate } = req.body;
     const currentTenantId = req.tenantId!;
 
     if (req.user!.id !== parseInt(id) && !isAdmin(req.user!)) {
@@ -249,6 +249,8 @@ router.put('/users/:id', authenticateToken, enforceTenantIsolation, async (req, 
     if (first_name) updateData.first_name = first_name;
     if (last_name) updateData.last_name = last_name;
     if (typeof is_active === 'boolean' && isAdmin(req.user!)) updateData.is_active = is_active;
+    // Licence plate: editable by the hunter themselves and by admins.
+    if (license_plate !== undefined) updateData.license_plate = String(license_plate).trim().toUpperCase() || null;
 
     await db('users').where({ id, tenant_id: currentTenantId }).update(updateData);
 
@@ -299,7 +301,7 @@ router.put('/users/:id', authenticateToken, enforceTenantIsolation, async (req, 
     // NB: users has no `role` column (multi-tenancy moved roles to user_roles) —
     // selecting it here used to crash the whole update with "no such column".
     const user = await db('users')
-      .select('id', 'username', 'email', 'first_name', 'last_name', 'status', 'is_active', 'created_at')
+      .select('id', 'username', 'email', 'first_name', 'last_name', 'status', 'is_active', 'license_plate', 'created_at')
       .where('id', id)
       .first();
 
