@@ -12,12 +12,20 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
+import { Image } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system';
+import * as MediaLibrary from 'expo-media-library';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
 import { useWebSocket } from '../contexts/WebSocketContext';
 import { gameService } from '../services/gameService';
 import { TeamMessage, ChatChannel } from '../types';
 import { format, isToday, isYesterday } from 'date-fns';
+import config from '../utils/config';
+
+// Attachment URLs come back relative (/api/uploads/...); make them absolute.
+const fileUrl = (u: string) => (u.startsWith('http') ? u : config.API_URL.replace(/\/api$/, '') + u);
 
 const senderName = (m: TeamMessage): string =>
   m.first_name || m.username || m.user?.first_name || m.user?.username || 'Unknown';
@@ -84,15 +92,58 @@ const ChatScreen: React.FC = () => {
     return () => off('new-message', handleNewMessage);
   }, [on, off]);
 
+  const [attachment, setAttachment] = useState<ImagePicker.ImagePickerAsset | null>(null);
+
+  // Pick a photo to send in the chat.
+  const pickChatImage = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Geen toegang', 'Geef toegang tot je foto\u0027s om een foto te versturen.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.7,
+    });
+    if (!result.canceled && result.assets?.length) setAttachment(result.assets[0]);
+  };
+
+  // Save a chat photo to the phone gallery.
+  const downloadAttachment = async (url: string) => {
+    try {
+      const { status } = await MediaLibrary.requestPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Geen toegang', 'Geef toegang tot je foto\u0027s om te kunnen opslaan.');
+        return;
+      }
+      const abs = fileUrl(url);
+      const name = abs.split('/').pop() || 'foto.jpg';
+      const target = FileSystem.cacheDirectory + name;
+      const { uri } = await FileSystem.downloadAsync(abs, target);
+      await MediaLibrary.saveToLibraryAsync(uri);
+      Alert.alert('Opgeslagen', 'De foto staat in je galerij.');
+    } catch (e: any) {
+      Alert.alert('Mislukt', 'Opslaan is niet gelukt.');
+    }
+  };
+
   const sendMessage = async () => {
-    if (!newMessage.trim() || !activeChannel || isSending) return;
+    if ((!newMessage.trim() && !attachment) || !activeChannel || isSending) return;
 
     const messageText = newMessage.trim();
     setNewMessage('');
     setIsSending(true);
 
     try {
-      const sent = await gameService.sendChannelMessage(activeChannel.id, messageText);
+      const pending = attachment;
+      const sent = pending
+        ? await gameService.sendChannelAttachment(activeChannel.id, messageText, {
+            uri: pending.uri,
+            name: pending.fileName || undefined,
+            type: pending.mimeType || 'image/jpeg',
+          })
+        : await gameService.sendChannelMessage(activeChannel.id, messageText);
+      setAttachment(null);
       // Optimistically add — don't rely on the socket echo reaching us.
       setMessages((prev) => (prev.some((m) => m.id === sent.id) ? prev : [...prev, sent]));
       setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
@@ -151,6 +202,24 @@ const ChatScreen: React.FC = () => {
           >
             {item.message}
           </Text>
+          {item.attachment_url ? (
+            <View style={styles.attachmentWrap}>
+              {(item.attachment_type || '').startsWith('image') ? (
+                <Image
+                  source={{ uri: fileUrl(item.attachment_url) }}
+                  style={styles.attachmentImage}
+                  resizeMode="cover"
+                />
+              ) : null}
+              <TouchableOpacity
+                style={styles.downloadBtn}
+                onPress={() => downloadAttachment(item.attachment_url!)}
+              >
+                <Ionicons name="download-outline" size={14} color="#1E40AF" />
+                <Text style={styles.downloadBtnText}>Opslaan</Text>
+              </TouchableOpacity>
+            </View>
+          ) : null}
           <Text
             style={[
               styles.messageTime,
@@ -251,7 +320,20 @@ const ChatScreen: React.FC = () => {
           <Text style={styles.readOnlyText}>🔒 Alleen beheerders kunnen hier berichten plaatsen.</Text>
         </View>
       ) : (
+      <>
+      {attachment && (
+        <View style={styles.previewBar}>
+          <Image source={{ uri: attachment.uri }} style={styles.previewThumb} />
+          <Text style={styles.previewText} numberOfLines={1}>Foto klaar om te versturen</Text>
+          <TouchableOpacity onPress={() => setAttachment(null)}>
+            <Ionicons name="close-circle" size={22} color="#9CA3AF" />
+          </TouchableOpacity>
+        </View>
+      )}
       <View style={styles.inputContainer}>
+        <TouchableOpacity style={styles.attachBtn} onPress={pickChatImage}>
+          <Ionicons name="image-outline" size={22} color="#1E40AF" />
+        </TouchableOpacity>
         <TextInput
           style={styles.input}
           placeholder="Type a message..."
@@ -264,10 +346,10 @@ const ChatScreen: React.FC = () => {
         <TouchableOpacity
           style={[
             styles.sendButton,
-            (!newMessage.trim() || isSending) && styles.sendButtonDisabled,
+            ((!newMessage.trim() && !attachment) || isSending) && styles.sendButtonDisabled,
           ]}
           onPress={sendMessage}
-          disabled={!newMessage.trim() || isSending}
+          disabled={(!newMessage.trim() && !attachment) || isSending}
         >
           {isSending ? (
             <ActivityIndicator color="#FFFFFF" size="small" />
@@ -276,6 +358,7 @@ const ChatScreen: React.FC = () => {
           )}
         </TouchableOpacity>
       </View>
+      </>
       )}
     </KeyboardAvoidingView>
   );
@@ -487,6 +570,56 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
     borderTopColor: '#E5E7EB',
+  },
+  attachmentWrap: {
+    marginTop: 6,
+  },
+  attachmentImage: {
+    width: 200,
+    height: 150,
+    borderRadius: 8,
+    backgroundColor: '#E5E7EB',
+  },
+  downloadBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    backgroundColor: '#EFF6FF',
+    borderRadius: 6,
+    alignSelf: 'flex-start',
+  },
+  downloadBtnText: {
+    color: '#1E40AF',
+    fontSize: 12,
+    fontWeight: '600',
+    marginLeft: 4,
+  },
+  previewBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: '#F9FAFB',
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+  },
+  previewThumb: {
+    width: 40,
+    height: 40,
+    borderRadius: 6,
+    marginRight: 10,
+  },
+  previewText: {
+    flex: 1,
+    fontSize: 13,
+    color: '#6B7280',
+    marginRight: 10,
+  },
+  attachBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 10,
   },
   readOnlyBar: {
     padding: 16,

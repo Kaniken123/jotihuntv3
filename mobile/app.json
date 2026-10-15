@@ -2,7 +2,7 @@
   "expo": {
     "name": "Jotihunt",
     "slug": "jotihunt-mobile",
-    "version": "1.0.20",
+    "version": "1.0.21",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -31,7 +31,7 @@
         "backgroundColor": "#1E40AF"
       },
       "package": "com.jotihunt.mobile",
-      "versionCode": 20,
+      "versionCode": 21,
       "permissions": [
         "ACCESS_COARSE_LOCATION",
         "ACCESS_FINE_LOCATION",
@@ -80,6 +80,14 @@
         "expo-notifications",
         {
           "color": "#1E40AF"
+        }
+      ],
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "Jotihunt gebruikt je fotos om bijlagen in de chat te versturen.",
+          "savePhotosPermission": "Jotihunt slaat chatfotos op in je galerij.",
+          "isAccessMediaLocationEnabled": true
         }
       ]
     ],

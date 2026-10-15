@@ -130,6 +130,25 @@ export const gameService = {
     return response.data;
   },
 
+  // Send a chat message with an image attachment (multipart; backend field: "attachment").
+  async sendChannelAttachment(
+    channelId: number,
+    message: string,
+    file: { uri: string; name?: string; type?: string }
+  ): Promise<TeamMessage> {
+    const formData = new FormData();
+    if (message) formData.append("message", message);
+    formData.append("attachment", {
+      uri: file.uri,
+      name: file.name || file.uri.split("/").pop() || "foto.jpg",
+      type: file.type || "image/jpeg",
+    } as any);
+    const response = await api.post(`/chat/channels/${channelId}/messages`, formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    return response.data;
+  },
+
   // Rules
   async getRules(): Promise<string> {
     const response = await api.get('/rules');
