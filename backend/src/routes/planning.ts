@@ -191,8 +191,8 @@ router.post('/:id/send-back', authenticateToken, requireAdmin, enforceTenantIsol
     }
 
     await sendPushToUsers([entry.user_id], {
-      title: '🔔 Kom terug naar de basis',
-      body: String(req.body?.message || 'Je wordt terugverwacht op de basis. Kom terug.'),
+      title: '🔔 Kom terug naar het clubhuis',
+      body: String(req.body?.message || 'Je bent al best een tijd weg. Kom svp terug naar het clubhuis'),
       data: { type: 'return-to-base' },
       sound: 'default',
       channelId: 'alerts',

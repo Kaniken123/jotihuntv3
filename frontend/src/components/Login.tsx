@@ -52,7 +52,7 @@ const Login: React.FC = () => {
           first_name: firstName,
           last_name: lastName
         });
-        setSuccess(res.message || t('login.registerSuccess'));
+        setSuccess(t('login.registerSuccess'));
         setIsLoginMode(true);
         // Clear form
         setUsername('');

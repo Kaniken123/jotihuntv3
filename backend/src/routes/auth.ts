@@ -250,7 +250,7 @@ router.post('/register', registerLimiter, async (req, res) => {
     const { password_hash: _, ...userWithoutPassword } = user;
 
     res.status(201).json({
-      message: 'Registration submitted. An admin will review your account before you can sign in.',
+      message: 'Registratie ingediend. Een beheerder beoordeelt je account voordat je kunt inloggen.',
       user: {
         ...userWithoutPassword,
         tenant: {
