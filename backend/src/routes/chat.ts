@@ -456,17 +456,26 @@ router.post('/channels/:channel_id/messages', authenticateToken, enforceTenantIs
       channel_type: channel.type,
       channel_name: channel.name,
       admin_post_only: !!channel.admin_post_only,
+      members_only: !!channel.members_only,
     });
 
     // Remote push (FCM) — same whitelist as in-app notifications: deelgebied
-    // channels → members; Announcement (admin_post_only) → everyone. Fire-and-
-    // forget so the HTTP response isn't delayed; no-ops when push isn't configured.
+    // channels → members; members-only topic channels (Creatief/Foto's/Puzzels)
+    // → the people added to that channel; Announcement (admin_post_only) →
+    // everyone. Fire-and-forget so the HTTP response isn't delayed; no-ops when
+    // push isn't configured.
     void (async () => {
       try {
         let recipientIds: number[] = [];
         if (channel.type === 'deelgebied') {
           const members = await db('user_deelgebied_memberships')
             .where({ deelgebied_id: channel.deelgebied_id })
+            .whereNull('left_at')
+            .select('user_id');
+          recipientIds = members.map((m) => m.user_id);
+        } else if (channel.type === 'topic' && channel.members_only) {
+          const members = await db('user_channel_memberships')
+            .where({ channel_id: channel.id })
             .whereNull('left_at')
             .select('user_id');
           recipientIds = members.map((m) => m.user_id);

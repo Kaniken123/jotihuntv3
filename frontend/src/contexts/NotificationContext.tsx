@@ -143,10 +143,14 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     const handleNewMessage = (data: any) => {
       // Don't notify about your own messages.
       if (data.user_id && authState.user && data.user_id === authState.user.id) return;
-      // Only deelgebied channels and Announcement (admin_post_only) raise a
-      // notification — the general "Hunters algemeen" and the open topic channels
-      // (Creatief/Foto's/Puzzels) are too chatty and would spam everyone.
-      const notifiable = data.channel_type === 'deelgebied' || data.admin_post_only === true;
+      // Deelgebied channels and Aankondiging (admin_post_only) raise a
+      // notification, and so do the members-only topic channels (Creatief/
+      // Foto's/Puzzels) — you are only in those if someone added you. The general
+      // "Hunters algemeen" stays silent: it is too chatty and would spam everyone.
+      const notifiable =
+        data.channel_type === 'deelgebied' ||
+        data.admin_post_only === true ||
+        data.members_only === true;
       if (!notifiable) return;
       // Sender fields are top-level on the message payload (not under data.user).
       const sender = data.first_name
