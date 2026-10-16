@@ -5,7 +5,6 @@ import fs from 'fs';
 import { db, extractInsertId } from '../utils/database';
 import { authenticateToken, requireAdmin, isAdmin, enforceTenantIsolation } from '../middleware/auth';
 import { getSocketIO } from '../socketManager';
-import { triggerPrediction } from '../services/foxPrediction';
 
 const router = express.Router();
 
@@ -228,8 +227,7 @@ router.post('/submit', authenticateToken, enforceTenantIsolation, upload.single(
     // Emit to admins for review
     io.emit('hunt-pending-review', hunt);
 
-    // Fresh photo-verified sighting → refresh this fox's prediction.
-    triggerPrediction(foxArea.id, req.tenantId!);
+
 
     res.status(201).json(hunt);
   } catch (error) {
@@ -393,7 +391,7 @@ router.put('/:hunt_id/review', authenticateToken, requireAdmin, enforceTenantIso
           last_seen: new Date(),
           source: 'hunt',
         });
-        triggerPrediction(area.id, req.tenantId!);
+
       }
     }
 

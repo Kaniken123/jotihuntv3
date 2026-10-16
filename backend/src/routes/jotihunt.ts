@@ -8,7 +8,6 @@ import { JotihuntApiService } from '../services/jotihuntApi';
 // Dutch label for a raw fox status (shared by the status endpoints).
 const foxStatusLabelNl = (api: string): string =>
   ({ green: 'actief', orange: 'onderweg', red: 'inactief' } as Record<string, string>)[api] || api;
-import { getLatestPrediction, predictAllForTenant, triggerPrediction } from '../services/foxPrediction';
 
 const router = express.Router();
 
@@ -670,9 +669,6 @@ router.post('/areas/:area_id/location', authenticateToken, enforceTenantIsolatio
       console.error('Socket emission error:', socketError);
     }
 
-    // New manual sighting → refresh this fox's prediction (fire-and-forget).
-    triggerPrediction(parseInt(area_id), req.tenantId!);
-
     res.json(updatedArea);
   } catch (error) {
     console.error('Update area location error:', error);
@@ -1041,34 +1037,6 @@ router.get('/subscriptions-with-visits', authenticateToken, async (req, res) => 
 
 // Note: Subscription area is now read-only and automatically synced from the Jotihunt API
 // Manual updates have been removed to maintain data consistency with the external API
-
-// FOX LOCATION PREDICTION ENDPOINTS
-
-// Get the latest prediction (heatmap + top zones + confidence) for one fox area.
-router.get('/areas/:areaId/prediction', authenticateToken, enforceTenantIsolation, async (req, res) => {
-  try {
-    const areaId = parseInt(req.params.areaId, 10);
-    const prediction = await getLatestPrediction(areaId, req.tenantId!);
-    if (!prediction) {
-      return res.status(404).json({ error: 'No prediction available for this area yet' });
-    }
-    res.json(prediction);
-  } catch (error) {
-    console.error('Get prediction error:', error);
-    res.status(500).json({ error: 'Failed to get prediction' });
-  }
-});
-
-// Admin: recompute predictions for all areas of this tenant on demand.
-router.post('/predictions/recompute', authenticateToken, requireAdmin, enforceTenantIsolation, async (req, res) => {
-  try {
-    const count = await predictAllForTenant(req.tenantId!);
-    res.json({ message: 'Predictions recomputed', areas: count });
-  } catch (error) {
-    console.error('Recompute predictions error:', error);
-    res.status(500).json({ error: 'Failed to recompute predictions' });
-  }
-});
 
 // Admin: granular reset for launching a fresh event. EVERY category is an
 // independent flag — the admin opts in to each one in the UI. Runs as a single

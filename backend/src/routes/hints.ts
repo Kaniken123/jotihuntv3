@@ -2,20 +2,8 @@ import express from 'express';
 import { db } from '../utils/database';
 import { authenticateToken, isAdmin } from '../middleware/auth';
 import { rdToWgs84, parseRDCoordinates, validateRDCoordinates, formatRDCoordinates } from '../utils/coordinates';
-import { triggerPrediction } from '../services/foxPrediction';
 
 const router = express.Router();
-
-/** Recompute predictions for the named fox areas of a tenant (fire-and-forget). */
-async function triggerForFoxNames(foxNames: string[], tenantId: number): Promise<void> {
-  if (!foxNames.length) return;
-  try {
-    const areas = await db('areas').whereIn('name', foxNames).where('tenant_id', tenantId);
-    for (const area of areas) triggerPrediction(area.id, tenantId);
-  } catch (err: any) {
-    console.error('Hint prediction trigger lookup failed:', err?.message ?? err);
-  }
-}
 
 // Submit a hint solution. A single hint can reveal several fox areas at once, so
 // we store ONE ROW PER REVEALED FOX (the table holds a single fox_team/lat/lng).
@@ -125,7 +113,6 @@ router.post('/solutions', authenticateToken, async (req, res) => {
 
     // Recompute affected foxes' predictions (unverified → low weight applies).
     const tenantId = req.user!.current_tenant_id || req.user!.tenant_id;
-    void triggerForFoxNames(foxRows.map(f => f.fox_team), tenantId);
 
     res.status(201).json({
       success: true,
@@ -242,7 +229,6 @@ router.patch('/solutions/:id', authenticateToken, async (req, res) => {
     // Trust changed → recompute this fox's prediction at the new weight.
     if (solution.fox_team) {
       const tenantId = req.user!.current_tenant_id || req.user!.tenant_id;
-      void triggerForFoxNames([solution.fox_team], tenantId);
     }
 
     res.json({ success: true, message: 'Solution updated successfully', verification_status: status });

@@ -1,5 +1,5 @@
 import { api } from './authService';
-import { Area, Article, UserLocation, Hunt, FoxPrediction } from '../types';
+import { Area, Article, UserLocation, Hunt } from '../types';
 
 export const gameService = {
   async getAreas(): Promise<Area[]> {
@@ -185,23 +185,6 @@ export const gameService = {
   // Admin: Reset all fox locations
   async resetAllFoxLocations() {
     const response = await api.post('/jotihunt/areas/reset-locations');
-    return response.data;
-  },
-
-  // Fox location prediction
-  async getFoxPrediction(areaId: number): Promise<FoxPrediction | null> {
-    try {
-      const response = await api.get(`/jotihunt/areas/${areaId}/prediction`);
-      return response.data;
-    } catch (error: any) {
-      if (error?.response?.status === 404) return null; // no prediction yet
-      throw error;
-    }
-  },
-
-  // Admin: recompute predictions for all fox areas
-  async recomputePredictions() {
-    const response = await api.post('/jotihunt/predictions/recompute');
     return response.data;
   },
 

@@ -7,7 +7,6 @@ import { gameService } from '../services/gameService';
 import { useWebSocket } from '../contexts/WebSocketContext';
 import { useAuth } from '../contexts/AuthContext';
 import FoxStatusOverlay from './FoxStatusOverlay';
-import FoxPredictionLayer from './FoxPredictionLayer';
 
 // Subscription Popup Content Component
 interface SubscriptionPopupProps {
@@ -389,7 +388,6 @@ const Map: React.FC<{ beamer?: boolean }> = ({ beamer = false }) => {
   const [isAddMode, setIsAddMode] = useState(false);
   const [visibleFoxTeams, setVisibleFoxTeams] = useState<Set<string>>(new Set(['Alpha', 'Bravo', 'Charlie', 'Delta', 'Echo', 'Foxtrot', 'Golf', 'Hotel']));
   const [showFoxFilter, setShowFoxFilter] = useState(false);
-  const [showPredictions, setShowPredictions] = useState(false);
   const [showUserMarkers, setShowUserMarkers] = useState(true);
   const [showSubscriptions, setShowSubscriptions] = useState(true);
   const [showNoHuntZones, setShowNoHuntZones] = useState(true);
@@ -1227,19 +1225,6 @@ const Map: React.FC<{ beamer?: boolean }> = ({ beamer = false }) => {
       {/* Fox Location Buttons — hidden on the beamer/projection view */}
       {!beamer && (
       <div className="absolute bottom-4 right-4 z-10 space-y-2">
-        {/* Prediction toggle */}
-        <button
-          onClick={() => setShowPredictions(!showPredictions)}
-          className={`hidden md:flex items-center space-x-2 px-4 py-2 rounded-md shadow-lg transition-all ${
-            showPredictions
-              ? 'bg-purple-600 hover:bg-purple-700 text-white'
-              : 'bg-white hover:bg-gray-100 text-gray-700 border border-gray-300'
-          }`}
-        >
-          <span className="text-lg">🎯</span>
-          <span className="text-sm font-medium">{t('prediction.toggle')}</span>
-        </button>
-
         {/* Public Fox Report Button */}
         <button
           onClick={() => setIsReportFoxMode(!isReportFoxMode)}
@@ -1312,7 +1297,6 @@ const Map: React.FC<{ beamer?: boolean }> = ({ beamer = false }) => {
         {subscriptionMarkers}
 
         {/* Fox location predictions (heatmap + top zones) */}
-        <FoxPredictionLayer areas={areas} visible={showPredictions} />
         
         {/* Fox Route Polyline */}
         {selectedFoxRoute && selectedFoxRoute.route.length > 1 && (
@@ -1344,11 +1328,9 @@ const Map: React.FC<{ beamer?: boolean }> = ({ beamer = false }) => {
                 </Popup>
               </Marker>
             ))}
-            {/* Removed: walking-speed prediction circle. Replaced by FoxPredictionLayer (🎯 toggle). */}
           </>
         )}
         
-        {/* Removed: all-foxes walking-speed prediction circles. Replaced by FoxPredictionLayer (🎯 toggle). */}
         
         {/* Current user position */}
         {userPosition && (
