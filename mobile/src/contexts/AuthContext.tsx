@@ -177,8 +177,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const sub = AppState.addEventListener('change', (next) => {
       if (next === 'active') {
         locationService.syncTrackingWithServer().then((on) => {
-          if (on) locationService.sendCurrentLocationNow();
+          if (on) {
+            locationService.sendCurrentLocationNow();
+            locationService.startForegroundWatch();
+          }
         });
+      } else {
+        // Off screen: let the background service take over again.
+        locationService.stopForegroundWatch();
       }
     });
     return () => sub.remove();

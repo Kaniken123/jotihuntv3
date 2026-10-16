@@ -107,11 +107,27 @@ router.post('/batch', authenticateToken, enforceTenantIsolation, async (req, res
       .filter(Boolean) as any[];
 
     if (!rows.length) return res.status(400).json({ error: 'No valid points' });
-    rows.sort((a, b) => a.recorded_at.getTime() - b.recorded_at.getTime());
-    await db('user_locations').insert(rows);
+
+    // The foreground watcher and the background task can both report the same
+    // moment; drop anything that lands within a few seconds of what we already
+    // have so the trail does not collect duplicates.
+    const MIN_GAP_MS = 8000;
+    const last = await db('user_locations')
+      .where({ user_id: req.user!.id })
+      .orderBy('recorded_at', 'desc')
+      .first();
+    let cutoff = last ? new Date(last.recorded_at).getTime() : 0;
+    const fresh = [] as any[];
+    for (const r of rows.sort((a, b) => a.recorded_at.getTime() - b.recorded_at.getTime())) {
+      if (r.recorded_at.getTime() - cutoff < MIN_GAP_MS) continue;
+      fresh.push(r);
+      cutoff = r.recorded_at.getTime();
+    }
+    if (!fresh.length) return res.json({ tracked: true, stored: 0 });
+    await db('user_locations').insert(fresh);
 
     // One live update for the newest fix — the map only needs the current dot.
-    const latest = rows[rows.length - 1];
+    const latest = fresh[fresh.length - 1];
     try {
       const { getSocketIO } = require('../socketManager');
       const user = await db('users')
@@ -133,7 +149,7 @@ router.post('/batch', authenticateToken, enforceTenantIsolation, async (req, res
       /* socket not ready */
     }
 
-    res.json({ tracked: true, stored: rows.length });
+    res.json({ tracked: true, stored: fresh.length });
   } catch (error) {
     console.error('Batch location error:', error);
     res.status(500).json({ error: 'Failed to store locations' });

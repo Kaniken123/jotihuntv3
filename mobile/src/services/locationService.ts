@@ -64,6 +64,8 @@ export interface LocationTrackingOptions {
   distanceInterval?: number;
 }
 
+let foregroundWatch: Location.LocationSubscription | null = null;
+
 export const locationService = {
   // Request location permissions
   async requestPermissions(): Promise<boolean> {
@@ -149,7 +151,7 @@ export const locationService = {
       // degraded or stalled while driving with no wifi — the "stopped at speed" bug).
       // activityType keeps iOS from pausing updates for a moving vehicle.
       await Location.startLocationUpdatesAsync(BACKGROUND_LOCATION_TASK, {
-        accuracy: Location.Accuracy.High,
+        accuracy: Location.Accuracy.BestForNavigation,
         activityType: Location.ActivityType.AutomotiveNavigation,
         timeInterval: 30000, // Capture a fix every 30 seconds
         // Do not let Android hold fixes back and deliver them in one lump.
@@ -171,6 +173,43 @@ export const locationService = {
       console.error('[LocationService] Error starting background tracking:', error);
       return false;
     }
+  },
+
+  // While the app is actually on screen we can stream positions ourselves,
+  // which makes the live dot move every few seconds instead of waiting for
+  // Android to hand over its batch.
+  async startForegroundWatch(): Promise<void> {
+    if (foregroundWatch) return;
+    try {
+      foregroundWatch = await Location.watchPositionAsync(
+        {
+          accuracy: Location.Accuracy.BestForNavigation,
+          timeInterval: 15000,
+          distanceInterval: 0,
+        },
+        async (loc) => {
+          try {
+            await api.post('/locations/batch', {
+              points: [{
+                lat: loc.coords.latitude,
+                lng: loc.coords.longitude,
+                accuracy: loc.coords.accuracy,
+                recorded_at: new Date(loc.timestamp).toISOString(),
+              }],
+            });
+          } catch {
+            /* offline for a moment — the background task still carries it */
+          }
+        }
+      );
+    } catch (e: any) {
+      console.log('[LocationService] foreground watch failed:', e?.message || e);
+    }
+  },
+
+  stopForegroundWatch(): void {
+    try { foregroundWatch?.remove(); } catch { /* ignore */ }
+    foregroundWatch = null;
   },
 
   // A single fresh fix, used when the app comes to the foreground so the
