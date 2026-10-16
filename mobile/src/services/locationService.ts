@@ -18,27 +18,23 @@ TaskManager.defineTask(BACKGROUND_LOCATION_TASK, async ({ data, error }) => {
     const { locations } = data as { locations: Location.LocationObject[] };
     console.log('[BackgroundLocationTask] Received locations:', locations.length);
 
-    // The OS batches fixes and can deliver several at once (common at speed /
-    // after a background gap). Send the NEWEST one so the server never shows a
-    // stale position; locations[0] alone looked "frozen" when a batch arrived.
-    const location = locations
+    // Android coalesces fixes and hands us several at once. Send them ALL —
+    // keeping only the newest left the stored route with one point per
+    // delivery, which is why it looked like it updated every ten minutes.
+    const points = locations
       .filter((l) => l && l.coords)
-      .sort((a, b) => b.timestamp - a.timestamp)[0];
+      .sort((a, b) => a.timestamp - b.timestamp)
+      .map((l) => ({
+        lat: l.coords.latitude,
+        lng: l.coords.longitude,
+        accuracy: l.coords.accuracy,
+        recorded_at: new Date(l.timestamp).toISOString(),
+      }));
 
-    if (location) {
+    if (points.length) {
       try {
-        console.log('[BackgroundLocationTask] Sending location to server:', {
-          lat: location.coords.latitude,
-          lng: location.coords.longitude,
-          accuracy: location.coords.accuracy,
-          batch: locations.length,
-        });
-
-        const resp = await api.post('/locations/update', {
-          lat: location.coords.latitude,
-          lng: location.coords.longitude,
-          accuracy: location.coords.accuracy,
-        });
+        console.log('[BackgroundLocationTask] Sending', points.length, 'fix(es)');
+        const resp = await api.post('/locations/batch', { points });
         // The server switches tracking per person on the planning board. When
         // it says we are not tracked, stop transmitting instead of pinging on.
         if (resp?.data?.tracked === false) {
@@ -52,9 +48,9 @@ TaskManager.defineTask(BACKGROUND_LOCATION_TASK, async ({ data, error }) => {
           }
           return;
         }
-        console.log('[BackgroundLocationTask] Location sent successfully');
+        console.log('[BackgroundLocationTask] Stored', resp?.data?.stored);
       } catch (error) {
-        console.error('[BackgroundLocationTask] Failed to update location:', error);
+        console.error('[BackgroundLocationTask] Failed to send locations:', error);
       }
     }
   } else {
@@ -156,6 +152,9 @@ export const locationService = {
         accuracy: Location.Accuracy.High,
         activityType: Location.ActivityType.AutomotiveNavigation,
         timeInterval: 60000, // Update every 60 seconds
+        // Do not let Android hold fixes back and deliver them in one lump.
+        deferredUpdatesInterval: 0,
+        deferredUpdatesDistance: 0,
         distanceInterval: 0, // Send update regardless of distance (every minute)
         showsBackgroundLocationIndicator: true,
         foregroundService: {
@@ -171,6 +170,24 @@ export const locationService = {
     } catch (error) {
       console.error('[LocationService] Error starting background tracking:', error);
       return false;
+    }
+  },
+
+  // A single fresh fix, used when the app comes to the foreground so the
+  // route gets a current point without running a second tracking stream.
+  async sendCurrentLocationNow(): Promise<void> {
+    try {
+      const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+      await api.post('/locations/batch', {
+        points: [{
+          lat: loc.coords.latitude,
+          lng: loc.coords.longitude,
+          accuracy: loc.coords.accuracy,
+          recorded_at: new Date(loc.timestamp).toISOString(),
+        }],
+      });
+    } catch (e: any) {
+      console.log('[LocationService] catch-up fix failed:', e?.message || e);
     }
   },
 

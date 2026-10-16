@@ -69,6 +69,77 @@ router.get('/should-track', authenticateToken, enforceTenantIsolation, async (re
   }
 });
 
+// Android hands the background task a BATCH of fixes at once (it coalesces them
+// to save power, even with a foreground service running). Posting only the
+// newest threw the rest away and left a route with one point per delivery, so
+// this takes the whole batch and keeps each fix on its OWN timestamp.
+router.post('/batch', authenticateToken, enforceTenantIsolation, async (req, res) => {
+  try {
+    const points = Array.isArray(req.body?.points) ? req.body.points : [];
+    if (!points.length) return res.status(400).json({ error: 'points[] is required' });
+
+    // Same per-person switch as the single update.
+    const entry = await db('planning_entries')
+      .where({ user_id: req.user!.id, tenant_id: req.tenantId })
+      .first();
+    if (!entry || !entry.track_location) {
+      return res.json({ tracked: false, reason: 'tracking_off', stored: 0 });
+    }
+
+    const now = Date.now();
+    const DAY = 24 * 60 * 60 * 1000;
+    const rows = points
+      .map((p: any) => {
+        const lat = Number(p?.lat);
+        const lng = Number(p?.lng);
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+        // Trust the fix's own time, but never the future and never ancient.
+        const t = p?.recorded_at ? new Date(p.recorded_at).getTime() : now;
+        const ts = Number.isFinite(t) ? Math.min(Math.max(t, now - DAY), now) : now;
+        return {
+          user_id: req.user!.id,
+          lat,
+          lng,
+          accuracy: Number.isFinite(Number(p?.accuracy)) ? Number(p.accuracy) : null,
+          recorded_at: new Date(ts),
+        };
+      })
+      .filter(Boolean) as any[];
+
+    if (!rows.length) return res.status(400).json({ error: 'No valid points' });
+    rows.sort((a, b) => a.recorded_at.getTime() - b.recorded_at.getTime());
+    await db('user_locations').insert(rows);
+
+    // One live update for the newest fix — the map only needs the current dot.
+    const latest = rows[rows.length - 1];
+    try {
+      const { getSocketIO } = require('../socketManager');
+      const user = await db('users')
+        .select('id', 'username', 'first_name', 'last_name')
+        .where({ id: req.user!.id })
+        .first();
+      const tenantId = req.user!.current_tenant_id || req.user!.tenant_id;
+      getSocketIO().to(`tenant-${tenantId}`).emit('location-update', {
+        user_id: req.user!.id,
+        username: user?.username,
+        first_name: user?.first_name,
+        last_name: user?.last_name,
+        lat: latest.lat,
+        lng: latest.lng,
+        accuracy: latest.accuracy,
+        recorded_at: latest.recorded_at,
+      });
+    } catch {
+      /* socket not ready */
+    }
+
+    res.json({ tracked: true, stored: rows.length });
+  } catch (error) {
+    console.error('Batch location error:', error);
+    res.status(500).json({ error: 'Failed to store locations' });
+  }
+});
+
 router.post('/update', authenticateToken, enforceTenantIsolation, async (req, res) => {
   try {
     const { lat, lng, accuracy } = req.body;

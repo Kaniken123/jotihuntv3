@@ -175,7 +175,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // Re-check tracking whenever the app comes back to the foreground: an
     // admin may have switched it on or off while we were away.
     const sub = AppState.addEventListener('change', (next) => {
-      if (next === 'active') locationService.syncTrackingWithServer();
+      if (next === 'active') {
+        locationService.syncTrackingWithServer().then((on) => {
+          if (on) locationService.sendCurrentLocationNow();
+        });
+      }
     });
     return () => sub.remove();
   }, []);
