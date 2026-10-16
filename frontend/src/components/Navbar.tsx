@@ -40,10 +40,10 @@ const Navbar: React.FC = () => {
   return (
     <nav className="sticky top-0 z-40 bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-16">
-          <div className="flex items-center">
-            <div className="flex-shrink-0">
-              <Link to="/" className="text-xl font-bold text-gray-900 dark:text-gray-100 hover:text-primary-600 dark:hover:text-primary-400">
+        <div className="flex justify-between items-center h-16 gap-2">
+          <div className="flex items-center min-w-0">
+            <div className="min-w-0">
+              <Link to="/" className="block truncate text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100 hover:text-primary-600 dark:hover:text-primary-400">
                 Jotihunt | GOG
               </Link>
             </div>
@@ -81,7 +81,7 @@ const Navbar: React.FC = () => {
             </div>
             
             {team && (
-              <div className="ml-6 flex items-center">
+              <div className="ml-6 hidden md:flex items-center">
                 <span className="text-sm text-gray-500 dark:text-gray-400">
                   {t('navbar.team')}: <span className="font-medium text-gray-900 dark:text-gray-100">{team.name}</span>
                 </span>
@@ -95,7 +95,7 @@ const Navbar: React.FC = () => {
 
           </div>
           
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-2 sm:space-x-4 shrink-0">
             {/* Mobile menu button */}
             <div className="md:hidden">
               <button
