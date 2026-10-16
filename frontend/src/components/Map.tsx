@@ -861,7 +861,6 @@ const Map: React.FC<{ beamer?: boolean }> = ({ beamer = false }) => {
   const foxMarkers = useMemo(() => {
     console.log('🦊 Creating fox markers:', areas.length, 'areas total');
     const filteredAreas = areas.filter(area => visibleFoxTeams.has(area.name));
-    console.log('🦊 Visible fox areas:', filteredAreas.length);
     
     return filteredAreas.map((area) => {
       console.log('🦊 Processing area:', area.name, 'lat:', area.lat, 'lng:', area.lng);
@@ -981,10 +980,8 @@ const Map: React.FC<{ beamer?: boolean }> = ({ beamer = false }) => {
     )) : [], [userLocations, showUserMarkers]);
 
   const subscriptionMarkers = useMemo(() => {
-    console.log('🏠 Creating subscription markers:', subscriptions.length, 'subscriptions total');
     const filteredSubscriptions = showSubscriptions ? subscriptions
       .filter(subscription => subscription.lat && subscription.lng) : []; // Only show subscriptions with coordinates
-    console.log('🏠 Visible subscriptions with coords:', filteredSubscriptions.length);
 
     return filteredSubscriptions.map((subscription) => {
         // Check if any fox team has visited this subscription
@@ -1297,6 +1294,7 @@ const Map: React.FC<{ beamer?: boolean }> = ({ beamer = false }) => {
         zoom={zoom}
         style={{ height: '100%', width: '100%' }}
         className="z-0"
+        preferCanvas={true}
       >
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -1318,7 +1316,6 @@ const Map: React.FC<{ beamer?: boolean }> = ({ beamer = false }) => {
         
         {/* Fox Route Polyline */}
         {selectedFoxRoute && selectedFoxRoute.route.length > 1 && (
-          console.log('🗺️ Rendering fox route with', selectedFoxRoute.route.length, 'points'),
           <>
             <Polyline
               positions={selectedFoxRoute.route.map(point => [point.lat, point.lng])}
@@ -1328,7 +1325,10 @@ const Map: React.FC<{ beamer?: boolean }> = ({ beamer = false }) => {
               dashArray="5, 10"
             />
             {/* Route point markers to show progression */}
-            {selectedFoxRoute.route.map((point, index) => (
+            {(selectedFoxRoute.route.length > 25
+              ? [selectedFoxRoute.route[0], selectedFoxRoute.route[selectedFoxRoute.route.length - 1]]
+              : selectedFoxRoute.route
+            ).map((point, index) => (
               <Marker
                 key={`route-point-${point.id}`}
                 position={[point.lat, point.lng]}
