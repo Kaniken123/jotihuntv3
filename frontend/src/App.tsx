@@ -28,7 +28,7 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
   
   if (state.isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-[100dvh] flex items-center justify-center">
         <div className="text-center">
           <LoadingSpinner size="lg" />
           <p className="mt-4 text-gray-600 dark:text-gray-400">Loading...</p>
@@ -50,7 +50,7 @@ const AdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
   if (state.isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-[100dvh] flex items-center justify-center">
         <LoadingSpinner size="lg" />
       </div>
     );
@@ -86,7 +86,7 @@ const AppContent: React.FC = () => {
             path="/"
             element={
               <ProtectedRoute>
-                <div className="flex flex-col h-screen">
+                <div className="flex flex-col h-[100dvh]">
                   <Navbar />
                   <div className="flex-1 overflow-hidden">
                     <Map />
@@ -101,7 +101,7 @@ const AppContent: React.FC = () => {
               <ProtectedRoute>
                 {/* Full-screen projection view: live fox map + 3-state status overlay,
                     no navbar/chrome. Reuses the normal Map (foxes, status, predictions). */}
-                <div className="h-screen w-screen overflow-hidden">
+                <div className="h-[100dvh] w-screen overflow-hidden">
                   <Map beamer />
                 </div>
               </ProtectedRoute>
@@ -111,7 +111,7 @@ const AppContent: React.FC = () => {
             path="/chat"
             element={
               <ProtectedRoute>
-                <div className="flex flex-col h-screen">
+                <div className="flex flex-col h-[100dvh]">
                   <Navbar />
                   <div className="flex-1 overflow-hidden">
                     <ModernChat />
@@ -124,7 +124,7 @@ const AppContent: React.FC = () => {
             path="/hunt"
             element={
               <ProtectedRoute>
-                <div className="flex flex-col h-screen">
+                <div className="flex flex-col h-[100dvh]">
                   <Navbar />
                   <div className="flex-1 overflow-y-auto">
                     <HuntRegistration />
@@ -137,7 +137,7 @@ const AppContent: React.FC = () => {
             path="/updates"
             element={
               <ProtectedRoute>
-                <div className="flex flex-col h-screen">
+                <div className="flex flex-col h-[100dvh]">
                   <Navbar />
                   <div className="flex-1 overflow-y-auto">
                     <HintsList />
@@ -150,7 +150,7 @@ const AppContent: React.FC = () => {
             path="/updates/:id"
             element={
               <ProtectedRoute>
-                <div className="flex flex-col h-screen">
+                <div className="flex flex-col h-[100dvh]">
                   <Navbar />
                   <div className="flex-1 overflow-y-auto">
                     <UpdateDetail />
@@ -163,7 +163,7 @@ const AppContent: React.FC = () => {
             path="/rules"
             element={
               <ProtectedRoute>
-                <div className="flex flex-col h-screen">
+                <div className="flex flex-col h-[100dvh]">
                   <Navbar />
                   <div className="flex-1 overflow-y-auto">
                     <Rules />
@@ -176,7 +176,7 @@ const AppContent: React.FC = () => {
             path="/admin"
             element={
               <AdminRoute>
-                <div className="flex flex-col h-screen">
+                <div className="flex flex-col h-[100dvh]">
                   <Navbar />
                   <div className="flex-1 overflow-y-auto">
                     <AdminDashboard />
@@ -189,7 +189,7 @@ const AppContent: React.FC = () => {
             path="/admin/updates"
             element={
               <AdminRoute>
-                <div className="flex flex-col h-screen">
+                <div className="flex flex-col h-[100dvh]">
                   <Navbar />
                   <div className="flex-1 overflow-y-auto">
                     <AdminUpdateComposer />
@@ -204,7 +204,7 @@ const AppContent: React.FC = () => {
             path="/admin/planning"
             element={
               <AdminRoute>
-                <div className="flex flex-col h-screen">
+                <div className="flex flex-col h-[100dvh]">
                   <Navbar />
                   <div className="flex-1 overflow-y-auto">
                     <PlanningBoard />
@@ -219,7 +219,7 @@ const AppContent: React.FC = () => {
             path="/admin/routes"
             element={
               <AdminRoute>
-                <div className="flex flex-col h-screen">
+                <div className="flex flex-col h-[100dvh]">
                   <Navbar />
                   <div className="flex-1 overflow-y-auto">
                     <AdminRouteTracking />
@@ -232,7 +232,7 @@ const AppContent: React.FC = () => {
             path="/routes"
             element={
               <ProtectedRoute>
-                <div className="flex flex-col h-screen">
+                <div className="flex flex-col h-[100dvh]">
                   <Navbar />
                   <div className="flex-1 overflow-y-auto">
                     <RouteTracker />
@@ -245,7 +245,7 @@ const AppContent: React.FC = () => {
             path="/settings"
             element={
               <ProtectedRoute>
-                <div className="flex flex-col h-screen">
+                <div className="flex flex-col h-[100dvh]">
                   <Navbar />
                   <div className="flex-1 overflow-y-auto">
                     <LocationSettings />

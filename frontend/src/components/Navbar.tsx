@@ -38,7 +38,7 @@ const Navbar: React.FC = () => {
   ];
 
   return (
-    <nav className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
+    <nav className="sticky top-0 z-40 bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           <div className="flex items-center">
@@ -47,6 +47,17 @@ const Navbar: React.FC = () => {
                 Jotihunt | GOG
               </Link>
             </div>
+
+            {/* Android app download — sits between the name and the menu */}
+            <a
+              href="/jotihunt-app.apk?v=v25"
+              download="jotihunt.apk"
+              className="ml-3 inline-flex items-center space-x-1.5 px-2.5 py-1.5 rounded-md text-sm font-medium bg-primary-600 hover:bg-primary-700 text-white transition-colors shrink-0"
+              title="Download de Android-app (v25)"
+            >
+              <Download size={16} />
+              <span className="hidden sm:inline">App</span>
+            </a>
             
             {/* Navigation Links */}
             <div className="hidden md:ml-6 md:flex md:space-x-8">
@@ -101,24 +112,14 @@ const Navbar: React.FC = () => {
               </button>
             </div>
 
-            {/* Android app download — available to everyone */}
-            <a
-              href="/jotihunt-app.apk?v=v25"
-              download="jotihunt.apk"
-              className="hidden sm:inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-md text-sm font-medium bg-primary-600 hover:bg-primary-700 text-white transition-colors"
-              title="Download de Android-app (v25)"
-            >
-              <Download size={16} />
-              <span>App</span>
-            </a>
 
             {/* Language switcher */}
             <div className="hidden sm:block">
               <LanguageSwitcher />
             </div>
 
-            {/* Notification Center */}
-            <div className="hidden sm:block">
+            {/* Notification Center — also on phones, it was hidden there before */}
+            <div>
               <NotificationCenter />
             </div>
             
@@ -294,7 +295,7 @@ const Navbar: React.FC = () => {
                 </div>
 
                 {/* Mobile notification center */}
-                <div className="mb-3 sm:hidden">
+                <div className="hidden">
                   <div className="flex items-center space-x-3 px-3 py-2">
                     <NotificationCenter />
                     <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{t('navbar.notifications')}</span>

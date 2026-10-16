@@ -1111,7 +1111,7 @@ const Map: React.FC<{ beamer?: boolean }> = ({ beamer = false }) => {
       {/* Control Panel — hidden on the beamer/projection view */}
       {!beamer && (
       <div className="absolute top-4 right-4 z-10 space-y-2">
-        {/* Quick Hint Solution Button */}
+        {/* Quick Hint Solution Button — desktop only (too cramped on a phone) */}
         <button
           onClick={() => {
             // Standalone entry: open even with no synced article (selectedHint = null),
@@ -1119,7 +1119,7 @@ const Map: React.FC<{ beamer?: boolean }> = ({ beamer = false }) => {
             setSelectedHint(hints.length > 0 ? (hints.find(h => !h.is_read) || hints[0]) : null);
             setShowHintSolutionModal(true);
           }}
-          className="flex items-center space-x-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white border border-blue-700 rounded-md shadow-lg transition-all"
+          className="hidden md:flex items-center space-x-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white border border-blue-700 rounded-md shadow-lg transition-all"
         >
           <span className="text-sm">💡</span>
           <span className="text-xs font-medium">{t('map.quickHint')}</span>
@@ -1233,7 +1233,7 @@ const Map: React.FC<{ beamer?: boolean }> = ({ beamer = false }) => {
         {/* Prediction toggle */}
         <button
           onClick={() => setShowPredictions(!showPredictions)}
-          className={`flex items-center space-x-2 px-4 py-2 rounded-md shadow-lg transition-all ${
+          className={`hidden md:flex items-center space-x-2 px-4 py-2 rounded-md shadow-lg transition-all ${
             showPredictions
               ? 'bg-purple-600 hover:bg-purple-700 text-white'
               : 'bg-white hover:bg-gray-100 text-gray-700 border border-gray-300'
@@ -1246,7 +1246,7 @@ const Map: React.FC<{ beamer?: boolean }> = ({ beamer = false }) => {
         {/* Public Fox Report Button */}
         <button
           onClick={() => setIsReportFoxMode(!isReportFoxMode)}
-          className={`flex items-center space-x-2 px-4 py-2 rounded-md shadow-lg transition-all ${
+          className={`hidden md:flex items-center space-x-2 px-4 py-2 rounded-md shadow-lg transition-all ${
             isReportFoxMode 
               ? 'bg-red-600 hover:bg-red-700 text-white' 
               : 'bg-green-600 hover:bg-green-700 text-white'
