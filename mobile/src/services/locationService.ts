@@ -151,11 +151,11 @@ export const locationService = {
       await Location.startLocationUpdatesAsync(BACKGROUND_LOCATION_TASK, {
         accuracy: Location.Accuracy.High,
         activityType: Location.ActivityType.AutomotiveNavigation,
-        timeInterval: 60000, // Update every 60 seconds
+        timeInterval: 30000, // Capture a fix every 30 seconds
         // Do not let Android hold fixes back and deliver them in one lump.
         deferredUpdatesInterval: 0,
         deferredUpdatesDistance: 0,
-        distanceInterval: 0, // Send update regardless of distance (every minute)
+        distanceInterval: 0, // Capture on time alone, also when standing still
         showsBackgroundLocationIndicator: true,
         foregroundService: {
           notificationTitle: 'Jotihunt Location Tracking',
