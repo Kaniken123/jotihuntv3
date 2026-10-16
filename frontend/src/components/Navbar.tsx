@@ -50,10 +50,10 @@ const Navbar: React.FC = () => {
 
             {/* Android app download — sits between the name and the menu */}
             <a
-              href="/jotihunt-app.apk?v=v28"
+              href="/jotihunt-app.apk?v=v29"
               download="jotihunt.apk"
               className="ml-3 inline-flex items-center space-x-1.5 px-2.5 py-1.5 rounded-md text-sm font-medium bg-primary-600 hover:bg-primary-700 text-white transition-colors shrink-0"
-              title="Download de Android-app (v28)"
+              title="Download de Android-app (v29)"
             >
               <Download size={16} />
               <span className="hidden sm:inline">App</span>
@@ -263,13 +263,13 @@ const Navbar: React.FC = () => {
 
               {/* Android app download — available to everyone */}
               <a
-                href="/jotihunt-app.apk?v=v28"
+                href="/jotihunt-app.apk?v=v29"
                 download="jotihunt.apk"
                 onClick={closeMobileMenu}
                 className="flex items-center space-x-3 px-3 py-2 rounded-md text-base font-medium text-white bg-primary-600 hover:bg-primary-700 transition-colors"
               >
                 <Download size={20} />
-                <span>Download app (v28)</span>
+                <span>Download app (v29)</span>
               </a>
 
               {/* User info and actions in mobile */}
