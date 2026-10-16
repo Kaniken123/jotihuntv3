@@ -305,6 +305,14 @@ router.get('/latest', authenticateToken, enforceTenantIsolation, async (req, res
       query = query.whereIn('user_locations.user_id', userIds);
     }
 
+    // Show only people whose tracking switch is on right now. Someone who was
+    // tracked earlier still has old rows, and their pin should not linger.
+    const tracked = await db('planning_entries')
+      .where({ tenant_id: req.tenantId, track_location: true })
+      .whereNotNull('user_id')
+      .pluck('user_id');
+    query = query.whereIn('user_locations.user_id', tracked.length ? tracked : [-1]);
+
     const locations = await query;
 
     // Add session status based on last activity (2 minutes threshold)

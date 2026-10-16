@@ -230,18 +230,9 @@ const MapScreen: React.FC = () => {
       };
     }) : [];
 
-    const hunterMarkers = showHunters ? userLocations
-      .filter(loc => loc.user_id !== authState.user?.id)
-      .map(loc => ({
-        type: 'hunter',
-        id: loc.id,
-        lat: loc.lat,
-        lng: loc.lng,
-        name: loc.first_name || loc.username || 'Hunter',
-        team: loc.team_name,
-        active: loc.session_status === 'active',
-      })) : [];
-
+    // The phone map shows only your own position (the blue dot); other
+    // hunters are deliberately not drawn here.
+    const hunterMarkers: any[] = [];
     const subMarkers = showSubscriptions ? subscriptions
       .filter(sub => sub.lat && sub.lng)
       .map(sub => ({
@@ -471,12 +462,7 @@ const MapScreen: React.FC = () => {
           >
             <Text style={styles.filterEmoji}>🦊</Text>
           </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.filterButton, showHunters && styles.filterButtonActive]}
-            onPress={() => setShowHunters(!showHunters)}
-          >
-            <Text style={styles.filterEmoji}>🎯</Text>
-          </TouchableOpacity>
+          
           <TouchableOpacity
             style={[styles.filterButton, showSubscriptions && styles.filterButtonActive]}
             onPress={() => setShowSubscriptions(!showSubscriptions)}
