@@ -4,7 +4,6 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
 import { Map, MessageSquare, Camera, FileText, Book, Shield, Route, Menu, X, Target, Download } from 'lucide-react';
 import NotificationCenter from './NotificationCenter';
-import LanguageSwitcher from './LanguageSwitcher';
 import { isAdmin } from '../utils/roleUtils';
 
 const Navbar: React.FC = () => {
@@ -113,10 +112,8 @@ const Navbar: React.FC = () => {
             </div>
 
 
-            {/* Language switcher */}
-            <div className="hidden sm:block">
-              <LanguageSwitcher />
-            </div>
+            {/* Language switcher hidden for now — i18n itself stays in place,
+                only the toggle is gone (it crowded the admin menu). */}
 
             {/* Notification Center — also on phones, it was hidden there before */}
             <div>
@@ -300,10 +297,7 @@ const Navbar: React.FC = () => {
                     <NotificationCenter />
                     <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{t('navbar.notifications')}</span>
                   </div>
-                  <div className="flex items-center justify-between px-3 py-2">
-                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{t('navbar.language')}</span>
-                    <LanguageSwitcher />
-                  </div>
+
                 </div>
 
                 {/* Mobile action buttons */}
