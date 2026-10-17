@@ -388,6 +388,15 @@ const Map: React.FC<{ beamer?: boolean }> = ({ beamer = false }) => {
   const [isAddMode, setIsAddMode] = useState(false);
   const [visibleFoxTeams, setVisibleFoxTeams] = useState<Set<string>>(new Set(['Alpha', 'Bravo', 'Charlie', 'Delta', 'Echo', 'Foxtrot', 'Golf', 'Hotel']));
   const [showFoxFilter, setShowFoxFilter] = useState(false);
+  // Foxes whose "could be here by now" circle is switched off. Per viewer, kept
+  // in this browser only.
+  const [hiddenFoxCircles, setHiddenFoxCircles] = useState<Set<string>>(() => {
+    try {
+      return new Set(JSON.parse(localStorage.getItem('hiddenFoxCircles') || '[]'));
+    } catch {
+      return new Set();
+    }
+  });
   const [showUserMarkers, setShowUserMarkers] = useState(true);
   const [showSubscriptions, setShowSubscriptions] = useState(true);
   const [showNoHuntZones, setShowNoHuntZones] = useState(true);
@@ -757,6 +766,15 @@ const Map: React.FC<{ beamer?: boolean }> = ({ beamer = false }) => {
     });
   }, []);
 
+  const toggleFoxCircle = useCallback((teamName: string) => {
+    setHiddenFoxCircles(prev => {
+      const next = new Set(prev);
+      if (next.has(teamName)) next.delete(teamName); else next.add(teamName);
+      try { localStorage.setItem('hiddenFoxCircles', JSON.stringify([...next])); } catch { /* storage blocked */ }
+      return next;
+    });
+  }, []);
+
   const showAllFoxTeams = useCallback(() => {
     setVisibleFoxTeams(new Set(['Alpha', 'Bravo', 'Charlie', 'Delta', 'Echo', 'Foxtrot', 'Golf', 'Hotel']));
   }, []);
@@ -929,7 +947,7 @@ const Map: React.FC<{ beamer?: boolean }> = ({ beamer = false }) => {
   const foxCircles = useMemo(() => {
     const FOX_SPEED_KMH = 6;
     return areas
-      .filter(area => area.lat && area.lng && area.last_seen && visibleFoxTeams.has(area.name))
+      .filter(area => area.lat && area.lng && area.last_seen && visibleFoxTeams.has(area.name) && !hiddenFoxCircles.has(area.name))
       .map((area) => {
         const minutes = (currentTime.getTime() - new Date(area.last_seen!).getTime()) / 60000;
         if (minutes < 1 || minutes > 240) return null;
@@ -954,7 +972,7 @@ const Map: React.FC<{ beamer?: boolean }> = ({ beamer = false }) => {
           </Circle>
         );
       });
-  }, [areas, visibleFoxTeams, currentTime]);
+  }, [areas, visibleFoxTeams, hiddenFoxCircles, currentTime]);
 
   const userMarkers = useMemo(() => 
     showUserMarkers ? userLocations.map((location) => (
@@ -1191,21 +1209,37 @@ const Map: React.FC<{ beamer?: boolean }> = ({ beamer = false }) => {
               {['Alpha', 'Bravo', 'Charlie', 'Delta', 'Echo', 'Foxtrot', 'Golf', 'Hotel'].map((teamName) => {
                 const colors = getTeamColors(teamName);
                 const isVisible = visibleFoxTeams.has(teamName);
-                
+                const circleOn = !hiddenFoxCircles.has(teamName);
+
                 return (
-                  <label key={teamName} className="flex items-center space-x-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={isVisible}
-                      onChange={() => toggleFoxTeamVisibility(teamName)}
-                      className="rounded border-gray-300 dark:border-gray-600"
-                    />
-                    <div 
-                      className="w-3 h-3 rounded-full border" 
-                      style={{ backgroundColor: colors.primary }}
-                    ></div>
-                    <span className="text-sm text-gray-700 dark:text-gray-300">{teamName}</span>
-                  </label>
+                  <div key={teamName} className="flex items-center justify-between gap-2">
+                    <label className="flex items-center space-x-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={isVisible}
+                        onChange={() => toggleFoxTeamVisibility(teamName)}
+                        className="rounded border-gray-300 dark:border-gray-600"
+                      />
+                      <div
+                        className="w-3 h-3 rounded-full border"
+                        style={{ backgroundColor: colors.primary }}
+                      ></div>
+                      <span className="text-sm text-gray-700 dark:text-gray-300">{teamName}</span>
+                    </label>
+                    {/* Circle on/off for this fox, independent of hiding the fox itself */}
+                    <button
+                      onClick={() => toggleFoxCircle(teamName)}
+                      disabled={!isVisible}
+                      title={circleOn ? 'Cirkel uitzetten' : 'Cirkel aanzetten'}
+                      className={`text-[11px] px-1.5 py-0.5 rounded border disabled:opacity-40 ${
+                        circleOn
+                          ? 'border-blue-300 bg-blue-50 text-blue-700 dark:border-blue-700 dark:bg-blue-900/40 dark:text-blue-200'
+                          : 'border-gray-300 text-gray-400 dark:border-gray-600 line-through'
+                      }`}
+                    >
+                      ◯ cirkel
+                    </button>
+                  </div>
                 );
               })}
             </div>
