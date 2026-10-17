@@ -102,6 +102,37 @@ router.post('/', authenticateToken, requireAdmin, enforceTenantIsolation, async 
   }
 });
 
+// Shared notepad beside the board: one text per tenant, last save wins.
+router.get('/notes', authenticateToken, requireAdmin, enforceTenantIsolation, async (req, res) => {
+  try {
+    const row = await db('planning_notes').where({ tenant_id: req.tenantId! }).first();
+    res.json({ content: row?.content || '', updated_at: row?.updated_at || null });
+  } catch (error) {
+    console.error('Get planning notes error:', error);
+    res.status(500).json({ error: 'Failed to load notes' });
+  }
+});
+
+router.put('/notes', authenticateToken, requireAdmin, enforceTenantIsolation, async (req, res) => {
+  try {
+    const tenantId = req.tenantId!;
+    const content = String(req.body?.content ?? '');
+    const row = { content, updated_by: req.user!.id, updated_at: new Date() };
+    const n = await db('planning_notes').where({ tenant_id: tenantId }).update(row);
+    if (!n) await db('planning_notes').insert({ ...row, tenant_id: tenantId });
+
+    try {
+      getSocketIO().to(`tenant-${tenantId}`).emit('planning-notes-updated', { content, by: req.user!.id });
+    } catch {
+      /* socket not ready — others pick it up on their next load */
+    }
+    res.json({ ok: true });
+  } catch (error) {
+    console.error('Save planning notes error:', error);
+    res.status(500).json({ error: 'Failed to save notes' });
+  }
+});
+
 // Move a card between activities (drag & drop).
 router.patch('/:id', authenticateToken, requireAdmin, enforceTenantIsolation, async (req, res) => {
   try {

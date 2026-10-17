@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '../services/authService';
 import { useWebSocket } from '../contexts/WebSocketContext';
 import LoadingSpinner from './LoadingSpinner';
+import PlanningNotes from './PlanningNotes';
 import { Plus, Trash2, LogOut, CheckCircle, BellRing, Clock } from 'lucide-react';
 
 interface Entry {
@@ -173,7 +174,9 @@ const PlanningBoard: React.FC = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
+      {/* Split: board on the left, shared notepad on the right (below on narrow screens). */}
+      <div className="flex flex-col lg:flex-row gap-4">
+      <div className="flex-1 min-w-0 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5 gap-4 content-start">
         {COLUMNS.map((col) => {
           const items = entries.filter((e) => e.activity === col.key);
           return (
@@ -287,6 +290,10 @@ const PlanningBoard: React.FC = () => {
             </div>
           );
         })}
+      </div>
+      <div className="lg:w-80 xl:w-96 shrink-0 lg:sticky lg:top-4 lg:self-start lg:h-[calc(100vh-8rem)]">
+        <PlanningNotes />
+      </div>
       </div>
     </div>
   );
