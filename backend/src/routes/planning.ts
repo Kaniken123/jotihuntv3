@@ -152,7 +152,7 @@ router.post('/area-timers/:area/start', authenticateToken, requireAdmin, enforce
     const area = req.params.area;
     if (!HUNT_AREAS.includes(area as any)) return res.status(400).json({ error: 'Invalid hunt area' });
     const tenantId = req.tenantId!;
-    const row = { started_at: new Date(), duration_minutes: AREA_TIMER_MINUTES };
+    const row = { started_at: new Date(), duration_minutes: AREA_TIMER_MINUTES, notified: false };
     const n = await db('planning_area_timers').where({ tenant_id: tenantId, area }).update(row);
     if (!n) await db('planning_area_timers').insert({ ...row, tenant_id: tenantId, area });
     broadcast(tenantId);
@@ -302,9 +302,53 @@ router.post('/:id/send-back', authenticateToken, requireAdmin, enforceTenantIsol
   }
 });
 
+async function tenantAdminIds(tenantId: number): Promise<number[]> {
+  return (
+    await db('user_roles')
+      .where('tenant_id', tenantId)
+      .where('is_active', true)
+      .where('role', 'like', '%admin%')
+      .distinct('user_id')
+  ).map((r) => r.user_id);
+}
+
 // Background check: flag timers that passed their threshold, alert the admins
 // once per timer (in-app via socket + a push to admin devices).
 export function startPlanningOverrunWatcher() {
+  // Deelgebied timers: checked every few seconds so the alert lands close to
+  // the moment the hour is up. One cheap query when nothing is due.
+  setInterval(async () => {
+    try {
+      const timers = await db('planning_area_timers').where('notified', false).select('*');
+      for (const t of timers) {
+        const dueAt = new Date(t.started_at).getTime() + t.duration_minutes * 60_000;
+        if (Date.now() < dueAt) continue;
+
+        await db('planning_area_timers').where({ id: t.id }).update({ notified: true });
+
+        try {
+          getSocketIO().to(`tenant-${t.tenant_id}`).emit('planning-area-timer-done', {
+            area: t.area,
+            duration_minutes: t.duration_minutes,
+          });
+        } catch { /* no socket yet */ }
+
+        const adminIds = await tenantAdminIds(t.tenant_id);
+        if (adminIds.length) {
+          await sendPushToUsers(adminIds, {
+            title: `⏱️ ${t.area}: uur is voorbij`,
+            body: `De timer van ${t.area} is afgelopen.`,
+            data: { type: 'planning-area-timer-done', area: String(t.area) },
+            sound: 'default',
+            channelId: 'alerts',
+          });
+        }
+      }
+    } catch (err) {
+      console.error('Area timer watcher error:', (err as Error).message);
+    }
+  }, 5_000);
+
   const INTERVAL_MS = 60_000;
   setInterval(async () => {
     try {
@@ -336,13 +380,7 @@ export function startPlanningOverrunWatcher() {
         } catch { /* no socket yet */ }
 
         // Push the admins of this tenant.
-        const adminIds = (
-          await db('user_roles')
-            .where('tenant_id', e.tenant_id)
-            .where('is_active', true)
-            .where('role', 'like', '%admin%')
-            .distinct('user_id')
-        ).map((r) => r.user_id);
+        const adminIds = await tenantAdminIds(e.tenant_id);
         if (adminIds.length) {
           await sendPushToUsers(adminIds, {
             title: '⏰ Hunttijd verstreken',

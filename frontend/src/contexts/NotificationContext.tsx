@@ -4,6 +4,32 @@ import { isAdmin } from '../utils/roleUtils';
 import { useWebSocket } from './WebSocketContext';
 import { NotificationData } from '../types';
 
+// Three short beeps, generated with WebAudio so no sound file is needed. The
+// browser only allows it after the user has interacted with the page, which an
+// admin who started a timer has.
+const playAlarm = () => {
+  try {
+    const Ctx = window.AudioContext || (window as any).webkitAudioContext;
+    if (!Ctx) return;
+    const ctx = new Ctx();
+    [0, 0.35, 0.7].forEach((offset) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'square';
+      osc.frequency.value = 880;
+      const start = ctx.currentTime + offset;
+      gain.gain.setValueAtTime(0.25, start);
+      gain.gain.exponentialRampToValueAtTime(0.001, start + 0.25);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(start);
+      osc.stop(start + 0.25);
+    });
+    setTimeout(() => ctx.close(), 1500);
+  } catch {
+    /* audio blocked or unavailable — the notification still shows */
+  }
+};
+
 interface NotificationState {
   notifications: NotificationData[];
   unreadCount: number;
@@ -193,6 +219,19 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       });
     };
 
+    // A deelgebied's one-hour timer on the planning board ran out.
+    const handleAreaTimerDone = (data: any) => {
+      if (!isAdmin(authState.user)) return;
+      playAlarm();
+      addNotification({
+        type: 'system',
+        title: `⏱️ ${data?.area || 'Deelgebied'}: uur is voorbij`,
+        message: `De timer van ${data?.area || 'het deelgebied'} is afgelopen.`,
+        read: false,
+        data,
+      });
+    };
+
     // An admin posted an update — everyone gets a popup.
     const handleNewUpdate = (data: any) => {
       addNotification({
@@ -287,6 +326,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     socket.on('fox-status-change', handleFoxStatusChange);
     socket.on('new-update', handleNewUpdate);
     socket.on('planning-overrun', handlePlanningOverrun);
+    socket.on('planning-area-timer-done', handleAreaTimerDone);
     socket.on('hunt-pending-review', handleHuntPendingReview);
     socket.on('hunt-reviewed', handleHuntReviewed);
     socket.on('new-assignment', handleNewAssignment);
@@ -300,6 +340,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       socket.off('fox-status-change', handleFoxStatusChange);
       socket.off('new-update', handleNewUpdate);
       socket.off('planning-overrun', handlePlanningOverrun);
+      socket.off('planning-area-timer-done', handleAreaTimerDone);
       socket.off('hunt-pending-review', handleHuntPendingReview);
       socket.off('hunt-reviewed', handleHuntReviewed);
       socket.off('new-assignment', handleNewAssignment);
