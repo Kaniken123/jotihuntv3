@@ -1,7 +1,6 @@
 import express from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import rateLimit from 'express-rate-limit';
 import { db } from '../utils/database';
 import { authenticateToken, requireSuperAdmin, hasRole } from '../middleware/auth';
 
@@ -11,16 +10,8 @@ if (!JWT_SECRET) {
   throw new Error('JWT_SECRET environment variable is required — refusing to start with an insecure default');
 }
 
-// Signup has no per-IP cap: the whole team signs up from the clubhouse Wi-Fi,
+// Signup and login have no per-IP cap: the whole team uses the clubhouse Wi-Fi,
 // i.e. one IP, and new accounts still need admin approval before they can log in.
-
-const loginLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 30,                   // 30 login attempts per IP per window
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { error: 'Too many login attempts. Please try again later.' },
-});
 
 // Human-readable reason a non-approved account can't sign in.
 const STATUS_MESSAGES: Record<string, string> = {
@@ -29,7 +20,7 @@ const STATUS_MESSAGES: Record<string, string> = {
   suspended: 'Your account has been suspended.',
 };
 
-router.post('/login', loginLimiter, async (req, res) => {
+router.post('/login', async (req, res) => {
   try {
     const { username, password, selected_tenant_id } = req.body;
 
