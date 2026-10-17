@@ -36,6 +36,24 @@ interface AreaTimer {
   duration_minutes: number;
 }
 
+// Live mm:ss countdown for a deelgebied timer. Ticks on its own each second so
+// the rest of the board does not re-render with it.
+const AreaCountdown: React.FC<{ timer: AreaTimer }> = ({ timer }) => {
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, []);
+  const endsAt = new Date(timer.started_at).getTime() + timer.duration_minutes * 60000;
+  const left = Math.max(0, Math.ceil((endsAt - now) / 1000));
+  if (left === 0) {
+    return <span className="text-xs font-medium text-green-600 dark:text-green-400">Uur voorbij</span>;
+  }
+  const mm = Math.floor(left / 60);
+  const ss = String(left % 60).padStart(2, '0');
+  return <span className="text-xs font-medium tabular-nums text-gray-700 dark:text-gray-200">{mm}:{ss}</span>;
+};
+
 const nameOf = (e: Entry) =>
   e.display_name ||
   `${e.first_name || ''} ${e.last_name || ''}`.trim() ||
@@ -327,9 +345,6 @@ const PlanningBoard: React.FC = () => {
                   {[...huntAreas, null].map((area) => {
                     const zoneItems = items.filter((e) => (e.hunt_area || null) === area);
                     const timer = area ? areaTimers.find((t) => t.area === area) : undefined;
-                    const leftMin = timer
-                      ? Math.ceil((new Date(timer.started_at).getTime() + timer.duration_minutes * 60000 - Date.now()) / 60000)
-                      : null;
                     return (
                       <div
                         key={area || 'none'}
@@ -345,15 +360,13 @@ const PlanningBoard: React.FC = () => {
                             {area || 'Nog niet verdeeld'} <span className="text-xs font-normal text-gray-500">{zoneItems.length}</span>
                           </span>
                           {area && (
-                            leftMin === null ? (
+                            !timer ? (
                               <button onClick={() => startAreaTimer(area)} className="text-[11px] px-2 py-1 rounded bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-1">
                                 <Clock size={11} /> 1 uur
                               </button>
                             ) : (
                               <div className="flex items-center gap-1">
-                                <span className={`text-xs font-medium ${leftMin <= 0 ? 'text-green-600 dark:text-green-400' : 'text-gray-700 dark:text-gray-200'}`}>
-                                  {leftMin <= 0 ? 'Uur voorbij' : `nog ${leftMin} min`}
-                                </span>
+                                <AreaCountdown timer={timer} />
                                 <button onClick={() => stopAreaTimer(area)} title="Timer stoppen" className="text-[11px] px-1.5 py-0.5 rounded bg-gray-500 hover:bg-gray-600 text-white">
                                   ✕
                                 </button>
