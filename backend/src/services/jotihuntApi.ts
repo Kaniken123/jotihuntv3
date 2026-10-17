@@ -176,6 +176,21 @@ export class JotihuntApiService {
         }
       }
 
+      // The API only lists this year's groups. Anything we still hold that it no
+      // longer lists (last year's clubhouses) is switched off rather than deleted,
+      // so visit history survives and a group that reappears is merged back on.
+      // Skipped on an empty response so a hiccup cannot wipe the map.
+      const liveIds = externalSubscriptions.map((s) => s.id);
+      if (liveIds.length) {
+        const retired = await db('subscriptions')
+          .whereNotIn('external_id', liveIds)
+          .where(function () {
+            this.where('is_participating', true).orWhereNull('is_participating');
+          })
+          .update({ is_participating: false, updated_at: new Date() });
+        if (retired) console.log(`🧹 Retired ${retired} subscription(s) no longer in the API`);
+      }
+
       // Update last sync timestamp
       await db('api_cache')
         .insert({
