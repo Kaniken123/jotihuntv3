@@ -8,25 +8,20 @@ const router = express.Router();
 // Submit a hint solution. A single hint can reveal several fox areas at once, so
 // we store ONE ROW PER REVEALED FOX (the table holds a single fox_team/lat/lng).
 // article_id is OPTIONAL: a hint location can be reported standalone, before the
-// matching API article is synced. New rows are 'unverified' until an admin
-// confirms them via PATCH /solutions/:id — we never auto-confirm or auto-reveal.
+// matching API article is synced. Anyone may submit, with or without a team, and
+// the locations go straight onto the map — there is no review step.
 router.post('/solutions', authenticateToken, async (req, res) => {
   try {
     const { article_id, solution, fox_coordinates } = req.body;
     const user_id = req.user!.id;
+    const tenantId = req.user!.current_tenant_id || req.user!.tenant_id;
+    const text = String(solution || '').trim();
 
-    if (!solution || !solution.trim()) {
-      return res.status(400).json({ error: 'Solution text is required' });
-    }
-
-    // Get user's team
+    // Team is recorded when the user has one. team_id is NOT NULL on the live
+    // table, so 0 stands for "no team" (SQLite foreign keys are not enforced).
     const teamMember = await db('team_members')
       .where('user_id', user_id)
       .first();
-
-    if (!teamMember) {
-      return res.status(400).json({ error: 'User must be part of a team to submit solutions' });
-    }
 
     // article_id is optional; if provided it must exist.
     if (article_id) {
@@ -61,13 +56,17 @@ router.post('/solutions', authenticateToken, async (req, res) => {
       }
     }
 
+    if (!text && foxRows.length === 0) {
+      return res.status(400).json({ error: 'Vul een oplossing of minstens één vossenlocatie in' });
+    }
+
     const baseRow = {
-      team_id: teamMember.team_id,
+      team_id: teamMember?.team_id ?? 0,
       user_id,
       article_id: article_id || null,
-      solution,
-      verification_status: 'unverified',
-      is_correct: false,
+      solution: text || 'Vossenlocatie doorgegeven',
+      verification_status: 'confirmed',
+      is_correct: true,
       reveals_fox_location: false
     };
 
@@ -92,33 +91,35 @@ router.post('/solutions', authenticateToken, async (req, res) => {
       insertedIds.push(id);
     }
 
+    // Put every submitted fox straight on the map.
+    for (const fox of foxRows) {
+      await revealFoxLocation(fox.fox_team, fox.lat, fox.lng, tenantId);
+    }
+
     const createdSolutions = await db('hint_solutions')
       .select('hint_solutions.*', 'teams.name as team_name', 'users.username')
-      .join('teams', 'hint_solutions.team_id', 'teams.id')
-      .join('users', 'hint_solutions.user_id', 'users.id')
+      .leftJoin('teams', 'hint_solutions.team_id', 'teams.id')
+      .leftJoin('users', 'hint_solutions.user_id', 'users.id')
       .whereIn('hint_solutions.id', insertedIds);
 
-    // Notify clients. The solution is UNVERIFIED — the map/predictor should weight
-    // it low until an admin confirms it.
     try {
       const { getSocketIO } = require('../socketManager');
-      getSocketIO().emit('hint-solution-submitted', {
+      getSocketIO().to(`tenant-${tenantId}`).emit('hint-solution-submitted', {
         solutions: createdSolutions,
-        verification_status: 'unverified',
+        reveals_fox: foxRows.length > 0,
         revealed_areas: foxRows.map(f => f.fox_team)
       });
     } catch (error) {
       console.error('Socket emission error:', error);
     }
 
-    // Recompute affected foxes' predictions (unverified → low weight applies).
-    const tenantId = req.user!.current_tenant_id || req.user!.tenant_id;
-
     res.status(201).json({
       success: true,
       solution: createdSolutions[0], // backward-compat: first row
       solutions: createdSolutions,
-      message: 'Solution submitted for review'
+      message: foxRows.length
+        ? `Opgeslagen — ${foxRows.map(f => f.fox_team).join(', ')} staat op de kaart`
+        : 'Oplossing opgeslagen'
     });
 
   } catch (error) {
@@ -131,15 +132,11 @@ router.post('/solutions', authenticateToken, async (req, res) => {
 router.get('/solutions', authenticateToken, async (req, res) => {
   try {
     const user_id = req.user!.id;
-    
-    // Get user's team
+
+    // The user's team's solutions, or just their own when they have no team.
     const teamMember = await db('team_members')
       .where('user_id', user_id)
       .first();
-
-    if (!teamMember) {
-      return res.status(400).json({ error: 'User must be part of a team' });
-    }
 
     const solutions = await db('hint_solutions')
       .select(
@@ -148,9 +145,11 @@ router.get('/solutions', authenticateToken, async (req, res) => {
         'articles.content as hint_body',
         'users.username as submitted_by'
       )
-      .join('articles', 'hint_solutions.article_id', 'articles.id')
-      .join('users', 'hint_solutions.user_id', 'users.id')
-      .where('hint_solutions.team_id', teamMember.team_id)
+      .leftJoin('articles', 'hint_solutions.article_id', 'articles.id')
+      .leftJoin('users', 'hint_solutions.user_id', 'users.id')
+      .where(teamMember
+        ? { 'hint_solutions.team_id': teamMember.team_id }
+        : { 'hint_solutions.user_id': user_id })
       .orderBy('hint_solutions.created_at', 'desc');
 
     res.json(solutions);
@@ -174,9 +173,9 @@ router.get('/solutions/all', authenticateToken, async (req, res) => {
         'teams.name as team_name',
         'users.username as submitted_by'
       )
-      .join('articles', 'hint_solutions.article_id', 'articles.id')
-      .join('teams', 'hint_solutions.team_id', 'teams.id')
-      .join('users', 'hint_solutions.user_id', 'users.id')
+      .leftJoin('articles', 'hint_solutions.article_id', 'articles.id')
+      .leftJoin('teams', 'hint_solutions.team_id', 'teams.id')
+      .leftJoin('users', 'hint_solutions.user_id', 'users.id')
       .orderBy('hint_solutions.created_at', 'desc');
 
     res.json(solutions);
@@ -223,12 +222,7 @@ router.patch('/solutions/:id', authenticateToken, async (req, res) => {
 
     // On confirmation, push the (now trusted) coordinates to the fox area.
     if (status === 'confirmed' && solution.fox_team && solution.lat && solution.lng) {
-      await revealFoxLocation(solution.fox_team, solution.lat, solution.lng, req.user!.id);
-    }
-
-    // Trust changed → recompute this fox's prediction at the new weight.
-    if (solution.fox_team) {
-      const tenantId = req.user!.current_tenant_id || req.user!.tenant_id;
+      await revealFoxLocation(solution.fox_team, solution.lat, solution.lng, req.user!.current_tenant_id || req.user!.tenant_id);
     }
 
     res.json({ success: true, message: 'Solution updated successfully', verification_status: status });
@@ -245,36 +239,39 @@ async function validateSolution(article: any, solution: string): Promise<boolean
   return solution.trim().length >= 3;
 }
 
-// Utility function to reveal fox location
-async function revealFoxLocation(foxTeam: string, lat: number, lng: number, userId: number) {
+// Put a fox on the map for this tenant. Areas are per tenant and can hold
+// duplicate rows per name (the map shows the highest id), so every matching row
+// in the tenant is moved — updating just .first() could land on a hidden row.
+async function revealFoxLocation(foxTeam: string, lat: number, lng: number, tenantId: number) {
   try {
-    // Find the area for this fox team
-    const area = await db('areas')
-      .where('name', foxTeam)
-      .orWhere('fox_team_name', foxTeam)
-      .first();
+    const areas = await db('areas')
+      .where('tenant_id', tenantId)
+      .where(function () {
+        this.where('name', foxTeam).orWhere('fox_team_name', foxTeam);
+      });
 
-    if (area) {
-      // Update fox location
+    const now = new Date();
+    const { getSocketIO } = require('../socketManager');
+    for (const area of areas) {
       await db('areas')
         .where('id', area.id)
-        .update({
-          lat,
-          lng,
-          last_seen: new Date(),
-          status: 'active'
-        });
+        .update({ lat, lng, last_seen: now, updated_at: now });
 
-      // Emit real-time fox location update
-      const { getSocketIO } = require('../socketManager');
+      await db('area_locations').insert({
+        area_id: area.id,
+        lat,
+        lng,
+        recorded_at: now,
+        source: 'hint'
+      });
+
       try {
-        const io = getSocketIO();
-        io.emit('fox-location-update', {
+        getSocketIO().to(`tenant-${tenantId}`).emit('fox-location-update', {
           area_id: area.id,
           fox_team: foxTeam,
           lat,
           lng,
-          last_seen: new Date(),
+          last_seen: now,
           source: 'hint_solution'
         });
       } catch (error) {

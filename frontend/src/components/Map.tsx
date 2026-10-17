@@ -426,7 +426,11 @@ const Map: React.FC<{ beamer?: boolean }> = ({ beamer = false }) => {
     }
   });
   const [isSubmittingSolution, setIsSubmittingSolution] = useState(false);
-  
+  // A solution needs text OR at least one complete fox location.
+  const hasSolutionInput =
+    solutionForm.solution.trim() !== '' ||
+    Object.values(solutionForm.foxCoordinates).some(c => c.rd_x.trim() && c.rd_y.trim());
+
   const { socket, isConnected } = useWebSocket();
   const { state } = useAuth();
   const { t } = useTranslation();
@@ -554,13 +558,12 @@ const Map: React.FC<{ beamer?: boolean }> = ({ beamer = false }) => {
   const handleHintSolutionSubmitted = useCallback((update: any) => {
     console.log('Hint solution submitted:', update);
 
-    if (update.reveals_fox && update.revealed_areas?.length > 0) {
+    if (update.revealed_areas?.length > 0) {
       // Reload areas to show newly revealed fox locations
+      // Silent refresh: a blocking alert on every open map for each submission
+      // would get in the way during the hunt.
       gameService.getAreas().then(areasData => {
         setAreas(areasData);
-
-        // Show success notification
-        alert(t('map.hintSolved', { areas: update.revealed_areas.join(', ') }));
       }).catch(error => {
         console.error('Failed to reload areas after hint solution:', error);
       });
@@ -793,8 +796,8 @@ const Map: React.FC<{ beamer?: boolean }> = ({ beamer = false }) => {
 
   // Handle hint solution submission
   const handleSubmitHintSolution = useCallback(async () => {
-    if (!solutionForm.solution.trim()) return; // article is optional; solution text is not
-    
+    if (!hasSolutionInput) return; // text or at least one fox location
+
     setIsSubmittingSolution(true);
     try {
       // Filter out empty coordinates
@@ -834,19 +837,19 @@ const Map: React.FC<{ beamer?: boolean }> = ({ beamer = false }) => {
       // Show success message
       alert(result.message || t('map.solutionSubmitted'));
       
-      // If correct and reveals fox locations, reload areas to show new fox positions
-      if (result.solution?.is_correct && result.solution?.reveals_fox_location) {
+      // Submitted foxes go straight onto the map — reload to show them.
+      if (Object.keys(filteredCoordinates).length > 0) {
         const areasData = await gameService.getAreas();
         setAreas(areasData);
       }
-      
+
     } catch (error: any) {
       console.error('Failed to submit solution:', error);
       alert(error.response?.data?.error || t('map.solutionFailed'));
     } finally {
       setIsSubmittingSolution(false);
     }
-  }, [selectedHint, solutionForm]);
+  }, [selectedHint, solutionForm, hasSolutionInput]);
 
   const openHintSolutionModal = useCallback((hint: Article) => {
     setSelectedHint(hint);
@@ -1106,7 +1109,7 @@ const Map: React.FC<{ beamer?: boolean }> = ({ beamer = false }) => {
       {/* Control Panel — hidden on the beamer/projection view */}
       {!beamer && (
       <div className="absolute top-4 right-4 z-10 space-y-2">
-        {/* Quick Hint Solution Button — desktop only (too cramped on a phone) */}
+        {/* Quick Hint Solution Button — on every screen; the label hides on a phone */}
         <button
           onClick={() => {
             // Standalone entry: open even with no synced article (selectedHint = null),
@@ -1114,10 +1117,10 @@ const Map: React.FC<{ beamer?: boolean }> = ({ beamer = false }) => {
             setSelectedHint(hints.length > 0 ? (hints.find(h => !h.is_read) || hints[0]) : null);
             setShowHintSolutionModal(true);
           }}
-          className="hidden md:flex items-center space-x-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white border border-blue-700 rounded-md shadow-lg transition-all"
+          className="flex items-center space-x-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white border border-blue-700 rounded-md shadow-lg transition-all"
         >
           <span className="text-sm">💡</span>
-          <span className="text-xs font-medium">{t('map.quickHint')}</span>
+          <span className="hidden sm:inline text-xs font-medium">{t('map.quickHint')}</span>
           {hints.filter(h => !h.is_read).length > 0 && (
             <span className="bg-yellow-400 text-blue-900 text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
               {hints.filter(h => !h.is_read).length}
@@ -1691,7 +1694,7 @@ const Map: React.FC<{ beamer?: boolean }> = ({ beamer = false }) => {
 
                 <button
                   onClick={handleSubmitHintSolution}
-                  disabled={!solutionForm.solution.trim() || isSubmittingSolution}
+                  disabled={!hasSolutionInput || isSubmittingSolution}
                   className="flex items-center space-x-2 px-6 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed rounded-md transition-colors"
                 >
                   {isSubmittingSolution ? (
