@@ -11,15 +11,8 @@ if (!JWT_SECRET) {
   throw new Error('JWT_SECRET environment variable is required — refusing to start with an insecure default');
 }
 
-// Public signup is open to the world, so cap it per IP. Requires app.set('trust
-// proxy', ...) so req.ip is the real client behind nginx, not nginx itself.
-const registerLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000, // 1 hour
-  max: 10,                   // 10 signups per IP per hour
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { error: 'Too many signup attempts from this address. Please try again later.' },
-});
+// Signup has no per-IP cap: the whole team signs up from the clubhouse Wi-Fi,
+// i.e. one IP, and new accounts still need admin approval before they can log in.
 
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
@@ -154,7 +147,7 @@ router.post('/login', loginLimiter, async (req, res) => {
   }
 });
 
-router.post('/register', registerLimiter, async (req, res) => {
+router.post('/register', async (req, res) => {
   try {
     // Signups come only from our own group, so we ask for the person's name and
     // a password — nothing else. Username + email are derived server-side
