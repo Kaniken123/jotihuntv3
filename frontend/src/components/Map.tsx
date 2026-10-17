@@ -784,13 +784,10 @@ const Map: React.FC<{ beamer?: boolean }> = ({ beamer = false }) => {
     }
   }, [state.user, loadHints]);
 
-  // Real-time circle growth timer - updates currentTime every 5 seconds
+  // Grows the fox circles. 30s is plenty: at walking pace that is ~40 m, and a
+  // faster tick re-renders the whole map for nothing.
   useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentTime(new Date());
-      console.log('🕒 Timer: Updating prediction circles for autonomous growth');
-    }, 5000); // 5 seconds
-
+    const interval = setInterval(() => setCurrentTime(new Date()), 30000);
     return () => clearInterval(interval);
   }, []);
 
@@ -925,6 +922,39 @@ const Map: React.FC<{ beamer?: boolean }> = ({ beamer = false }) => {
         ) : null;
     }).filter(Boolean);
   }, [areas, visibleFoxTeams, isLoadingRoute, selectedFoxRoute, loadFoxRoute, clearFoxRoute, navigateToFox]);
+
+  // Where a fox can be by now: a circle around its last known spot that grows at
+  // walking pace since last_seen. Shown from 1 minute to 4 hours after a sighting
+  // (past that it covers the whole area and says nothing).
+  const foxCircles = useMemo(() => {
+    const FOX_SPEED_KMH = 6;
+    return areas
+      .filter(area => area.lat && area.lng && area.last_seen && visibleFoxTeams.has(area.name))
+      .map((area) => {
+        const minutes = (currentTime.getTime() - new Date(area.last_seen!).getTime()) / 60000;
+        if (minutes < 1 || minutes > 240) return null;
+        const radiusKm = (minutes / 60) * FOX_SPEED_KMH;
+        const color = getTeamColors(area.name).primary;
+        return (
+          <Circle
+            key={`fox-circle-${area.id}`}
+            center={[area.lat!, area.lng!]}
+            radius={radiusKm * 1000}
+            pathOptions={{ color, fillColor: color, fillOpacity: 0.1, weight: 2, opacity: 0.7, dashArray: '8, 8' }}
+          >
+            <Popup>
+              <div className="p-1 text-sm">
+                <p className="font-semibold">{area.fox_team_name || area.name}</p>
+                <p className="text-xs text-gray-600">
+                  Laatst gezien {minutes < 60 ? `${Math.round(minutes)} min` : `${(minutes / 60).toFixed(1)} uur`} geleden
+                </p>
+                <p className="text-xs text-gray-600">Straal {radiusKm.toFixed(1)} km bij {FOX_SPEED_KMH} km/u</p>
+              </div>
+            </Popup>
+          </Circle>
+        );
+      });
+  }, [areas, visibleFoxTeams, currentTime]);
 
   const userMarkers = useMemo(() => 
     showUserMarkers ? userLocations.map((location) => (
@@ -1294,7 +1324,8 @@ const Map: React.FC<{ beamer?: boolean }> = ({ beamer = false }) => {
         
         {/* No-hunt zones first (behind other markers) */}
         {noHuntZones}
-        
+
+        {foxCircles}
         {foxMarkers}
         {userMarkers}
         {subscriptionMarkers}
