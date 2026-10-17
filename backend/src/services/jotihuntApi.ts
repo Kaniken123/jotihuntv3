@@ -134,40 +134,38 @@ export class JotihuntApiService {
               }
             }
             
-            await db('subscriptions')
-              .insert({
+            // Every field comes from the API, so a group that moved or changed
+            // deelgebied is fully overwritten. null (not undefined) on purpose:
+            // knex skips undefined in an update, which would keep stale values.
+            const fields = {
+              team_name: subscription.name || subscription.team_name || null,
+              is_participating: subscription.is_participating ?? true,
+              lat,
+              lng,
+              area: subscription.area || null, // Deelgebied from API
+              accomodation: subscription.accomodation ?? null,
+              street: subscription.street ?? null,
+              housenumber: subscription.housenumber ?? null,
+              housenumber_addition: subscription.housenumber_addition ?? null,
+              postcode: subscription.postcode ?? null,
+              city: subscription.city ?? null,
+              synced_at: new Date(),
+              updated_at: new Date()
+            };
+
+            // Update-then-insert instead of ON CONFLICT: that needs a unique
+            // index on (external_id, tenant_id), and without it SQLite rejects
+            // every row — the sync then silently changes nothing.
+            const updated = await db('subscriptions')
+              .where({ external_id: subscription.id, tenant_id: tenant.id })
+              .update(fields);
+            if (!updated) {
+              await db('subscriptions').insert({
+                ...fields,
                 external_id: subscription.id,
-                team_name: subscription.name || subscription.team_name,
-                is_participating: subscription.is_participating ?? true, // Default to true
-                lat,
-                lng,
-                area: subscription.area || null, // Deelgebied from API
-                accomodation: subscription.accomodation,
-                street: subscription.street,
-                housenumber: subscription.housenumber,
-                housenumber_addition: subscription.housenumber_addition,
-                postcode: subscription.postcode,
-                city: subscription.city,
-                tenant_id: tenant.id,
-                synced_at: new Date(),
-                updated_at: new Date()
-              })
-              .onConflict(['external_id', 'tenant_id'])
-              .merge({
-                team_name: subscription.name || subscription.team_name,
-                is_participating: subscription.is_participating ?? true,
-                lat,
-                lng,
-                area: subscription.area || null, // Update deelgebied on sync
-                accomodation: subscription.accomodation,
-                street: subscription.street,
-                housenumber: subscription.housenumber,
-                housenumber_addition: subscription.housenumber_addition,
-                postcode: subscription.postcode,
-                city: subscription.city,
-                synced_at: new Date(),
-                updated_at: new Date()
+                tenant_id: tenant.id
               });
+            }
           }
           synced++;
         } catch (error) {
@@ -180,16 +178,21 @@ export class JotihuntApiService {
       // longer lists (last year's clubhouses) is switched off rather than deleted,
       // so visit history survives and a group that reappears is merged back on.
       // Skipped on an empty response so a hiccup cannot wipe the map.
+      // Rows without an external_id (seeded or pre-API) are retired too: SQL's
+      // NOT IN never matches NULL, so they would otherwise stay forever.
       const liveIds = externalSubscriptions.map((s) => s.id);
       if (liveIds.length) {
         const retired = await db('subscriptions')
-          .whereNotIn('external_id', liveIds)
+          .where(function () {
+            this.whereNotIn('external_id', liveIds).orWhereNull('external_id');
+          })
           .where(function () {
             this.where('is_participating', true).orWhereNull('is_participating');
           })
           .update({ is_participating: false, updated_at: new Date() });
         if (retired) console.log(`🧹 Retired ${retired} subscription(s) no longer in the API`);
       }
+      console.log(`✅ Subscriptions sync: ${synced} synced, ${errors} errors`);
 
       // Update last sync timestamp
       await db('api_cache')
@@ -301,7 +304,9 @@ export class JotihuntApiService {
                   api_status: area.status,
                   lat: area.lat,
                   lng: area.lng,
-                  last_seen: area.last_seen ? new Date(area.last_seen) : null,
+                  // undefined = keep: the API no longer sends last_seen, and
+                  // nulling it every sync wiped the time a hint placed the fox.
+                  last_seen: area.last_seen ? new Date(area.last_seen) : undefined,
                   synced_at: new Date(),
                   updated_at: new Date()
                 });
