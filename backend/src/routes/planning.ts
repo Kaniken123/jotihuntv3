@@ -7,6 +7,9 @@ import { sendPushToUsers } from '../services/pushService';
 const router = express.Router();
 
 export const ACTIVITIES = ['unassigned', 'hunt', 'creatief', 'fotos', 'puzzels'] as const;
+// Deelgebieden the hunters are split over, each with its own one-hour timer.
+export const HUNT_AREAS = ['Echo', 'Golf', 'Hotel'] as const;
+const AREA_TIMER_MINUTES = 60;
 
 // Broadcast that the board changed so every open board stays in sync.
 function broadcast(tenantId: number) {
@@ -29,6 +32,7 @@ async function listEntries(tenantId: number) {
       'p.display_name',
       'p.activity',
       'p.track_location',
+      'p.hunt_area',
       'p.timer_started_at',
       'p.threshold_minutes',
       'p.overrun_notified',
@@ -71,7 +75,16 @@ router.get('/', authenticateToken, requireAdmin, enforceTenantIsolation, async (
       );
     }
 
-    res.json({ activities: ACTIVITIES, entries: await listEntries(tenantId) });
+    const areaTimers = await db('planning_area_timers')
+      .where({ tenant_id: tenantId })
+      .select('area', 'started_at', 'duration_minutes');
+
+    res.json({
+      activities: ACTIVITIES,
+      hunt_areas: HUNT_AREAS,
+      area_timers: areaTimers,
+      entries: await listEntries(tenantId),
+    });
   } catch (error) {
     console.error('Get planning error:', error);
     res.status(500).json({ error: 'Failed to load planning board' });
@@ -133,6 +146,34 @@ router.put('/notes', authenticateToken, requireAdmin, enforceTenantIsolation, as
   }
 });
 
+// One-hour timer per deelgebied. Starting again restarts it from now.
+router.post('/area-timers/:area/start', authenticateToken, requireAdmin, enforceTenantIsolation, async (req, res) => {
+  try {
+    const area = req.params.area;
+    if (!HUNT_AREAS.includes(area as any)) return res.status(400).json({ error: 'Invalid hunt area' });
+    const tenantId = req.tenantId!;
+    const row = { started_at: new Date(), duration_minutes: AREA_TIMER_MINUTES };
+    const n = await db('planning_area_timers').where({ tenant_id: tenantId, area }).update(row);
+    if (!n) await db('planning_area_timers').insert({ ...row, tenant_id: tenantId, area });
+    broadcast(tenantId);
+    res.json({ ok: true });
+  } catch (error) {
+    console.error('Start area timer error:', error);
+    res.status(500).json({ error: 'Failed to start timer' });
+  }
+});
+
+router.post('/area-timers/:area/stop', authenticateToken, requireAdmin, enforceTenantIsolation, async (req, res) => {
+  try {
+    await db('planning_area_timers').where({ tenant_id: req.tenantId!, area: req.params.area }).del();
+    broadcast(req.tenantId!);
+    res.json({ ok: true });
+  } catch (error) {
+    console.error('Stop area timer error:', error);
+    res.status(500).json({ error: 'Failed to stop timer' });
+  }
+});
+
 // Move a card between activities (drag & drop).
 router.patch('/:id', authenticateToken, requireAdmin, enforceTenantIsolation, async (req, res) => {
   try {
@@ -140,6 +181,14 @@ router.patch('/:id', authenticateToken, requireAdmin, enforceTenantIsolation, as
     if (req.body?.activity !== undefined) {
       if (!ACTIVITIES.includes(req.body.activity)) return res.status(400).json({ error: 'Invalid activity' });
       patch.activity = req.body.activity;
+      // Leaving the Hunt column drops the deelgebied too.
+      if (req.body.activity !== 'hunt') patch.hunt_area = null;
+    }
+    // A deelgebied only applies in the Hunt column (null = not split yet).
+    if (req.body?.hunt_area !== undefined && patch.hunt_area === undefined) {
+      const area = req.body.hunt_area;
+      if (area !== null && !HUNT_AREAS.includes(area)) return res.status(400).json({ error: 'Invalid hunt area' });
+      patch.hunt_area = area;
     }
     if (req.body?.display_name !== undefined) patch.display_name = String(req.body.display_name).trim();
     if (req.body?.track_location !== undefined) patch.track_location = !!req.body.track_location;

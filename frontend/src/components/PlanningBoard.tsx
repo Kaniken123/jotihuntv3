@@ -10,6 +10,7 @@ interface Entry {
   user_id: number | null;
   display_name: string | null;
   activity: string;
+  hunt_area?: string | null;
   track_location?: boolean;
   timer_started_at: string | null;
   threshold_minutes: number;
@@ -29,6 +30,12 @@ const COLUMNS: { key: string; label: string }[] = [
   { key: 'puzzels', label: 'Puzzels' },
 ];
 
+interface AreaTimer {
+  area: string;
+  started_at: string;
+  duration_minutes: number;
+}
+
 const nameOf = (e: Entry) =>
   e.display_name ||
   `${e.first_name || ''} ${e.last_name || ''}`.trim() ||
@@ -45,6 +52,8 @@ const formatElapsed = (ms: number) => {
 
 const PlanningBoard: React.FC = () => {
   const [entries, setEntries] = useState<Entry[]>([]);
+  const [huntAreas, setHuntAreas] = useState<string[]>([]);
+  const [areaTimers, setAreaTimers] = useState<AreaTimer[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [newName, setNewName] = useState('');
   const [threshold, setThreshold] = useState(180);
@@ -57,6 +66,8 @@ const PlanningBoard: React.FC = () => {
     try {
       const res = await api.get('/planning');
       setEntries(res.data.entries || []);
+      setHuntAreas(res.data.hunt_areas || []);
+      setAreaTimers(res.data.area_timers || []);
     } catch (e) {
       console.error('Failed to load planning board', e);
     } finally {
@@ -90,8 +101,22 @@ const PlanningBoard: React.FC = () => {
   }, [socket, load]);
 
   const move = async (id: number, activity: string) => {
-    setEntries((prev) => prev.map((e) => (e.id === id ? { ...e, activity } : e))); // optimistic
+    setEntries((prev) => prev.map((e) => (e.id === id ? { ...e, activity, hunt_area: activity === 'hunt' ? e.hunt_area : null } : e))); // optimistic
     try { await api.patch(`/planning/${id}`, { activity }); } catch { load(); }
+  };
+
+  // Put a hunter in a deelgebied (null = Hunt, not split yet).
+  const moveToArea = async (id: number, hunt_area: string | null) => {
+    setEntries((prev) => prev.map((e) => (e.id === id ? { ...e, activity: 'hunt', hunt_area } : e)));
+    try { await api.patch(`/planning/${id}`, { activity: 'hunt', hunt_area }); } catch { load(); }
+  };
+
+  const startAreaTimer = async (area: string) => {
+    try { await api.post(`/planning/area-timers/${area}/start`); await load(); } catch { /* ignore */ }
+  };
+
+  const stopAreaTimer = async (area: string) => {
+    try { await api.post(`/planning/area-timers/${area}/stop`); await load(); } catch { /* ignore */ }
   };
 
   // Location tracking is switched per person, independent of their column.
@@ -130,6 +155,111 @@ const PlanningBoard: React.FC = () => {
     } catch (err: any) {
       alert(err.response?.data?.error || 'Versturen mislukt');
     }
+  };
+
+  const renderCard = (e: Entry, colKey: string) => {
+    const started = e.timer_started_at ? new Date(e.timer_started_at).getTime() : null;
+    const elapsed = started ? Date.now() - started : 0;
+    const over = started ? elapsed > e.threshold_minutes * 60000 : false;
+    return (
+      <div
+        key={e.id}
+        draggable
+        onDragStart={() => { dragId.current = e.id; }}
+        className={`rounded-md border p-2 bg-white dark:bg-gray-700 cursor-move ${
+          over ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200 dark:border-gray-600'
+        }`}
+      >
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+              {nameOf(e)}
+            </p>
+            {e.license_plate && (
+              <p className="text-xs text-gray-500 dark:text-gray-400">🚗 {e.license_plate}</p>
+            )}
+            {!e.user_id && (
+              <p className="text-[10px] text-gray-400">handmatig toegevoegd</p>
+            )}
+          </div>
+          <button
+            onClick={() => removeEntry(e.id)}
+            title="Verwijderen"
+            className="text-gray-400 hover:text-red-500 shrink-0"
+          >
+            <Trash2 size={14} />
+          </button>
+        </div>
+
+        {/* Touch-friendly fallback for drag & drop */}
+        <select
+          value={e.activity}
+          onChange={(ev) => move(e.id, ev.target.value)}
+          className="mt-2 w-full text-xs rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 px-1 py-1"
+        >
+          {COLUMNS.map((c) => (
+            <option key={c.key} value={c.key}>{c.label}</option>
+          ))}
+        </select>
+
+        {colKey === 'hunt' && (
+          <select
+            value={e.hunt_area || ''}
+            onChange={(ev) => moveToArea(e.id, ev.target.value || null)}
+            className="mt-1 w-full text-xs rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 px-1 py-1"
+          >
+            <option value="">Nog niet verdeeld</option>
+            {huntAreas.map((a) => (
+              <option key={a} value={a}>{a}</option>
+            ))}
+          </select>
+        )}
+
+        <label className="mt-2 flex items-center gap-2 text-[11px] text-gray-600 dark:text-gray-300 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={!!e.track_location}
+            onChange={(ev) => setTracking(e.id, ev.target.checked)}
+            disabled={!e.user_id}
+          />
+          <span>📍 Locatie volgen</span>
+        </label>
+        {!e.user_id && (
+          <p className="text-[10px] text-gray-400">geen account, dus geen locatie</p>
+        )}
+
+        {colKey === 'hunt' && (
+          <div className="mt-2 border-t border-gray-100 dark:border-gray-600 pt-2">
+            {started ? (
+              <>
+                <p className={`text-xs font-medium ${over ? 'text-red-600 dark:text-red-400' : 'text-gray-600 dark:text-gray-300'}`}>
+                  Onderweg: {formatElapsed(elapsed)} / {e.threshold_minutes}m
+                  {over && ' — tijd om!'}
+                </p>
+                <div className="flex flex-wrap gap-1 mt-1">
+                  <button onClick={() => stopTimer(e.id, true)} className="text-[11px] px-2 py-1 rounded bg-green-600 hover:bg-green-700 text-white flex items-center gap-1">
+                    <CheckCircle size={11} /> Terug
+                  </button>
+                  <button onClick={() => stopTimer(e.id, false)} className="text-[11px] px-2 py-1 rounded bg-gray-500 hover:bg-gray-600 text-white">
+                    Stop
+                  </button>
+                  <button onClick={() => sendBack(e)} className="text-[11px] px-2 py-1 rounded bg-amber-600 hover:bg-amber-700 text-white flex items-center gap-1">
+                    <BellRing size={11} /> Roep terug
+                  </button>
+                </div>
+              </>
+            ) : (
+              <button onClick={() => startTimer(e.id)} className="text-[11px] px-2 py-1 rounded bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-1">
+                <LogOut size={11} /> Vertrokken
+              </button>
+            )}
+            {e.returned_at && !started && (
+              <p className="text-[10px] text-green-600 dark:text-green-400 mt-1">terug</p>
+            )}
+          </div>
+        )}
+      </div>
+    );
   };
 
   if (isLoading) {
@@ -191,102 +321,64 @@ const PlanningBoard: React.FC = () => {
                 <span className="text-xs font-normal text-gray-500">{items.length}</span>
               </h2>
 
-              <div className="space-y-2">
-                {items.map((e) => {
-                  const started = e.timer_started_at ? new Date(e.timer_started_at).getTime() : null;
-                  const elapsed = started ? Date.now() - started : 0;
-                  const over = started ? elapsed > e.threshold_minutes * 60000 : false;
-                  return (
-                    <div
-                      key={e.id}
-                      draggable
-                      onDragStart={() => { dragId.current = e.id; }}
-                      className={`rounded-md border p-2 bg-white dark:bg-gray-700 cursor-move ${
-                        over ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200 dark:border-gray-600'
-                      }`}
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
-                            {nameOf(e)}
-                          </p>
-                          {e.license_plate && (
-                            <p className="text-xs text-gray-500 dark:text-gray-400">🚗 {e.license_plate}</p>
-                          )}
-                          {!e.user_id && (
-                            <p className="text-[10px] text-gray-400">handmatig toegevoegd</p>
-                          )}
-                        </div>
-                        <button
-                          onClick={() => removeEntry(e.id)}
-                          title="Verwijderen"
-                          className="text-gray-400 hover:text-red-500 shrink-0"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-
-                      {/* Touch-friendly fallback for drag & drop */}
-                      <select
-                        value={e.activity}
-                        onChange={(ev) => move(e.id, ev.target.value)}
-                        className="mt-2 w-full text-xs rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 px-1 py-1"
+              {col.key === 'hunt' ? (
+                // Hunt is split into deelgebieden, each a drop zone with its own timer.
+                <div className="space-y-3">
+                  {[...huntAreas, null].map((area) => {
+                    const zoneItems = items.filter((e) => (e.hunt_area || null) === area);
+                    const timer = area ? areaTimers.find((t) => t.area === area) : undefined;
+                    const leftMin = timer
+                      ? Math.ceil((new Date(timer.started_at).getTime() + timer.duration_minutes * 60000 - Date.now()) / 60000)
+                      : null;
+                    return (
+                      <div
+                        key={area || 'none'}
+                        onDragOver={(e) => e.preventDefault()}
+                        onDrop={(ev) => {
+                          ev.stopPropagation();
+                          if (dragId.current != null) { moveToArea(dragId.current, area); dragId.current = null; }
+                        }}
+                        className="rounded-md border border-dashed border-gray-300 dark:border-gray-600 p-2"
                       >
-                        {COLUMNS.map((c) => (
-                          <option key={c.key} value={c.key}>{c.label}</option>
-                        ))}
-                      </select>
-
-                      <label className="mt-2 flex items-center gap-2 text-[11px] text-gray-600 dark:text-gray-300 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={!!e.track_location}
-                          onChange={(ev) => setTracking(e.id, ev.target.checked)}
-                          disabled={!e.user_id}
-                        />
-                        <span>📍 Locatie volgen</span>
-                      </label>
-                      {!e.user_id && (
-                        <p className="text-[10px] text-gray-400">geen account, dus geen locatie</p>
-                      )}
-
-                      {col.key === 'hunt' && (
-                        <div className="mt-2 border-t border-gray-100 dark:border-gray-600 pt-2">
-                          {started ? (
-                            <>
-                              <p className={`text-xs font-medium ${over ? 'text-red-600 dark:text-red-400' : 'text-gray-600 dark:text-gray-300'}`}>
-                                Onderweg: {formatElapsed(elapsed)} / {e.threshold_minutes}m
-                                {over && ' — tijd om!'}
-                              </p>
-                              <div className="flex flex-wrap gap-1 mt-1">
-                                <button onClick={() => stopTimer(e.id, true)} className="text-[11px] px-2 py-1 rounded bg-green-600 hover:bg-green-700 text-white flex items-center gap-1">
-                                  <CheckCircle size={11} /> Terug
-                                </button>
-                                <button onClick={() => stopTimer(e.id, false)} className="text-[11px] px-2 py-1 rounded bg-gray-500 hover:bg-gray-600 text-white">
-                                  Stop
-                                </button>
-                                <button onClick={() => sendBack(e)} className="text-[11px] px-2 py-1 rounded bg-amber-600 hover:bg-amber-700 text-white flex items-center gap-1">
-                                  <BellRing size={11} /> Roep terug
+                        <div className="flex items-center justify-between gap-2 mb-2">
+                          <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+                            {area || 'Nog niet verdeeld'} <span className="text-xs font-normal text-gray-500">{zoneItems.length}</span>
+                          </span>
+                          {area && (
+                            leftMin === null ? (
+                              <button onClick={() => startAreaTimer(area)} className="text-[11px] px-2 py-1 rounded bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-1">
+                                <Clock size={11} /> 1 uur
+                              </button>
+                            ) : (
+                              <div className="flex items-center gap-1">
+                                <span className={`text-xs font-medium ${leftMin <= 0 ? 'text-green-600 dark:text-green-400' : 'text-gray-700 dark:text-gray-200'}`}>
+                                  {leftMin <= 0 ? 'Uur voorbij' : `nog ${leftMin} min`}
+                                </span>
+                                <button onClick={() => stopAreaTimer(area)} title="Timer stoppen" className="text-[11px] px-1.5 py-0.5 rounded bg-gray-500 hover:bg-gray-600 text-white">
+                                  ✕
                                 </button>
                               </div>
-                            </>
-                          ) : (
-                            <button onClick={() => startTimer(e.id)} className="text-[11px] px-2 py-1 rounded bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-1">
-                              <LogOut size={11} /> Vertrokken
-                            </button>
-                          )}
-                          {e.returned_at && !started && (
-                            <p className="text-[10px] text-green-600 dark:text-green-400 mt-1">terug</p>
+                            )
                           )}
                         </div>
-                      )}
-                    </div>
-                  );
-                })}
+                        <div className="space-y-2">
+                          {zoneItems.map((e) => renderCard(e, col.key))}
+                          {zoneItems.length === 0 && (
+                            <p className="text-[11px] text-gray-400 text-center py-2">Sleep hier een hunter naartoe</p>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+              <div className="space-y-2">
+                {items.map((e) => renderCard(e, col.key))}
                 {items.length === 0 && (
                   <p className="text-xs text-gray-400 text-center py-4">Sleep hier iemand naartoe</p>
                 )}
               </div>
+              )}
             </div>
           );
         })}
