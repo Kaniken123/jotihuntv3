@@ -480,6 +480,26 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
+  // Forgotten passwords go through an admin: emails are synthetic, so there is
+  // no mail-based reset. The admin passes the new password on to the hunter.
+  const handleResetPassword = async (user: User) => {
+    const newPassword = prompt(`New password for "${user.username}" (at least 6 characters):`);
+    if (newPassword === null) return;
+    if (newPassword.length < 6) {
+      alert('Password must be at least 6 characters long.');
+      return;
+    }
+
+    try {
+      await api.post(`/users/${user.id}/change-password`, { new_password: newPassword });
+      alert(`Password for "${user.username}" has been reset. Pass the new password on to them.`);
+    } catch (error: any) {
+      console.error('Error resetting password:', error);
+      const errorMessage = error.response?.data?.error || 'Failed to reset password';
+      alert(`Error: ${errorMessage}`);
+    }
+  };
+
   const handleCreateTenant = async () => {
     if (!tenantFormData.name || !tenantFormData.slug) {
       alert('Please fill in both name and slug');
@@ -1038,6 +1058,13 @@ const AdminDashboard: React.FC = () => {
                       className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300 mr-3"
                     >
                       Edit
+                    </button>
+                    <button
+                      onClick={() => handleResetPassword(user)}
+                      className="text-amber-600 hover:text-amber-800 dark:text-amber-400 dark:hover:text-amber-300 mr-3"
+                      title="Set a new password for this account"
+                    >
+                      Reset password
                     </button>
                     {user.role !== 'super_admin' && user.role !== 'tenant_admin' && (
                       <button

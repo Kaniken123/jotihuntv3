@@ -54,7 +54,9 @@
     "loginFailed": "Login failed",
     "registerFailed": "Registration failed",
     "selectOrg": "Select Organization",
-    "selectOrgDesc": "You have access to multiple organizations. Please select which one you'd like to access:"
+    "selectOrgDesc": "You have access to multiple organizations. Please select which one you'd like to access:",
+    "forgotPassword": "Forgot your password?",
+    "forgotPasswordHint": "Ask an admin to reset your password. They will pass a new one on to you."
   },
   "common": {
     "save": "Save",

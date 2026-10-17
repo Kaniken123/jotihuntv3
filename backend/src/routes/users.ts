@@ -1,7 +1,7 @@
 import express from 'express';
 import bcrypt from 'bcryptjs';
 import { db } from '../utils/database';
-import { authenticateToken, requireAdmin, isAdmin, enforceTenantIsolation } from '../middleware/auth';
+import { authenticateToken, requireAdmin, isAdmin, hasRole, enforceTenantIsolation } from '../middleware/auth';
 import { disconnectUser } from '../socketManager';
 
 const router = express.Router();
@@ -376,7 +376,10 @@ router.delete('/users/:id', authenticateToken, requireAdmin, async (req, res) =>
   }
 });
 
-router.post('/users/:id/change-password', authenticateToken, async (req, res) => {
+// Users change their own password (current one required); admins reset anyone's
+// in their tenant without it. Emails are synthetic (name@jotihunt-gog.nl), so
+// there is no mail-based reset — a forgotten password goes through an admin.
+router.post('/users/:id/change-password', authenticateToken, enforceTenantIsolation, async (req, res) => {
   try {
     const { id } = req.params;
     const { current_password, new_password } = req.body;
@@ -385,13 +388,23 @@ router.post('/users/:id/change-password', authenticateToken, async (req, res) =>
       return res.status(403).json({ error: 'Access denied' });
     }
 
-    if (!new_password) {
-      return res.status(400).json({ error: 'New password required' });
+    if (!new_password || String(new_password).length < 6) {
+      return res.status(400).json({ error: 'New password must be at least 6 characters' });
     }
 
-    const user = await db('users').where('id', id).first();
+    const user = await db('users').where({ id, tenant_id: req.tenantId }).first();
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
+    }
+
+    // A tenant admin may not reset a super admin's password.
+    if (req.user!.id !== user.id && !hasRole(req.user!, 'super_admin')) {
+      const targetIsSuper = await db('user_roles')
+        .where({ user_id: user.id, role: 'super_admin', is_active: true })
+        .first();
+      if (targetIsSuper) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
     }
 
     if (!isAdmin(req.user!) && !await bcrypt.compare(current_password, user.password_hash)) {

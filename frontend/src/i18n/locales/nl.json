@@ -76,7 +76,9 @@
     "loginFailed": "Inloggen mislukt",
     "registerFailed": "Registratie mislukt",
     "selectOrg": "Selecteer organisatie",
-    "selectOrgDesc": "Je hebt toegang tot meerdere organisaties. Kies welke je wilt openen:"
+    "selectOrgDesc": "Je hebt toegang tot meerdere organisaties. Kies welke je wilt openen:",
+    "forgotPassword": "Wachtwoord vergeten?",
+    "forgotPasswordHint": "Vraag een beheerder om je wachtwoord te resetten. Die geeft je een nieuw wachtwoord door."
   },
   "common": {
     "save": "Opslaan",

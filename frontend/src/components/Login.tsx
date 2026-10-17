@@ -14,7 +14,8 @@ const Login: React.FC = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  
+  const [showForgotHint, setShowForgotHint] = useState(false);
+
   // Tenant selection modal state
   const [showTenantModal, setShowTenantModal] = useState(false);
   const [tenantOptions, setTenantOptions] = useState<Array<{id: number, name: string, slug: string, user_id: number}>>([]);
@@ -227,7 +228,24 @@ const Login: React.FC = () => {
                 {isLoginMode ? t('login.toggleToRegister') : t('login.toggleToLogin')}
               </button>
             </div>
-            
+
+            {isLoginMode && (
+              <div className="mt-2 text-center">
+                <button
+                  type="button"
+                  onClick={() => setShowForgotHint(!showForgotHint)}
+                  className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+                >
+                  {t('login.forgotPassword')}
+                </button>
+                {showForgotHint && (
+                  <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                    {t('login.forgotPasswordHint')}
+                  </p>
+                )}
+              </div>
+            )}
+
           </div>
         </form>
       </div>
