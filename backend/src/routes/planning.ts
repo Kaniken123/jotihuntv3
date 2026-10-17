@@ -8,7 +8,7 @@ const router = express.Router();
 
 export const ACTIVITIES = ['unassigned', 'hunt', 'creatief', 'fotos', 'puzzels'] as const;
 // Deelgebieden the hunters are split over, each with its own one-hour timer.
-export const HUNT_AREAS = ['Echo', 'Golf', 'Hotel'] as const;
+export const HUNT_AREAS = ['Alpha', 'Bravo', 'Echo', 'Golf', 'Hotel'] as const;
 const AREA_TIMER_MINUTES = 60;
 
 // Broadcast that the board changed so every open board stays in sync.
